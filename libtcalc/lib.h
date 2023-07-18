@@ -1,0 +1,4 @@
+namespace tcalc 
+{
+    int number();
+}
