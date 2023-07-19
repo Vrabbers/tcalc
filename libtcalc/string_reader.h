@@ -3,23 +3,27 @@
 #include <string_view>
 #include <optional>
 #include <string>
+#include <memory>
+
 #include "source_position.h"
+#include "tcalc_export.h"
 
 namespace TCalc
 {
-    constexpr char32_t EndOfFile = -1;
+    constexpr char32_t EndOfFile = (char32_t) - 1;
 
-    class StringReader final
+    // TODO: only exported for debugging purposes. make header private and un-export after this is done
+    class TCALC_EXPORT StringReader final
     {
         private:
-            std::string string;
+            std::unique_ptr<std::string> string;
             std::size_t startIx;
             std::size_t endIx;
             SourcePosition startPosition;
             SourcePosition endPosition;
 
         public:
-            StringReader(std::string input);
+            explicit StringReader(std::unique_ptr<std::string>);
             std::pair<char32_t, std::size_t> peekNextCharAndLength() const;
             std::optional<char32_t> peekNextCharacter() const;
             std::optional<char32_t> moveNextCharacter();

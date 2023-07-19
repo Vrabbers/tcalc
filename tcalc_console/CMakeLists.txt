@@ -5,5 +5,5 @@ set(SOURCES
 
 add_executable(tcalc ${SOURCES} ${HEADERS})
 
-target_link_libraries(tcalc libtcalc)
+target_link_libraries(tcalc PRIVATE libtcalc)
 target_include_directories(tcalc PUBLIC ../libtcalc/)

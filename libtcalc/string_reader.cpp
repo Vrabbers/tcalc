@@ -2,9 +2,9 @@
 
 #include <utf8proc.h>
 
-TCalc::StringReader::StringReader(std::string input)
+TCalc::StringReader::StringReader(std::unique_ptr<std::string> input)
 {
-    string = input;
+    string = std::move(input);
     startIx = 0;
     endIx = 0;
     startPosition = { 0, 0 };
@@ -13,10 +13,10 @@ TCalc::StringReader::StringReader(std::string input)
 
 std::pair<char32_t, std::size_t> TCalc::StringReader::peekNextCharAndLength() const
 {
-    if (endIx >= string.length())
+    if (endIx >= string->length())
         return std::make_pair(EOF, 1);
 
-    auto startPtr = reinterpret_cast<const uint8_t*>(string.c_str());
+    auto startPtr = reinterpret_cast<const uint8_t*>(string->c_str());
     char32_t character;
 
     auto length = utf8proc_iterate(startPtr, -1, reinterpret_cast<int32_t*>(&character));
