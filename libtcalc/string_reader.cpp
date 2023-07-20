@@ -2,21 +2,21 @@
 
 #include <utf8proc.h>
 
-TCalc::StringReader::StringReader(std::unique_ptr<std::string> input)
+TCalc::StringReader::StringReader(std::string input)
 {
     string = std::move(input);
     startIx = 0;
     endIx = 0;
-    startPosition = { 0, 0 };
-    endPosition = { 0, 0 };
+    startPosition = { 1, 1 };
+    endPosition = { 1, 1 };
 }
 
 std::pair<char32_t, std::size_t> TCalc::StringReader::peekNextCharAndLength() const
 {
-    if (endIx >= string->length())
+    if (endIx >= string.length())
         return std::make_pair(EOF, 1);
 
-    auto startPtr = reinterpret_cast<const uint8_t*>(string->c_str());
+    auto startPtr = reinterpret_cast<const uint8_t*>(&string.c_str()[endIx]);
     char32_t character;
 
     auto length = utf8proc_iterate(startPtr, -1, reinterpret_cast<int32_t*>(&character));
@@ -42,19 +42,41 @@ std::optional<char32_t> TCalc::StringReader::peekNextCharacter() const
 
 std::optional<char32_t> TCalc::StringReader::moveNextCharacter()
 {
-    return std::optional<char32_t>();
+    auto [character, size] = peekNextCharAndLength();
+
+    if (size == 0)
+        return std::nullopt;
+    
+    endIx += size;
+
+    if (character == U'\n')
+    {
+        endPosition.column = 1;
+        endPosition.line++;
+    }
+    else 
+    {
+        endPosition.column++; 
+    }
+
+    return character;
 }
 
 std::size_t TCalc::StringReader::tokenLength() const
 {
-    return std::size_t();
+    return endIx - startIx;
 }
 
-std::string TCalc::StringReader::flushToken()
+TCalc::SourceToken TCalc::StringReader::flushToken()
 {
-    return std::string();
+    auto substring = string.substr(startIx, tokenLength());
+    auto token = SourceToken(substring, startPosition, endPosition);
+    discardToken();
+    return token;
 }
 
 void TCalc::StringReader::discardToken()
 {
+    startIx = endIx;
+    startPosition = endPosition;
 }
