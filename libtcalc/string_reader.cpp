@@ -2,21 +2,21 @@
 
 #include <utf8proc.h>
 
-TCalc::StringReader::StringReader(std::string input)
+StringReader::StringReader(std::string input)
 {
-    string = std::move(input);
-    startIx = 0;
-    endIx = 0;
-    startPosition = { 1, 1 };
-    endPosition = { 1, 1 };
+    _string = std::move(input);
+    _startIx = 0;
+    _endIx = 0;
+    _startPosition = { 1, 1 };
+    _endPosition = { 1, 1 };
 }
 
-std::pair<char32_t, std::size_t> TCalc::StringReader::peekNextCharAndLength() const
+std::pair<char32_t, std::size_t> StringReader::peekNextCharAndLength() const
 {
-    if (endIx >= string.length())
+    if (_endIx >= _string.length())
         return std::make_pair(EOF, 1);
 
-    auto startPtr = reinterpret_cast<const uint8_t*>(&string.c_str()[endIx]);
+    auto startPtr = reinterpret_cast<const uint8_t*>(&_string.c_str()[_endIx]);
     char32_t character;
 
     auto length = utf8proc_iterate(startPtr, -1, reinterpret_cast<int32_t*>(&character));
@@ -31,7 +31,7 @@ std::pair<char32_t, std::size_t> TCalc::StringReader::peekNextCharAndLength() co
     }
 }
 
-std::optional<char32_t> TCalc::StringReader::peekNextCharacter() const
+std::optional<char32_t> StringReader::peekNextCharacter() const
 {
     auto [character, size] = peekNextCharAndLength();
     if (size == 0)
@@ -40,43 +40,43 @@ std::optional<char32_t> TCalc::StringReader::peekNextCharacter() const
         return character;
 }
 
-std::optional<char32_t> TCalc::StringReader::moveNextCharacter()
+std::optional<char32_t> StringReader::moveNextCharacter()
 {
     auto [character, size] = peekNextCharAndLength();
 
     if (size == 0)
         return std::nullopt;
     
-    endIx += size;
+    _endIx += size;
 
     if (character == U'\n')
     {
-        endPosition.column = 1;
-        endPosition.line++;
+        _endPosition.column = 1;
+        _endPosition.line++;
     }
     else 
     {
-        endPosition.column++; 
+        _endPosition.column++; 
     }
 
     return character;
 }
 
-std::size_t TCalc::StringReader::tokenLength() const
+std::size_t StringReader::tokenLength() const
 {
-    return endIx - startIx;
+    return _endIx - _startIx;
 }
 
-TCalc::SourceToken TCalc::StringReader::flushToken()
+SourceSpan StringReader::flushToken()
 {
-    auto substring = string.substr(startIx, tokenLength());
-    auto token = SourceToken(substring, startPosition, endPosition);
+    auto substring = _string.substr(_startIx, tokenLength());
+    auto token = SourceSpan(substring, _startPosition);
     discardToken();
     return token;
 }
 
-void TCalc::StringReader::discardToken()
+void StringReader::discardToken()
 {
-    startIx = endIx;
-    startPosition = endPosition;
+    _startIx = _endIx;
+    _startPosition = _endPosition;
 }

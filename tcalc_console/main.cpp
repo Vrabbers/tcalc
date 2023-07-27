@@ -1,7 +1,8 @@
 #include <iostream>
 #include "string_reader.h"
+#include "tc_utf8_utils.h"
 
-void printToken(TCalc::SourceToken);
+void printToken(SourceSpan);
 
 int main()
 {
@@ -19,16 +20,16 @@ int main()
     }
     std::cout << "input:\n" << input;
 
-    TCalc::StringReader sr(input);
+    StringReader sr(input);
+    auto chr = sr.moveNextCharacter();
+    std::cout << tcEncodeCodepoint(chr.value());
     sr.moveNextCharacter();
     auto token = sr.flushToken();
     printToken(token);
 }
 
-void printToken(TCalc::SourceToken token)
+void printToken(SourceSpan token)
 {
-    std::cout << "source token information:\n" << token.getString() << std::endl;
-    std::cout << "start -- line: " << token.getStart().line << "  column: " << token.getStart().column;
-    std::cout << "\nend -- line: " << token.getEnd().line << "  column: " << token.getEnd().column;
-
+    std::cout << "source token information:\n" << token.string() << std::endl;
+    std::cout << "start -- line: " << token.position().line << "  column: " << token.position().column;
 }

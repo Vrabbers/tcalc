@@ -1,10 +1,7 @@
 #pragma once
 
-namespace TCalc
+struct SourcePosition
 {
-    struct SourcePosition
-    {
-        int line;
-        int column;
-    };
+    int line;
+    int column;
 };

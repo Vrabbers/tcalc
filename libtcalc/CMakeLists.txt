@@ -16,14 +16,16 @@ endif()
 
 set(SOURCES 
     string_reader.cpp
-    source_token.cpp
+    source_span.cpp
+    tc_utf8_utils.cpp
 )
     
 set(HEADERS
     source_position.h
     string_reader.h
     tcalc_export.h
-    source_token.h
+    source_span.h
+    tc_utf8_utils.h
 )
 
 set(PRIVATE_HEADERS
