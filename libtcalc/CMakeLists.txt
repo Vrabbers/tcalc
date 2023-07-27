@@ -18,6 +18,8 @@ set(SOURCES
     string_reader.cpp
     source_span.cpp
     tc_utf8_utils.cpp
+    token.cpp
+    lexer.cpp
 )
     
 set(HEADERS
@@ -26,6 +28,8 @@ set(HEADERS
     tcalc_export.h
     source_span.h
     tc_utf8_utils.h
+    token.h
+    lexer.h
 )
 
 set(PRIVATE_HEADERS

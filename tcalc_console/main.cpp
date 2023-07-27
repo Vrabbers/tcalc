@@ -20,9 +20,12 @@ int main()
     }
     std::cout << "input:\n" << input;
 
-    StringReader sr(input);
+    StringReader sr(std::move(input));
+
+    std::cout << "input:\n" << input;
+
     auto chr = sr.moveNextCharacter();
-    std::cout << tcEncodeCodepoint(chr.value());
+    std::cout << tcEncodeCodepoint(chr.value()) << std::endl;
     sr.moveNextCharacter();
     auto token = sr.flushToken();
     printToken(token);

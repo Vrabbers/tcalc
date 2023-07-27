@@ -6,10 +6,10 @@
 class SourceSpan final
 {
     public:
-        SourceSpan(std::string, SourcePosition start);
-        const std::string& string() const;
+        SourceSpan(std::string_view, SourcePosition start);
+        std::string_view string() const;
         SourcePosition position() const;
     private:
-        std::string _string;
+        std::string_view _string;
         SourcePosition _position;
 };

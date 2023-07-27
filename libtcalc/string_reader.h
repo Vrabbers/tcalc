@@ -15,7 +15,7 @@ constexpr char32_t EndOfFile = (char32_t) -1;
 class TCALC_EXPORT StringReader final
 {
     public:
-        explicit StringReader(std::string input);
+        explicit StringReader(std::string&& input);
         std::optional<char32_t> peekNextCharacter() const;
         std::optional<char32_t> moveNextCharacter();
         std::size_t tokenLength() const;

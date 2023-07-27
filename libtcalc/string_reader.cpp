@@ -2,9 +2,8 @@
 
 #include <utf8proc.h>
 
-StringReader::StringReader(std::string input)
+StringReader::StringReader(std::string&& input) : _string(input)
 {
-    _string = std::move(input);
     _startIx = 0;
     _endIx = 0;
     _startPosition = { 1, 1 };
