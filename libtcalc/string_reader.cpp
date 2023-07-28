@@ -73,7 +73,7 @@ std::size_t StringReader::tokenLength() const
 SourceSpan StringReader::flush()
 {
     auto substring = _string.substr(_startIx, tokenLength());
-    auto token = SourceSpan(substring, _startPosition);
+    auto token = SourceSpan(std::move(substring), _startPosition);
     discardToken();
     return token;
 }

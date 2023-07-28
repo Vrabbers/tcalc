@@ -7,10 +7,10 @@
 class TCALC_EXPORT SourceSpan final
 {
     public:
-        SourceSpan(std::string_view, SourcePosition start);
-        std::string_view string() const;
+        SourceSpan(std::string&&, SourcePosition start);
+        const std::string& string() const;
         SourcePosition position() const;
     private:
-        std::string_view _string;
+        std::string _string;
         SourcePosition _position;
 };

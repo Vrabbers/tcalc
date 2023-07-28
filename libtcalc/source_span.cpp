@@ -1,9 +1,9 @@
 #include "source_span.h"
 
-SourceSpan::SourceSpan(std::string_view str, SourcePosition st) : _string(str), _position(st)
+SourceSpan::SourceSpan(std::string&& str, SourcePosition st) : _string(str), _position(st)
 { }
 
-std::string_view SourceSpan::string() const
+const std::string& SourceSpan::string() const
 {
     return _string;
 }

@@ -22,5 +22,5 @@ int main()
 
     Lexer lexer(std::move(input), true);
     auto next = lexer.next();
-    std::cout << Token::typeName(next.type());
+    std::cout << next.source().string() << Token::typeName(next.type());
 }
