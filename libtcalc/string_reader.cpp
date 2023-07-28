@@ -13,7 +13,7 @@ StringReader::StringReader(std::string&& input) : _string(input)
 std::pair<char32_t, std::size_t> StringReader::peekNextCharAndLength() const
 {
     if (_endIx >= _string.length())
-        return std::make_pair(EOF, 1);
+        return std::make_pair(EndOfFile, 0);
 
     auto startPtr = reinterpret_cast<const uint8_t*>(&_string.c_str()[_endIx]);
     char32_t character;
@@ -33,7 +33,7 @@ std::pair<char32_t, std::size_t> StringReader::peekNextCharAndLength() const
 std::optional<char32_t> StringReader::peekNextCharacter() const
 {
     auto [character, size] = peekNextCharAndLength();
-    if (size == 0)
+    if (size == 0 && character != EndOfFile)
         return std::nullopt;
     else 
         return character;
@@ -43,9 +43,13 @@ std::optional<char32_t> StringReader::moveNextCharacter()
 {
     auto [character, size] = peekNextCharAndLength();
 
-    if (size == 0)
+    if (size == 0 && character != EndOfFile)
+    {
+        // some error happened. try to inch forward.
+        _endIx++;
         return std::nullopt;
-    
+    }
+
     _endIx += size;
 
     if (character == U'\n')
@@ -66,7 +70,7 @@ std::size_t StringReader::tokenLength() const
     return _endIx - _startIx;
 }
 
-SourceSpan StringReader::flushToken()
+SourceSpan StringReader::flush()
 {
     auto substring = _string.substr(_startIx, tokenLength());
     auto token = SourceSpan(substring, _startPosition);

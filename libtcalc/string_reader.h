@@ -11,15 +11,14 @@
 
 constexpr char32_t EndOfFile = (char32_t) -1;
 
-// TODO: only exported for debugging purposes. make header private and un-export after this is done
-class TCALC_EXPORT StringReader final
+class StringReader final
 {
     public:
         explicit StringReader(std::string&& input);
         std::optional<char32_t> peekNextCharacter() const;
         std::optional<char32_t> moveNextCharacter();
         std::size_t tokenLength() const;
-        SourceSpan flushToken();
+        SourceSpan flush();
         void discardToken();
     
     private:

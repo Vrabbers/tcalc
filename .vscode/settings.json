@@ -64,6 +64,7 @@
         "xlocale": "cpp",
         "xlocinfo": "cpp",
         "xlocnum": "cpp",
-        "xstring": "cpp"
+        "xstring": "cpp",
+        "variant": "cpp"
     }
 }

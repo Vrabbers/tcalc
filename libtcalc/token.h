@@ -1,14 +1,15 @@
 #pragma once
 
 #include "source_span.h"
+#include "tcalc_export.h"
 
-class Token final
+class TCALC_EXPORT Token final
 {
     public:
         enum class Type
         {
             Bad,
-            Eof,
+            EndOfFile,
 
             NumericLiteral,
             SuperscriptLiteral,
@@ -49,9 +50,11 @@ class Token final
             ArgumentSeparator,
             EndOfLine
         };
+
         explicit Token(Type type, SourceSpan source);
         Type type() const;
         SourceSpan source() const;
+        static const char* typeName(Token::Type);
     private:
         Type _type;
         SourceSpan _source;

@@ -1,9 +1,10 @@
 #pragma once
 
 #include <string>
+#include "tcalc_export.h"
 #include "source_position.h"
 
-class SourceSpan final
+class TCALC_EXPORT SourceSpan final
 {
     public:
         SourceSpan(std::string_view, SourcePosition start);
