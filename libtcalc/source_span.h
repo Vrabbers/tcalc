@@ -4,12 +4,13 @@
 #include "tcalc_export.h"
 #include "source_position.h"
 
-class TCALC_EXPORT SourceSpan final
+class tcSourceSpan final
 {
     public:
-        SourceSpan(std::string&&, SourcePosition start);
-        const std::string& string() const;
-        SourcePosition position() const;
+        tcSourceSpan(std::string&&, SourcePosition start);
+        TCALC_EXPORT const char* string() const;
+        TCALC_EXPORT SourcePosition position() const;
+        TCALC_EXPORT ~tcSourceSpan() = default;
     private:
         std::string _string;
         SourcePosition _position;

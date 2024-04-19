@@ -1,14 +1,14 @@
 #include "source_span.h"
 
-SourceSpan::SourceSpan(std::string&& str, SourcePosition st) : _string(str), _position(st)
+tcSourceSpan::tcSourceSpan(std::string&& str, SourcePosition st) : _string(str), _position(st)
 { }
 
-const std::string& SourceSpan::string() const
+const char* tcSourceSpan::string() const
 {
-    return _string;
+    return _string.c_str();
 }
 
-SourcePosition SourceSpan::position() const
+SourcePosition tcSourceSpan::position() const
 {
     return _position;
 }

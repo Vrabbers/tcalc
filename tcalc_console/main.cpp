@@ -1,8 +1,9 @@
 #include <iostream>
+#include <cstdio>
 #include "lexer.h"
-#include "tc_utf8_utils.h"
+#include "utf8_utils.h"
 
-void printToken(SourceSpan);
+void printToken(tcSourceSpan);
 
 int main()
 {
@@ -20,7 +21,14 @@ int main()
     }
     std::cout << "input:\n" << input;
 
-    Lexer lexer(std::move(input), true);
-    auto next = lexer.next();
-    std::cout << next.source().string() << Token::typeName(next.type());
+    tcLexer lexer(input.c_str(), true);
+    while (true)
+    {
+        tcToken next = lexer.next();
+        auto l = next.source().position().line;
+        auto c = next.source().position().column;
+        std::printf("%s \"%s\" (L:%o C:%o)\n", tcTokenTypeName(next.type()), next.source().string(), l, c);
+        if (next.type() == tcTokenType::EndOfFile)
+            break;
+    }
 }

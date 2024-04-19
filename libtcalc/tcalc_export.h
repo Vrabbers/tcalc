@@ -9,4 +9,3 @@
 #else 
     #define TCALC_EXPORT
 #endif
-

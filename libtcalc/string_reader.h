@@ -11,16 +11,16 @@
 
 constexpr char32_t EndOfFile = (char32_t) -1;
 
-class StringReader final
+class tcStringReader final
 {
     public:
-        explicit StringReader(std::string&& input);
+        explicit tcStringReader(std::string&& input);
         std::optional<char32_t> peekNextCharacter() const;
         std::optional<char32_t> moveNextCharacter();
         std::size_t tokenLength() const;
-        SourceSpan flush();
+        tcSourceSpan flush();
         void discardToken();
-    
+
     private:
         std::pair<char32_t, std::size_t> peekNextCharAndLength() const;
         std::string _string;

@@ -28,37 +28,43 @@ bool isHexDigit(std::optional<char32_t> chr)
     return isDigit(chr) || (chr >= U'a' && chr <= U'f') || (chr >= U'A' && chr <= U'F');
 }
 
-Lexer::Lexer(std::string&& input, bool argSeparatorIsComma)
+tcLexer::tcLexer(std::string&& input, bool argSeparatorIsComma)
     : _sr(std::move(input)), _argSeparatorIsComma(argSeparatorIsComma)
 {
 }
 
-Token Lexer::next()
+tcLexer::tcLexer(const char* input, bool argSeparatorIsComma)
+    : _argSeparatorIsComma(argSeparatorIsComma), _sr(std::move(std::string(input)))
+{
+
+}
+
+tcToken tcLexer::next()
 {
     auto chOpt = _sr.moveNextCharacter();
 
     if (!chOpt.has_value())
-        return flushToken(Token::Type::Bad);
+        return flushToken(tcTokenType::Bad);
     
     auto character = chOpt.value();
 
     if (character == EndOfFile)
-        return flushToken(Token::Type::EndOfFile);
+        return flushToken(tcTokenType::EndOfFile);
     if (character == U'\n') //TODO: nicer check here
-        return flushToken(Token::Type::EndOfLine);
+        return flushToken(tcTokenType::EndOfLine);
     if (isDigit(character))
         return parseNumber(character);
 
-    return flushToken(Token::Type::Bad);
+    return flushToken(tcTokenType::Bad);
 }
 
-Token Lexer::flushToken(Token::Type type)
+tcToken tcLexer::flushToken(tcTokenType type)
 {
     auto span = _sr.flush();
-    return Token(type, span);
+    return tcToken(type, span);
 }
 
-Token Lexer::parseNumber(char32_t first)
+tcToken tcLexer::parseNumber(char32_t first)
 {
     auto next = _sr.peekNextCharacter();
     if (first == U'0' && next == U'b')
@@ -67,7 +73,7 @@ Token Lexer::parseNumber(char32_t first)
         while (_sr.peekNextCharacter() == U'0' || _sr.peekNextCharacter() == U'1')
             _sr.moveNextCharacter();
 
-        return flushToken(Token::Type::BinaryLiteral);
+        return flushToken(tcTokenType::BinaryLiteral);
     }
 
     if (first == U'0' && next == U'x')
@@ -76,7 +82,7 @@ Token Lexer::parseNumber(char32_t first)
         while (isHexDigit(_sr.peekNextCharacter()))
             _sr.moveNextCharacter();
 
-        return flushToken(Token::Type::HexLiteral);
+        return flushToken(tcTokenType::HexLiteral);
     }
 
     bool parsingAfterDecimal = false;
@@ -96,7 +102,7 @@ Token Lexer::parseNumber(char32_t first)
             if (!parsingAfterDecimal)
                 parsingAfterDecimal = true;
             else
-                return flushToken(Token::Type::Bad);
+                return flushToken(tcTokenType::Bad);
         }
         else if (next == U'e' || next == U'E')
         {
@@ -112,7 +118,7 @@ Token Lexer::parseNumber(char32_t first)
             }
             else
             {
-                return flushToken(Token::Type::Bad);
+                return flushToken(tcTokenType::Bad);
             }
         }
         else
@@ -120,17 +126,17 @@ Token Lexer::parseNumber(char32_t first)
             if (_sr.peekNextCharacter() == U'i')
                 _sr.moveNextCharacter();
             
-            return flushToken(Token::Type::NumericLiteral);
+            return flushToken(tcTokenType::NumericLiteral);
         }
     }
 }
 
-char32_t Lexer::decimalSeparator() const
+char32_t tcLexer::decimalSeparator() const
 {
     return _argSeparatorIsComma ? U'.' : U',';
 }
 
-char32_t Lexer::argSeparator() const
+char32_t tcLexer::argSeparator() const
 {
     return _argSeparatorIsComma ? U',' : U';';
 }

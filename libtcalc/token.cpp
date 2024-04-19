@@ -1,20 +1,20 @@
 #include "token.h"
 
-Token::Token(Type type, SourceSpan source) : _type(type), _source(source)
+tcToken::tcToken(tcTokenType type, tcSourceSpan source) : _type(type), _source(source)
 {
 }
 
-Token::Type Token::type() const
+tcTokenType tcToken::type() const
 {
     return _type;
 }
 
-SourceSpan Token::source() const
+tcSourceSpan tcToken::source() const
 {
     return _source;
 }
 
-const char* Token::typeName(Token::Type type)
+const char* tcTokenTypeName(tcTokenType type)
 {
     static const char* typeNames[] = 
     {

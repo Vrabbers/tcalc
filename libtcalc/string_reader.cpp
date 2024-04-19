@@ -2,7 +2,7 @@
 
 #include <utf8proc.h>
 
-StringReader::StringReader(std::string&& input) : _string(input)
+tcStringReader::tcStringReader(std::string&& input) : _string(input)
 {
     _startIx = 0;
     _endIx = 0;
@@ -10,7 +10,7 @@ StringReader::StringReader(std::string&& input) : _string(input)
     _endPosition = { 1, 1 };
 }
 
-std::pair<char32_t, std::size_t> StringReader::peekNextCharAndLength() const
+std::pair<char32_t, std::size_t> tcStringReader::peekNextCharAndLength() const
 {
     if (_endIx >= _string.length())
         return std::make_pair(EndOfFile, 0);
@@ -30,7 +30,7 @@ std::pair<char32_t, std::size_t> StringReader::peekNextCharAndLength() const
     }
 }
 
-std::optional<char32_t> StringReader::peekNextCharacter() const
+std::optional<char32_t> tcStringReader::peekNextCharacter() const
 {
     auto [character, size] = peekNextCharAndLength();
     if (size == 0 && character != EndOfFile)
@@ -39,7 +39,7 @@ std::optional<char32_t> StringReader::peekNextCharacter() const
         return character;
 }
 
-std::optional<char32_t> StringReader::moveNextCharacter()
+std::optional<char32_t> tcStringReader::moveNextCharacter()
 {
     auto [character, size] = peekNextCharAndLength();
 
@@ -65,20 +65,20 @@ std::optional<char32_t> StringReader::moveNextCharacter()
     return character;
 }
 
-std::size_t StringReader::tokenLength() const
+std::size_t tcStringReader::tokenLength() const
 {
     return _endIx - _startIx;
 }
 
-SourceSpan StringReader::flush()
+tcSourceSpan tcStringReader::flush()
 {
     auto substring = _string.substr(_startIx, tokenLength());
-    auto token = SourceSpan(std::move(substring), _startPosition);
+    auto token = tcSourceSpan(std::move(substring), _startPosition);
     discardToken();
     return token;
 }
 
-void StringReader::discardToken()
+void tcStringReader::discardToken()
 {
     _startIx = _endIx;
     _startPosition = _endPosition;

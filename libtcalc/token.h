@@ -2,60 +2,16 @@
 
 #include "source_span.h"
 #include "tcalc_export.h"
+#include "token_type.h"
 
-class TCALC_EXPORT Token final
+class tcToken final
 {
     public:
-        enum class Type
-        {
-            Bad,
-            EndOfFile,
-
-            NumericLiteral,
-            SuperscriptLiteral,
-            HexLiteral,
-            BinaryLiteral,
-            Identifier,
-
-            Add,
-            SuperscriptAdd,
-            Subtract,
-            SuperscriptSubtract,
-            Multiply,
-            Divide,
-            Exponentiate,
-            LeftParens,
-            RightParens,
-            Radical,
-            Percent,
-            Factorial,
-            LeftShift,
-            RightShift,
-            Greater,
-            GreaterOrEqual,
-            Less,
-            LessOrEqual,
-            Equal,
-            Equality,
-            NotEqual,
-            Pi,
-            Nand,
-            Nor,
-            Xnor,
-            And,
-            Or,
-            Xor,
-            Not,
-
-            ArgumentSeparator,
-            EndOfLine
-        };
-
-        explicit Token(Type type, SourceSpan source);
-        Type type() const;
-        SourceSpan source() const;
-        static const char* typeName(Token::Type);
+        TCALC_EXPORT explicit tcToken(tcTokenType type, tcSourceSpan source);
+        TCALC_EXPORT tcTokenType type() const;
+        TCALC_EXPORT tcSourceSpan source() const;
+        TCALC_EXPORT ~tcToken() = default;
     private:
-        Type _type;
-        SourceSpan _source;
+        tcTokenType _type;
+        tcSourceSpan _source;
 };

@@ -1,41 +1,38 @@
 project(libtcalc VERSION 0.0.1 LANGUAGES CXX)
 
-
-if(NOT (DEFINED LIBUTF8PROC_INCLUDE_DIRS AND DEFINED LIBUTF8PROC_LIBRARY_DIRS AND DEFINED LIBUTF8PROC_LIBRARIES))
-    if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-        set(LIBUTF8PROC_INCLUDE_DIRS "C:/Program Files (x86)/utf8proc/include")
-        set(LIBUTF8PROC_LIBRARY_DIRS "C:/Program Files (x86)/utf8proc/lib")
-        set(LIBUTF8PROC_LIBRARIES "C:/Program Files (x86)/utf8proc/lib/utf8proc_static.lib")
-    else()
-        find_package(PkgConfig)
-        if (PkgConfig_FOUND)
-            pkg_check_modules(LIBUTF8PROC libutf8proc)
-        endif()
-    endif()
+find_package(PkgConfig)
+if(NOT DEFINED LIBUTF8PROC_ROOT AND NOT PkgConfig_FOUND)
+    message(FATAL_ERROR "Please set LIBUTF8PROC_ROOT to locate the utf8proc library.")
+elseif(DEFINED LIBUTF8PROC_ROOT)
+    set(LIBUTF8PROC_INCLUDE_DIRS "${LIBUTF8PROC_ROOT}/include")
+    set(LIBUTF8PROC_LIBRARY_DIRS "${LIBUTF8PROC_ROOT}/lib")
+    set(LIBUTF8PROC_LIBRARIES "${LIBUTF8PROC_ROOT}/lib/utf8proc_static.lib")
+elseif(PkgConfig_FOUND)
+    pkg_check_modules(LIBUTF8PROC libutf8proc)
 endif()
 
 set(SOURCES 
     string_reader.cpp
     source_span.cpp
-    tc_utf8_utils.cpp
+    utf8_utils.cpp
     token.cpp
     lexer.cpp
 )
     
 set(HEADERS
     source_position.h
-    string_reader.h
     tcalc_export.h
     source_span.h
-    tc_utf8_utils.h
+    utf8_utils.h
     token.h
     lexer.h
-)
+    token_type.h)
 
 set(PRIVATE_HEADERS
+    string_reader.h
 )
 
-add_library(libtcalc SHARED ${SOURCES} ${HEADERS} ${PRIVATE_HEADERS})
+add_library(libtcalc SHARED ${SOURCES} ${HEADERS} ${PRIVATE_HEADERS} "token_type.h")
 set_target_properties(libtcalc PROPERTIES 
     OUTPUT_NAME tcalc
 )
