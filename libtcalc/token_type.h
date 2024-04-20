@@ -1,5 +1,4 @@
 #pragma once
-#include "tcalc_export.h"
 
 enum class tcTokenType
 {
@@ -47,4 +46,4 @@ enum class tcTokenType
     EndOfLine
 };
 
-TCALC_EXPORT const char* tcTokenTypeName(tcTokenType);
+const char* tcTokenTypeName(tcTokenType);

@@ -1,19 +1,17 @@
 #pragma once
 
 #include <string>
-#include <vector>
 #include <memory>
 #include "token.h"
-#include "tcalc_export.h"
 #include "string_reader.h"
 
 class tcLexer final
 {
     public:
         explicit tcLexer(std::string&& input, bool commaArgSeparator);
-        TCALC_EXPORT explicit tcLexer(const char* input, bool commaArgSeparator);
-        TCALC_EXPORT tcToken next();
-        TCALC_EXPORT ~tcLexer();
+        explicit tcLexer(const char* input, bool commaArgSeparator);
+        tcToken next();
+        ~tcLexer();
 
     private:
         tcToken flushToken(tcTokenType);

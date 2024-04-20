@@ -3,19 +3,18 @@
 #include <memory>
 
 #include "source_span.h"
-#include "tcalc_export.h"
 #include "token_type.h"
 
 class tcToken final
 {
     public:
-        TCALC_EXPORT tcToken();
-        TCALC_EXPORT tcToken(tcTokenType type, tcSourceSpan&& source);
+        tcToken();
+        tcToken(tcTokenType type, tcSourceSpan&& source);
         [[nodiscard]]
-        TCALC_EXPORT tcTokenType type() const;
+        tcTokenType type() const;
         [[nodiscard]]
-        TCALC_EXPORT const tcSourceSpan& source() const;
-        TCALC_EXPORT ~tcToken();
+        const tcSourceSpan& source() const;
+        ~tcToken();
 
     private:
         tcTokenType _type;

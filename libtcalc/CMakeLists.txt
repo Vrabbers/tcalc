@@ -21,7 +21,6 @@ set(SOURCES
     
 set(HEADERS
     source_position.h
-    tcalc_export.h
     source_span.h
     token.h
     lexer.h
@@ -33,11 +32,7 @@ set(PRIVATE_HEADERS
     utf8_utils.h
 )
 
-add_library(libtcalc SHARED ${SOURCES} ${HEADERS} ${PRIVATE_HEADERS})
-
-if(MSVC)
-    target_compile_options(libtcalc PRIVATE /wd4251) # disables must have dll-interface warning.
-endif()
+add_library(libtcalc STATIC ${SOURCES} ${HEADERS} ${PRIVATE_HEADERS})
 
 set_target_properties(libtcalc PROPERTIES 
     OUTPUT_NAME tcalc
