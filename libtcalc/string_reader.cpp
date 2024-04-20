@@ -2,20 +2,12 @@
 
 #include "utf8proc.h"
 
-tcStringReader::tcStringReader(std::string&& input) : _string(std::move(input)),
-                                                      _startPosition{1, 1 },
-                                                      _endPosition{ 1, 1 }
+tcStringReader::tcStringReader(std::string&& input) : _string(std::move(input))
 {
-    _startIx = 0;
-    _endIx = 0;
 }
 
-tcStringReader::tcStringReader(const char* input) : _string(input),
-                                                      _startPosition{1, 1 },
-                                                      _endPosition{ 1, 1 }
+tcStringReader::tcStringReader(const char* input) : _string(input)
 {
-    _startIx = 0;
-    _endIx = 0;
 }
 
 std::pair<char32_t, std::int32_t> tcStringReader::peekAndLength() const

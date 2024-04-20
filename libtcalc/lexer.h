@@ -15,6 +15,7 @@ public:
 private:
     tcToken flushToken(tcTokenType);
     tcToken parseNumber(char32_t first);
+    tcToken parseSuperscriptNumber();
     tcToken parseSymbol(char32_t first);
     tcToken parseIdentifier();
     [[nodiscard]]

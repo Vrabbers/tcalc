@@ -26,8 +26,8 @@ private:
     [[nodiscard]]
     std::pair<char32_t, std::int32_t> peekAndLength() const;
     std::string _string;
-    std::size_t _startIx;
-    std::size_t _endIx;
-    tcSourcePosition _startPosition;
-    tcSourcePosition _endPosition;
+    std::size_t _startIx = 0;
+    std::size_t _endIx = 0;
+    tcSourcePosition _startPosition = {1, 1};
+    tcSourcePosition _endPosition = {1, 1};
 };

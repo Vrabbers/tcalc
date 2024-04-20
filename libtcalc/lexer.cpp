@@ -1,5 +1,6 @@
 #include "lexer.h"
 
+#include <set>
 #include <unordered_map>
 
 #include "utf8proc.h"
@@ -30,6 +31,15 @@ static bool isHexDigit(std::optional<char32_t> chr)
     return isDigit(chr) || (chr >= U'a' && chr <= U'f') || (chr >= U'A' && chr <= U'F');
 }
 
+static const std::set superscriptNumerals = {U'²', U'³', U'¹', U'⁰', U'⁴', U'⁵', U'⁶', U'⁷', U'⁸', U'⁹'};
+
+static bool isSuperscriptNumeral(std::optional<char32_t> chr)
+{
+    if (!chr.has_value())
+        return false;
+    return superscriptNumerals.contains(*chr);
+}
+
 tcLexer::tcLexer(std::string&& input, bool commaArgSeparator)
     : _sr(std::make_unique<tcStringReader>(std::move(input))), _commaArgumentSeparator(commaArgSeparator)
 {
@@ -49,23 +59,22 @@ tcToken tcLexer::next()
     }
     _sr->discardToken();
 
-    const auto chOpt = _sr->forward();
+    auto first = _sr->forward();
 
-    if (!chOpt.has_value())
+    if (!first.has_value())
         return flushToken(tcTokenType::Bad);
-    
-    auto first = chOpt.value();
-
-    if (first == EndOfFile)
+    if (*first == EndOfFile)
         return flushToken(tcTokenType::EndOfFile);
-    if (first == U'\n')
+    if (*first == U'\n')
         return flushToken(tcTokenType::EndOfLine);
     if (isDigit(first))
-        return parseNumber(first);
+        return parseNumber(*first);
+    if (isSuperscriptNumeral(first))
+        return parseSuperscriptNumber();
     if (isLetter(first))
         return parseIdentifier();
 
-    return parseSymbol(first);
+    return parseSymbol(*first);
 }
 
 tcToken tcLexer::flushToken(tcTokenType type)
@@ -141,6 +150,43 @@ tcToken tcLexer::parseNumber(const char32_t first)
     }
 }
 
+tcToken tcLexer::parseSuperscriptNumber()
+{
+    bool parsingExponent = false;
+    while (true)
+    {
+        auto next = _sr->peek();
+
+        if (isSuperscriptNumeral(next))
+        {
+            _sr->forward();
+        }
+        else if (next == U'ᵉ' || next == U'ᴱ')
+        {
+            _sr->forward();
+
+            if (!parsingExponent)
+            {
+                parsingExponent = true;
+                next = _sr->peek();
+                if (next == U'⁺' || next == U'⁻')
+                    _sr->forward();
+            }
+            else
+            {
+                return flushToken(tcTokenType::Bad);
+            }
+        }
+        else
+        {
+            if (_sr->peek() == U'ⁱ')
+                _sr->forward();
+
+            return flushToken(tcTokenType::SuperscriptLiteral);
+        }
+    }
+}
+
 tcToken tcLexer::parseSymbol(char32_t first)
 {
     if (first == argSeparator())
@@ -150,13 +196,13 @@ tcToken tcLexer::parseSymbol(char32_t first)
     switch (first)
     {
     case U'+':
-        return flushToken(tcTokenType::Add);
+        return flushToken(tcTokenType::Plus);
     case U'⁺':
-        return flushToken(tcTokenType::SuperscriptAdd);
+        return flushToken(tcTokenType::SuperscriptPlus);
     case U'-':
-        return flushToken(tcTokenType::Subtract);
+        return flushToken(tcTokenType::Minus);
     case U'⁻':
-        return flushToken(tcTokenType::SuperscriptSubtract);
+        return flushToken(tcTokenType::SuperscriptMinus);
     case U'*':
     case U'×':
     case U'∙':
@@ -248,13 +294,16 @@ tcToken tcLexer::parseIdentifier()
         {"XOR", tcTokenType::Xor},
         {"NOT", tcTokenType::Not},
         {"π", tcTokenType::Pi},
-        {"τ", tcTokenType::Tau}
+        {"τ", tcTokenType::Tau},
+        {"i", tcTokenType::NumericLiteral},
+        {"ⁱ", tcTokenType::SuperscriptLiteral},
     };
+
     const auto typeIter = keywords.find(str);
     if (typeIter != keywords.end())
         return {typeIter->second, std::move(sourceSpan)};
-    else
-        return {tcTokenType::Identifier, std::move(sourceSpan)};
+
+    return {tcTokenType::Identifier, std::move(sourceSpan)};
 }
 
 char32_t tcLexer::decimalSeparator() const
