@@ -33,7 +33,12 @@ set(PRIVATE_HEADERS
     utf8_utils.h
 )
 
-add_library(libtcalc SHARED ${SOURCES} ${HEADERS} ${PRIVATE_HEADERS} "token_type.h")
+add_library(libtcalc SHARED ${SOURCES} ${HEADERS} ${PRIVATE_HEADERS})
+
+if(MSVC)
+    target_compile_options(libtcalc PRIVATE /wd4251) # disables must have dll-interface warning.
+endif()
+
 set_target_properties(libtcalc PROPERTIES 
     OUTPUT_NAME tcalc
 )

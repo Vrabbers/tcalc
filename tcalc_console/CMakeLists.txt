@@ -9,7 +9,4 @@ target_link_libraries(tcalc PRIVATE libtcalc)
 target_include_directories(tcalc PUBLIC ../libtcalc/)
 
 install(FILES $<TARGET_RUNTIME_DLLS:tcalc> TYPE BIN)
-
-add_custom_command(TARGET tcalc POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy -t $<TARGET_FILE_DIR:tcalc> $<TARGET_RUNTIME_DLLS:tcalc>
-    COMMAND_EXPAND_LISTS)
+install(TARGETS tcalc DESTINATION bin)

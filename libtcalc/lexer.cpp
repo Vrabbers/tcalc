@@ -3,7 +3,6 @@
 #include <iostream>
 
 #include "utf8proc.h"
-#include "utf8_utils.h"
 
 static bool isWhitespace(std::optional<char32_t> chr)
 {
