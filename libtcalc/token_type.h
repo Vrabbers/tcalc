@@ -34,6 +34,7 @@ enum class tcTokenType
     Equality,
     NotEqual,
     Pi,
+    Tau,
     Nand,
     Nor,
     Xnor,

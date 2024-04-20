@@ -3,8 +3,6 @@
 #include "lexer.h"
 #include "utf8_utils.h"
 
-void printToken(tcSourceSpan);
-
 int main()
 {
     std::cout << "tcalc console" << std::endl;
@@ -22,9 +20,10 @@ int main()
     std::cout << "input:\n" << input;
 
     tcLexer lexer(input.c_str(), true);
+
     while (true)
     {
-        tcToken next = lexer.next();
+        tcToken next = lexer.next(); 
         auto l = next.source().position().line;
         auto c = next.source().position().column;
         std::printf("%s \"%s\" (L:%o C:%o)\n", tcTokenTypeName(next.type()), next.source().string(), l, c);

@@ -10,6 +10,14 @@ tcStringReader::tcStringReader(std::string&& input) : _string(input)
     _endPosition = { 1, 1 };
 }
 
+tcStringReader::tcStringReader(const char* input) : _string(input)
+{
+    _startIx = 0;
+    _endIx = 0;
+    _startPosition = { 1, 1 };
+    _endPosition = { 1, 1 };
+}
+
 std::pair<char32_t, std::size_t> tcStringReader::peekNextCharAndLength() const
 {
     if (_endIx >= _string.length())

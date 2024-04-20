@@ -4,7 +4,7 @@
 
 std::string tcEncodeCodepoint(char32_t character)
 {
-    char buf[4];
-    utf8proc_encode_char(character, reinterpret_cast<uint8_t*>(buf));
-    return std::string(buf);
+    char buf[4] = { };
+    const auto count = utf8proc_encode_char(static_cast<int32_t>(character), reinterpret_cast<uint8_t*>(buf));
+    return {buf, static_cast<std::size_t>(count)};
 }

@@ -23,13 +23,14 @@ set(HEADERS
     source_position.h
     tcalc_export.h
     source_span.h
-    utf8_utils.h
     token.h
     lexer.h
-    token_type.h)
+    token_type.h
+    string_reader.h
+)
 
 set(PRIVATE_HEADERS
-    string_reader.h
+    utf8_utils.h
 )
 
 add_library(libtcalc SHARED ${SOURCES} ${HEADERS} ${PRIVATE_HEADERS} "token_type.h")

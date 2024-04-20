@@ -1,6 +1,11 @@
 #include "token.h"
 
-tcToken::tcToken(tcTokenType type, tcSourceSpan source) : _type(type), _source(source)
+tcToken::tcToken(): _type(tcTokenType::Bad)
+{
+}
+
+tcToken::tcToken(const tcTokenType type, tcSourceSpan&& source) : _type(type),
+                                                                  _source(std::make_unique<tcSourceSpan>(source))
 {
 }
 
@@ -9,10 +14,12 @@ tcTokenType tcToken::type() const
     return _type;
 }
 
-tcSourceSpan tcToken::source() const
+const tcSourceSpan& tcToken::source() const
 {
-    return _source;
+    return *_source;
 }
+
+tcToken::~tcToken() = default;
 
 const char* tcTokenTypeName(tcTokenType type)
 {
@@ -49,6 +56,7 @@ const char* tcTokenTypeName(tcTokenType type)
         "Equality",
         "NotEqual",
         "Pi",
+        "Tau",
         "Nand",
         "Nor",
         "Xnor",

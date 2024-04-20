@@ -6,12 +6,14 @@
 
 class tcSourceSpan final
 {
-    public:
-        tcSourceSpan(std::string&&, SourcePosition start);
-        TCALC_EXPORT const char* string() const;
-        TCALC_EXPORT SourcePosition position() const;
-        TCALC_EXPORT ~tcSourceSpan() = default;
-    private:
-        std::string _string;
-        SourcePosition _position;
+public:
+    tcSourceSpan(std::string&&, tcSourcePosition start);
+    [[nodiscard]]
+    TCALC_EXPORT const char* string() const;
+    [[nodiscard]]
+    TCALC_EXPORT tcSourcePosition position() const;
+    TCALC_EXPORT ~tcSourceSpan();
+private:
+    std::string _string;
+    tcSourcePosition _position;
 };

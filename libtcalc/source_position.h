@@ -1,6 +1,6 @@
 #pragma once
 
-struct SourcePosition
+struct tcSourcePosition
 {
     std::uint32_t line;
     std::uint32_t column;
