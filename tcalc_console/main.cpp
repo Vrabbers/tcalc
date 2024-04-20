@@ -1,5 +1,8 @@
+#include <array>
 #include <iostream>
 #include <format>
+#include <random>
+
 #include "lexer.h"
 
 #ifdef _WIN32
@@ -7,13 +10,28 @@
 #pragma execution_character_set("utf-8")
 #endif
 
-int main()
+static void parse(std::string&& str, bool print = true)
 {
-#ifdef _WIN32
-    SetConsoleCP(65001);
-    SetConsoleOutputCP(65001);
-#endif
+    std::cout << "input:\n" << str << std::endl;
+
+    tcLexer lexer(std::move(str), true);
+
+    while (true)
+    {
+        tcToken next = lexer.next();
+        auto l = next.source().position().line;
+        auto c = next.source().position().column;
+        if (print)
+            std::cout << std::format("{} \"{}\" (L:{} C:{}); ", tcTokenTypeName(next.type()), next.source().string(), l, c);
+        if (next.type() == tcTokenType::EndOfFile)
+            break;
+    }
+}
+
+static void interactive()
+{
     std::cout << "tcalc console" << std::endl;
+
     while (true)
     {
         std::string input;
@@ -27,18 +45,37 @@ int main()
             else
                 input += aux + "\n";
         }
-        std::cout << "input:\n" << input;
+        if (input.empty())
+            return;
 
-        tcLexer lexer(std::move(input), true);
-
-        while (true)
-        {
-            tcToken next = lexer.next();
-            auto l = next.source().position().line;
-            auto c = next.source().position().column;
-            std::cout << std::format("{} \"{}\" (L:{} C:{})\n", tcTokenTypeName(next.type()), next.source().string(), l, c);
-            if (next.type() == tcTokenType::EndOfFile)
-                break;
-        }
+        parse(std::move(input));
     }
+}
+
+static void fuzz(int times)
+{
+    std::random_device rd;
+    std::default_random_engine rand(rd());
+    std::uniform_int_distribution rdist(0, 255);
+    std::array<char, 512> buf{};
+    for (int i = 0; i < times; i++)
+    {
+        for (int j = 0; j < buf.size() - 1; j++)
+            buf[j] = static_cast<char>(rdist(rand));
+        std::cout << "Fuzz #" << i << std::endl;
+        std::string a{buf.cbegin(), buf.cend()};
+        parse(std::move(a), false);
+    }
+}
+
+int main(int argc, char* argv[])
+{
+#ifdef _WIN32
+    SetConsoleCP(65001);
+    SetConsoleOutputCP(65001);
+#endif
+    if (argc == 3 && std::strcmp(argv[1], "fuzz") == 0)
+        fuzz(std::stoi(argv[2]));
+    else
+        interactive();
 }
