@@ -2,54 +2,51 @@
 
 #include <utf8proc.h>
 
-tcStringReader::tcStringReader(std::string&& input) : _string(input)
+tcStringReader::tcStringReader(std::string&& input) : _string(std::move(input)),
+                                                      _startPosition{1, 1 },
+                                                      _endPosition{ 1, 1 }
 {
     _startIx = 0;
     _endIx = 0;
-    _startPosition = { 1, 1 };
-    _endPosition = { 1, 1 };
 }
 
-tcStringReader::tcStringReader(const char* input) : _string(input)
+tcStringReader::tcStringReader(const char* input) : _string(input),
+                                                      _startPosition{1, 1 },
+                                                      _endPosition{ 1, 1 }
 {
     _startIx = 0;
     _endIx = 0;
-    _startPosition = { 1, 1 };
-    _endPosition = { 1, 1 };
 }
 
-std::pair<char32_t, std::size_t> tcStringReader::peekNextCharAndLength() const
+std::pair<char32_t, std::int32_t> tcStringReader::peekAndLength() const
 {
     if (_endIx >= _string.length())
         return std::make_pair(EndOfFile, 0);
 
-    auto startPtr = reinterpret_cast<const uint8_t*>(&_string.c_str()[_endIx]);
+    const auto startPtr = reinterpret_cast<const uint8_t*>(&_string.c_str()[_endIx]);
     char32_t character;
 
-    auto length = utf8proc_iterate(startPtr, -1, reinterpret_cast<int32_t*>(&character));
+    const auto length =
+        static_cast<std::int32_t>(utf8proc_iterate(startPtr, -1, reinterpret_cast<int32_t*>(&character)));
 
     if (length > 0)
-    {
         return std::make_pair(character, length);
-    }
-    else
-    {
-        return std::make_pair(0, 0);
-    }
+
+    return std::make_pair(0, 0);
 }
 
-std::optional<char32_t> tcStringReader::peekNextCharacter() const
+std::optional<char32_t> tcStringReader::peek() const
 {
-    auto [character, size] = peekNextCharAndLength();
+    auto [character, size] = peekAndLength();
     if (size == 0 && character != EndOfFile)
         return std::nullopt;
     else 
         return character;
 }
 
-std::optional<char32_t> tcStringReader::moveNextCharacter()
+std::optional<char32_t> tcStringReader::forward()
 {
-    auto [character, size] = peekNextCharAndLength();
+    auto [character, size] = peekAndLength();
 
     if (size == 0 && character != EndOfFile)
     {

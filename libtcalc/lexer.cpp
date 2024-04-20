@@ -43,13 +43,13 @@ tcLexer::tcLexer(const char* input, bool commaArgSeparator)
 
 tcToken tcLexer::next()
 {
-    while (isWhitespace(_sr->peekNextCharacter()))
+    while (isWhitespace(_sr->peek()))
     {
-        _sr->moveNextCharacter();
+        _sr->forward();
     }
     _sr->discardToken();
 
-    const auto chOpt = _sr->moveNextCharacter();
+    const auto chOpt = _sr->forward();
 
     if (!chOpt.has_value())
         return flushToken(tcTokenType::Bad);
@@ -58,15 +58,15 @@ tcToken tcLexer::next()
 
     if (first == EndOfFile)
         return flushToken(tcTokenType::EndOfFile);
-    if (first == U'\n') //TODO: nicer check here
+    if (first == U'\n')
         return flushToken(tcTokenType::EndOfLine);
     if (isDigit(first))
         return parseNumber(first);
+    if (isLetter(first))
+        return parseIdentifier(first);
 
     return parseSymbol(first);
 }
-
-tcLexer::~tcLexer() = default;
 
 tcToken tcLexer::flushToken(tcTokenType type)
 {
@@ -76,21 +76,21 @@ tcToken tcLexer::flushToken(tcTokenType type)
 
 tcToken tcLexer::parseNumber(const char32_t first)
 {
-    auto next = _sr->peekNextCharacter();
+    auto next = _sr->peek();
     if (first == U'0' && next == U'b')
     {
-        _sr->moveNextCharacter();
-        while (_sr->peekNextCharacter() == U'0' || _sr->peekNextCharacter() == U'1' || _sr->peekNextCharacter() == U'_')
-            _sr->moveNextCharacter();
+        _sr->forward();
+        while (_sr->peek() == U'0' || _sr->peek() == U'1' || _sr->peek() == U'_')
+            _sr->forward();
 
         return flushToken(tcTokenType::BinaryLiteral);
     }
 
     if (first == U'0' && next == U'x')
     {
-        _sr->moveNextCharacter();
-        while (isHexDigit(_sr->peekNextCharacter()) || _sr->peekNextCharacter() == U'_')
-            _sr->moveNextCharacter();
+        _sr->forward();
+        while (isHexDigit(_sr->peek()) || _sr->peek() == U'_')
+            _sr->forward();
 
         return flushToken(tcTokenType::HexLiteral);
     }
@@ -99,15 +99,15 @@ tcToken tcLexer::parseNumber(const char32_t first)
     bool parsingExponent = false;
     while (true)
     {
-        next = _sr->peekNextCharacter();
+        next = _sr->peek();
         
         if (isDigit(next) || next == U'_')
         {
-            _sr->moveNextCharacter();
+            _sr->forward();
         }
         else if (next == decimalSeparator())
         {
-            _sr->moveNextCharacter();
+            _sr->forward();
 
             if (!parsingAfterDecimal)
                 parsingAfterDecimal = true;
@@ -116,15 +116,15 @@ tcToken tcLexer::parseNumber(const char32_t first)
         }
         else if (next == U'e' || next == U'E')
         {
-            _sr->moveNextCharacter();
+            _sr->forward();
 
             if (!parsingExponent)
             {
                 parsingExponent = true;
                 parsingAfterDecimal = true;
-                next = _sr->peekNextCharacter();
+                next = _sr->peek();
                 if (next == U'+' || next == U'-')
-                    _sr->moveNextCharacter();
+                    _sr->forward();
             }
             else
             {
@@ -133,8 +133,8 @@ tcToken tcLexer::parseNumber(const char32_t first)
         }
         else
         {
-            if (_sr->peekNextCharacter() == U'i')
-                _sr->moveNextCharacter();
+            if (_sr->peek() == U'i')
+                _sr->forward();
             
             return flushToken(tcTokenType::NumericLiteral);
         }
@@ -143,6 +143,9 @@ tcToken tcLexer::parseNumber(const char32_t first)
 
 tcToken tcLexer::parseSymbol(char32_t first)
 {
+    if (first == argSeparator())
+        return flushToken(tcTokenType::ArgumentSeparator);
+
     std::optional<char32_t> next;
     switch (first)
     {
@@ -172,35 +175,35 @@ tcToken tcLexer::parseSymbol(char32_t first)
     case U'%':
         return flushToken(tcTokenType::Percent);
     case U'!':
-        if (_sr->peekNextCharacter() == U'=')
+        if (_sr->peek() == U'=')
         {
-            _sr->moveNextCharacter();
+            _sr->forward();
             return flushToken(tcTokenType::NotEqual);
         }
         return flushToken(tcTokenType::Factorial);
     case U'>':
-        next = _sr->peekNextCharacter();
+        next = _sr->peek();
         if (next == U'>')
         {
-            _sr->moveNextCharacter();
+            _sr->forward();
             return flushToken(tcTokenType::RightShift);
         }
         if (next == U'=')
         {
-            _sr->moveNextCharacter();
+            _sr->forward();
             return flushToken(tcTokenType::GreaterOrEqual);
         }
         return flushToken(tcTokenType::Greater);
     case U'<':
-        next = _sr->peekNextCharacter();
+        next = _sr->peek();
         if (next == U'<')
         {
-            _sr->moveNextCharacter();
+            _sr->forward();
             return flushToken(tcTokenType::LeftShift);
         }
         if (next == U'=')
         {
-            _sr->moveNextCharacter();
+            _sr->forward();
             return flushToken(tcTokenType::LessOrEqual);
         }
         return flushToken(tcTokenType::Less);
@@ -209,21 +212,54 @@ tcToken tcLexer::parseSymbol(char32_t first)
     case U'≤':
         return flushToken(tcTokenType::LessOrEqual);
     case U'=':
-        if (_sr->peekNextCharacter() == U'=')
+        if (_sr->peek() == U'=')
         {
-            _sr->moveNextCharacter();
+            _sr->forward();
             return flushToken(tcTokenType::Equality);
         }
         return flushToken(tcTokenType::Equal);
     case U'≠':
         return flushToken(tcTokenType::NotEqual);
-    case U'π':
-        return flushToken(tcTokenType::Pi);
-    case U'τ':
-        return flushToken(tcTokenType::Tau);
     default:
         return flushToken(tcTokenType::Bad);
     }
+}
+
+tcToken tcLexer::parseIdentifier(char32_t first)
+{
+    auto peek = _sr->peek();
+
+    while (isLetter(peek) || isDigit(peek))
+    {
+        _sr->forward();
+        peek = _sr->peek();
+    }
+
+    auto sourceSpan = _sr->flush();
+    const auto str = sourceSpan.string();
+    tcTokenType type;
+
+    if (str == "NAND")
+        type = tcTokenType::Nand;
+    else if (str == "NOR")
+        type = tcTokenType::Nor;
+    else if (str == "XNOR")
+        type = tcTokenType::Xnor;
+    else if (str == "AND")
+        type = tcTokenType::And;
+    else if (str == "OR")
+        type = tcTokenType::Or;
+    else if (str == "XOR")
+        type = tcTokenType::Xor;
+    else if (str == "NOT")
+        type = tcTokenType::Not;
+    else if (str == "π")
+        type = tcTokenType::Pi;
+    else if (str == "τ")
+        type = tcTokenType::Tau;
+    else
+        type = tcTokenType::Identifier;
+    return {type, std::move(sourceSpan)};
 }
 
 char32_t tcLexer::decimalSeparator() const

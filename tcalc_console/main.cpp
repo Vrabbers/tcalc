@@ -29,7 +29,7 @@ int main()
         }
         std::cout << "input:\n" << input;
 
-        tcLexer lexer(input.c_str(), true);
+        tcLexer lexer(std::move(input), true);
 
         while (true)
         {

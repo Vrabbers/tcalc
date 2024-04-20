@@ -14,7 +14,6 @@ class tcToken final
         tcTokenType type() const;
         [[nodiscard]]
         const tcSourceSpan& source() const;
-        ~tcToken();
 
     private:
         tcTokenType _type;

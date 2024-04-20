@@ -19,8 +19,6 @@ const tcSourceSpan& tcToken::source() const
     return *_source;
 }
 
-tcToken::~tcToken() = default;
-
 const char* tcTokenTypeName(tcTokenType type)
 {
     static const char* typeNames[] = 
