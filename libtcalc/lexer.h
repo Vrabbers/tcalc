@@ -16,7 +16,7 @@ private:
     tcToken flushToken(tcTokenType);
     tcToken parseNumber(char32_t first);
     tcToken parseSymbol(char32_t first);
-    tcToken parseIdentifier(char32_t first);
+    tcToken parseIdentifier();
     [[nodiscard]]
     char32_t decimalSeparator() const;
     [[nodiscard]]

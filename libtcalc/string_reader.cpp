@@ -1,6 +1,6 @@
 #include "string_reader.h"
 
-#include <utf8proc.h>
+#include "utf8proc.h"
 
 tcStringReader::tcStringReader(std::string&& input) : _string(std::move(input)),
                                                       _startPosition{1, 1 },

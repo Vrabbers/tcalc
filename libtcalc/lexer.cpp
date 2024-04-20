@@ -1,6 +1,6 @@
 #include "lexer.h"
 
-#include <iostream>
+#include <unordered_map>
 
 #include "utf8proc.h"
 
@@ -63,7 +63,7 @@ tcToken tcLexer::next()
     if (isDigit(first))
         return parseNumber(first);
     if (isLetter(first))
-        return parseIdentifier(first);
+        return parseIdentifier();
 
     return parseSymbol(first);
 }
@@ -225,7 +225,7 @@ tcToken tcLexer::parseSymbol(char32_t first)
     }
 }
 
-tcToken tcLexer::parseIdentifier(char32_t first)
+tcToken tcLexer::parseIdentifier()
 {
     auto peek = _sr->peek();
 
@@ -237,29 +237,24 @@ tcToken tcLexer::parseIdentifier(char32_t first)
 
     auto sourceSpan = _sr->flush();
     const auto str = sourceSpan.string();
-    tcTokenType type;
 
-    if (str == "NAND")
-        type = tcTokenType::Nand;
-    else if (str == "NOR")
-        type = tcTokenType::Nor;
-    else if (str == "XNOR")
-        type = tcTokenType::Xnor;
-    else if (str == "AND")
-        type = tcTokenType::And;
-    else if (str == "OR")
-        type = tcTokenType::Or;
-    else if (str == "XOR")
-        type = tcTokenType::Xor;
-    else if (str == "NOT")
-        type = tcTokenType::Not;
-    else if (str == "π")
-        type = tcTokenType::Pi;
-    else if (str == "τ")
-        type = tcTokenType::Tau;
+    const static std::unordered_map<std::string_view, tcTokenType> keywords
+    {
+        {"NAND", tcTokenType::Nand},
+        {"NOR", tcTokenType::Nor},
+        {"XNOR", tcTokenType::Xnor},
+        {"AND", tcTokenType::And},
+        {"OR", tcTokenType::Or},
+        {"XOR", tcTokenType::Xor},
+        {"NOT", tcTokenType::Not},
+        {"π", tcTokenType::Pi},
+        {"τ", tcTokenType::Tau}
+    };
+    const auto typeIter = keywords.find(str);
+    if (typeIter != keywords.end())
+        return {typeIter->second, std::move(sourceSpan)};
     else
-        type = tcTokenType::Identifier;
-    return {type, std::move(sourceSpan)};
+        return {tcTokenType::Identifier, std::move(sourceSpan)};
 }
 
 char32_t tcLexer::decimalSeparator() const
