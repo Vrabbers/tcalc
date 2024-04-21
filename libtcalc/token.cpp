@@ -1,8 +1,7 @@
 #include "token.h"
 
 #include <array>
-#include <iomanip>
-#include <sstream>
+#include <format>
 
 const char* tcTokenKindName(tcTokenKind type)
 {
@@ -57,10 +56,8 @@ const char* tcTokenKindName(tcTokenKind type)
 
 std::string tcToken::format() const
 {
-    std::stringstream strStr;
-    strStr << "(L:" << position().line << ", C:" << position().column << "): ";
-    strStr << tcTokenKindName(kind()) << " ";
+    std::string str = std::format("(L:{}, C:{}): {} ", position().line, position().column, tcTokenKindName(kind()));
     if (kind() != tcTokenKind::EndOfLine && kind() != tcTokenKind::EndOfFile)
-        strStr << std::quoted(sourceStr());
-    return std::move(strStr.str());
+        str += std::format("\"{}\"", sourceStr());
+    return str;
 }

@@ -3,22 +3,24 @@
 #include <set>
 #include <unordered_map>
 
-#include "utf8proc.h"
+#include "utf8_utils.h"
 
 static bool isWhitespace(std::optional<char32_t> chr)
 {
     if (!chr.has_value())
         return false;
     // tab is not in category ZS. conveniently, neither is LF.
-    return chr == U'\t' || utf8proc_category(static_cast<std::int32_t>(chr.value())) == UTF8PROC_CATEGORY_ZS;
+    return chr == U'\t' || utf8proc::category(*chr) == UTF8PROC_CATEGORY_ZS;
 }
 
 static bool isLetter(std::optional<char32_t> chr)
 {
     if (!chr.has_value())
         return false;
-    auto c = utf8proc_category(static_cast<std::int32_t>(chr.value()));
-    return (c >= UTF8PROC_CATEGORY_LU && c <= UTF8PROC_CATEGORY_LO) || c == UTF8PROC_CATEGORY_PC;
+    auto c = utf8proc::category(*chr);
+    return (c >= UTF8PROC_CATEGORY_LU && c <= UTF8PROC_CATEGORY_LO)
+        || c == UTF8PROC_CATEGORY_PC
+        || c == UTF8PROC_CATEGORY_NO;
 }
 
 static bool isDigit(std::optional<char32_t> chr)
@@ -31,21 +33,20 @@ static bool isHexDigit(std::optional<char32_t> chr)
     return isDigit(chr) || (chr >= U'a' && chr <= U'f') || (chr >= U'A' && chr <= U'F');
 }
 
-static const std::set superscriptNumerals = {U'²', U'³', U'¹', U'⁰', U'⁴', U'⁵', U'⁶', U'⁷', U'⁸', U'⁹'};
+static const std::set superscriptDigits = {U'²', U'³', U'¹', U'⁰', U'⁴', U'⁵', U'⁶', U'⁷', U'⁸', U'⁹'};
 
-static bool isSuperscriptNumeral(std::optional<char32_t> chr)
+static bool isSuperscriptDigit(std::optional<char32_t> chr)
 {
     if (!chr.has_value())
         return false;
-    return superscriptNumerals.contains(*chr);
+    return superscriptDigits.contains(*chr);
 }
 
 tcToken tcLexer::next()
 {
     while (isWhitespace(_sr->peek()))
-    {
         _sr->forward();
-    }
+
     _sr->discardToken();
 
     auto first = _sr->forward();
@@ -57,13 +58,13 @@ tcToken tcLexer::next()
     if (*first == U'\n')
         return flushToken(tcTokenKind::EndOfLine);
     if (isDigit(first))
-        return parseNumber(*first);
-    if (isSuperscriptNumeral(first))
-        return parseSuperscriptNumber();
+        return lexNumber();
+    if (isSuperscriptDigit(first))
+        return lexSuperscriptNumber();
     if (isLetter(first))
-        return parseIdentifier();
+        return lexWord();
 
-    return parseSymbol(*first);
+    return lexSymbol();
 }
 
 tcToken tcLexer::flushToken(tcTokenKind type)
@@ -72,8 +73,9 @@ tcToken tcLexer::flushToken(tcTokenKind type)
     return {type, std::move(span)};
 }
 
-tcToken tcLexer::parseNumber(const char32_t first)
+tcToken tcLexer::lexNumber()
 {
+    auto first = _sr->current();
     auto next = _sr->peek();
     if (first == U'0' && next == U'b')
     {
@@ -93,8 +95,8 @@ tcToken tcLexer::parseNumber(const char32_t first)
         return flushToken(tcTokenKind::HexLiteral);
     }
 
-    bool parsingAfterDecimal = false;
-    bool parsingExponent = false;
+    bool readingDecimal = false;
+    bool readingExponent = false;
     while (true)
     {
         next = _sr->peek();
@@ -107,27 +109,37 @@ tcToken tcLexer::parseNumber(const char32_t first)
         {
             _sr->forward();
 
-            if (!parsingAfterDecimal)
-                parsingAfterDecimal = true;
+            if (!readingDecimal)
+                readingDecimal = true;
             else
                 return flushToken(tcTokenKind::Bad);
         }
         else if (next == U'e' || next == U'E')
         {
-            _sr->forward();
-
-            if (!parsingExponent)
+            if (!readingExponent)
             {
-                parsingExponent = true;
-                parsingAfterDecimal = true;
-                next = _sr->peek();
-                if (next == U'+' || next == U'-')
-                    _sr->forward();
+                auto next3 = _sr->peekMany(3);
+                if (next3.length() >= 2) // Otherwise we don't have enough input to keep going
+                {
+                    if (next3[1] == U'+' || next3[1] == U'-')
+                    {
+                        if (next3.length() == 3 && isDigit(next3[2])) // If it was a +/-, we need to consume a digit
+                        {
+                            readingExponent = true;
+                            _sr->forwardMany(3);
+                            continue;
+                        }
+                    }
+                    else if (isDigit(next3[1])) // If is already a digit, try to read more
+                    {
+                        readingExponent = true;
+                        _sr->forwardMany(2);
+                        continue;
+                    }
+                }
             }
-            else
-            {
-                return flushToken(tcTokenKind::Bad);
-            }
+            // In any other case, finish reading early.
+            return flushToken(tcTokenKind::NumericLiteral);
         }
         else
         {
@@ -139,32 +151,43 @@ tcToken tcLexer::parseNumber(const char32_t first)
     }
 }
 
-tcToken tcLexer::parseSuperscriptNumber()
+tcToken tcLexer::lexSuperscriptNumber()
 {
-    bool parsingExponent = false;
+    bool readingExponent = false;
     while (true)
     {
         auto next = _sr->peek();
 
-        if (isSuperscriptNumeral(next))
+        if (isSuperscriptDigit(next))
         {
             _sr->forward();
         }
         else if (next == U'ᵉ' || next == U'ᴱ')
         {
-            _sr->forward();
-
-            if (!parsingExponent)
+            // cf. similar code in lexNumber()
+            if (!readingExponent)
             {
-                parsingExponent = true;
-                next = _sr->peek();
-                if (next == U'⁺' || next == U'⁻')
-                    _sr->forward();
+                auto next3 = _sr->peekMany(3);
+                if (next3.length() >= 2)
+                {
+                    if (next3[1] == U'⁺' || next3[1] == U'⁻')
+                    {
+                        if (next3.length() == 3 && isSuperscriptDigit(next3[2]))
+                        {
+                            readingExponent = true;
+                            _sr->forwardMany(3);
+                            continue;
+                        }
+                    }
+                    else if (isSuperscriptDigit(next3[1]))
+                    {
+                        readingExponent = true;
+                        _sr->forwardMany(2);
+                        continue;
+                    }
+                }
             }
-            else
-            {
-                return flushToken(tcTokenKind::Bad);
-            }
+            return flushToken(tcTokenKind::SuperscriptLiteral);
         }
         else
         {
@@ -176,91 +199,91 @@ tcToken tcLexer::parseSuperscriptNumber()
     }
 }
 
-tcToken tcLexer::parseSymbol(char32_t first)
+tcToken tcLexer::lexSymbol()
 {
-    if (first == argSeparator())
+    if (_sr->current() == argSeparator())
         return flushToken(tcTokenKind::ArgumentSeparator);
 
     std::optional<char32_t> next;
-    switch (first)
+    switch (*_sr->current())
     {
-    case U'+':
-        return flushToken(tcTokenKind::Plus);
-    case U'⁺':
-        return flushToken(tcTokenKind::SuperscriptPlus);
-    case U'-':
-        return flushToken(tcTokenKind::Minus);
-    case U'⁻':
-        return flushToken(tcTokenKind::SuperscriptMinus);
-    case U'*':
-    case U'×':
-    case U'∙':
-        return flushToken(tcTokenKind::Multiply);
-    case U'/':
-    case U'÷':
-        return flushToken(tcTokenKind::Divide);
-    case U'^':
-        return flushToken(tcTokenKind::Exponentiate);
-    case U'(':
-        return flushToken(tcTokenKind::LeftParens);
-    case U')':
-        return flushToken(tcTokenKind::RightParens);
-    case U'√':
-        return flushToken(tcTokenKind::Radical);
-    case U'%':
-        return flushToken(tcTokenKind::Percent);
-    case U'!':
-        if (_sr->peek() == U'=')
-        {
-            _sr->forward();
-            return flushToken(tcTokenKind::NotEqual);
-        }
-        return flushToken(tcTokenKind::Factorial);
-    case U'>':
-        next = _sr->peek();
-        if (next == U'>')
-        {
-            _sr->forward();
-            return flushToken(tcTokenKind::RightShift);
-        }
-        if (next == U'=')
-        {
-            _sr->forward();
+        case U'+':
+            return flushToken(tcTokenKind::Plus);
+        case U'⁺':
+            return flushToken(tcTokenKind::SuperscriptPlus);
+        case U'-':
+            return flushToken(tcTokenKind::Minus);
+        case U'⁻':
+            return flushToken(tcTokenKind::SuperscriptMinus);
+        case U'*':
+        case U'×':
+        case U'∙':
+            return flushToken(tcTokenKind::Multiply);
+        case U'/':
+        case U'÷':
+            return flushToken(tcTokenKind::Divide);
+        case U'^':
+            return flushToken(tcTokenKind::Exponentiate);
+        case U'(':
+            return flushToken(tcTokenKind::LeftParens);
+        case U')':
+            return flushToken(tcTokenKind::RightParens);
+        case U'√':
+            return flushToken(tcTokenKind::Radical);
+        case U'%':
+            return flushToken(tcTokenKind::Percent);
+        case U'!':
+            if (_sr->peek() == U'=')
+            {
+                _sr->forward();
+                return flushToken(tcTokenKind::NotEqual);
+            }
+            return flushToken(tcTokenKind::Factorial);
+        case U'>':
+            next = _sr->peek();
+            if (next == U'>')
+            {
+                _sr->forward();
+                return flushToken(tcTokenKind::RightShift);
+            }
+            if (next == U'=')
+            {
+                _sr->forward();
+                return flushToken(tcTokenKind::GreaterOrEqual);
+            }
+            return flushToken(tcTokenKind::Greater);
+        case U'<':
+            next = _sr->peek();
+            if (next == U'<')
+            {
+                _sr->forward();
+                return flushToken(tcTokenKind::LeftShift);
+            }
+            if (next == U'=')
+            {
+                _sr->forward();
+                return flushToken(tcTokenKind::LessOrEqual);
+            }
+            return flushToken(tcTokenKind::Less);
+        case U'≥':
             return flushToken(tcTokenKind::GreaterOrEqual);
-        }
-        return flushToken(tcTokenKind::Greater);
-    case U'<':
-        next = _sr->peek();
-        if (next == U'<')
-        {
-            _sr->forward();
-            return flushToken(tcTokenKind::LeftShift);
-        }
-        if (next == U'=')
-        {
-            _sr->forward();
+        case U'≤':
             return flushToken(tcTokenKind::LessOrEqual);
-        }
-        return flushToken(tcTokenKind::Less);
-    case U'≥':
-        return flushToken(tcTokenKind::GreaterOrEqual);
-    case U'≤':
-        return flushToken(tcTokenKind::LessOrEqual);
-    case U'=':
-        if (_sr->peek() == U'=')
-        {
-            _sr->forward();
-            return flushToken(tcTokenKind::Equality);
-        }
-        return flushToken(tcTokenKind::Equal);
-    case U'≠':
-        return flushToken(tcTokenKind::NotEqual);
-    default:
-        return flushToken(tcTokenKind::Bad);
+        case U'=':
+            if (_sr->peek() == U'=')
+            {
+                _sr->forward();
+                return flushToken(tcTokenKind::Equality);
+            }
+            return flushToken(tcTokenKind::Equal);
+        case U'≠':
+            return flushToken(tcTokenKind::NotEqual);
+        default:
+            return flushToken(tcTokenKind::Bad);
     }
 }
 
-tcToken tcLexer::parseIdentifier()
+tcToken tcLexer::lexWord()
 {
     auto peek = _sr->peek();
 

@@ -1,17 +1,18 @@
 #include "string_reader.h"
 
-#include "utf8proc.h"
+#include <stdexcept>
+#include <vector>
 
-std::pair<char32_t, std::int32_t> tcStringReader::peekAndLength() const
+#include "utf8_utils.h"
+
+std::pair<char32_t, std::ptrdiff_t> tcStringReader::peekAndLength() const
 {
     if (_endIx >= _string.length())
         return std::make_pair(EndOfFile, 0);
 
-    const auto startPtr = reinterpret_cast<const uint8_t*>(&_string.c_str()[_endIx]);
     char32_t character;
 
-    const auto length =
-        static_cast<std::int32_t>(utf8proc_iterate(startPtr, -1, reinterpret_cast<int32_t*>(&character)));
+    const auto length = utf8proc::iterateOnceFromIndex(_string, _endIx, &character);
 
     if (length > 0)
         return std::make_pair(character, length);
@@ -28,6 +29,33 @@ std::optional<char32_t> tcStringReader::peek() const
         return character;
 }
 
+std::u32string tcStringReader::peekMany(std::uint32_t count) const
+{
+    std::u32string out{};
+    auto index = _endIx;
+
+    for (uint32_t i = 0; i < count; i++)
+    {
+        if (index >= _string.length())
+            return out;
+
+        char32_t character;
+        const auto length = utf8proc::iterateOnceFromIndex(_string, index, &character);
+
+        if (length > 0)
+        {
+            out += character;
+            index += length;
+        }
+        else
+        {
+            out += character;
+            index += length + 1;
+        }
+    }
+    return out;
+}
+
 std::optional<char32_t> tcStringReader::forward()
 {
     auto [character, size] = peekAndLength();
@@ -36,27 +64,26 @@ std::optional<char32_t> tcStringReader::forward()
     {
         // some error happened. try to inch forward.
         _endIx++;
-        return std::nullopt;
+        _current = std::nullopt;
     }
-
-    _endIx += size;
-
-    if (character == U'\n')
+    else
     {
-        _endPosition.column = 1;
-        _endPosition.line++;
-    }
-    else 
-    {
-        _endPosition.column++; 
+        _endIx += size;
+
+        if (character == U'\n')
+        {
+            _endPosition.column = 1;
+            _endPosition.line++;
+        }
+        else
+        {
+            _endPosition.column++;
+        }
+
+        _current = character;
     }
 
-    return character;
-}
-
-std::size_t tcStringReader::tokenLength() const
-{
-    return _endIx - _startIx;
+    return _current;
 }
 
 tcSourceSpan tcStringReader::flush()

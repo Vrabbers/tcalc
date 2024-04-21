@@ -13,11 +13,10 @@ endif()
 
 set(SOURCES 
     string_reader.cpp
-    utf8_utils.cpp
     lexer.cpp
     token.cpp
 )
-    
+
 set(HEADERS
     source_position.h
     source_span.h

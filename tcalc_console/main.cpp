@@ -60,7 +60,7 @@ static void fuzz(int times)
     {
         for (char& j : buf)
             j = static_cast<char>(rdist(rand));
-        std::cout << "Fuzz #" << i << std::endl;
+        std::cout << "Fuzz # " << i << std::endl;
         std::string a{buf.cbegin(), buf.cend()};
         parse(std::move(a), false);
     }

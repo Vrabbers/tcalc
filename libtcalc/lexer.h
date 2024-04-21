@@ -22,10 +22,10 @@ public:
 
 private:
     tcToken flushToken(tcTokenKind);
-    tcToken parseNumber(char32_t first);
-    tcToken parseSuperscriptNumber();
-    tcToken parseSymbol(char32_t first);
-    tcToken parseIdentifier();
+    tcToken lexNumber();
+    tcToken lexSuperscriptNumber();
+    tcToken lexSymbol();
+    tcToken lexWord();
 
     [[nodiscard]]
     inline char32_t decimalSeparator() const;
