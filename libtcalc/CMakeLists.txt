@@ -13,10 +13,9 @@ endif()
 
 set(SOURCES 
     string_reader.cpp
-    source_span.cpp
     utf8_utils.cpp
-    token.cpp
     lexer.cpp
+    token.cpp
 )
     
 set(HEADERS
@@ -24,7 +23,7 @@ set(HEADERS
     source_span.h
     token.h
     lexer.h
-    token_type.h
+    token_kind.h
     string_reader.h
 )
 

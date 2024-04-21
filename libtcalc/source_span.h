@@ -6,11 +6,22 @@
 class tcSourceSpan final
 {
 public:
-    tcSourceSpan(std::string&&, tcSourcePosition start);
+    tcSourceSpan(std::string&& str, const tcSourcePosition start) : _string(str), _position(start)
+    {
+    }
+
     [[nodiscard]]
-    std::string_view string() const;
+    std::string_view sourceStr() const
+    {
+        return _string;
+    }
+
     [[nodiscard]]
-    tcSourcePosition position() const;
+    tcSourcePosition position() const
+    {
+        return _position;
+    }
+
 private:
     std::string _string;
     tcSourcePosition _position;

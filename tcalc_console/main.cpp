@@ -19,11 +19,9 @@ static void parse(std::string&& str, bool print = true)
     while (true)
     {
         tcToken next = lexer.next();
-        auto l = next.source().position().line;
-        auto c = next.source().position().column;
         if (print)
-            std::cout << std::format("{} \"{}\" (L:{} C:{}); ", tcTokenTypeName(next.type()), next.source().string(), l, c);
-        if (next.type() == tcTokenType::EndOfFile)
+            std::cout << next.format() << std::endl;
+        if (next.kind() == tcTokenKind::EndOfFile)
             break;
     }
 }
@@ -60,8 +58,8 @@ static void fuzz(int times)
     std::array<char, 512> buf{};
     for (int i = 0; i < times; i++)
     {
-        for (int j = 0; j < buf.size() - 1; j++)
-            buf[j] = static_cast<char>(rdist(rand));
+        for (char& j : buf)
+            j = static_cast<char>(rdist(rand));
         std::cout << "Fuzz #" << i << std::endl;
         std::string a{buf.cbegin(), buf.cend()};
         parse(std::move(a), false);

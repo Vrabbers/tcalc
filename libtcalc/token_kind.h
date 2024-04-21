@@ -1,6 +1,6 @@
 #pragma once
 
-enum class tcTokenType
+enum class tcTokenKind
 {
     Bad,
     EndOfFile,
@@ -46,4 +46,4 @@ enum class tcTokenType
     EndOfLine
 };
 
-const char* tcTokenTypeName(tcTokenType);
+const char* tcTokenKindName(tcTokenKind);

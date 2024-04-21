@@ -1,27 +1,12 @@
 #include "token.h"
 
-tcToken::tcToken(): _type(tcTokenType::Bad)
-{
-}
+#include <array>
+#include <iomanip>
+#include <sstream>
 
-tcToken::tcToken(const tcTokenType type, tcSourceSpan&& source) : _type(type),
-                                                                  _source(std::make_unique<tcSourceSpan>(source))
+const char* tcTokenKindName(tcTokenKind type)
 {
-}
-
-tcTokenType tcToken::type() const
-{
-    return _type;
-}
-
-const tcSourceSpan& tcToken::source() const
-{
-    return *_source;
-}
-
-const char* tcTokenTypeName(tcTokenType type)
-{
-    static const char* typeNames[] = 
+    static std::array typeNames =
     {
         "Bad",
         "EndOfFile",
@@ -67,5 +52,15 @@ const char* tcTokenTypeName(tcTokenType type)
         "EndOfLine"
     };
 
-    return typeNames[static_cast<std::size_t>(type)];
+    return typeNames.at(static_cast<std::size_t>(type));
+}
+
+std::string tcToken::format() const
+{
+    std::stringstream strStr;
+    strStr << "(L:" << position().line << ", C:" << position().column << "): ";
+    strStr << tcTokenKindName(kind()) << " ";
+    if (kind() != tcTokenKind::EndOfLine && kind() != tcTokenKind::EndOfFile)
+        strStr << std::quoted(sourceStr());
+    return std::move(strStr.str());
 }

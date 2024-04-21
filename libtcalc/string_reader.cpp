@@ -2,14 +2,6 @@
 
 #include "utf8proc.h"
 
-tcStringReader::tcStringReader(std::string&& input) : _string(std::move(input))
-{
-}
-
-tcStringReader::tcStringReader(const char* input) : _string(input)
-{
-}
-
 std::pair<char32_t, std::int32_t> tcStringReader::peekAndLength() const
 {
     if (_endIx >= _string.length())
