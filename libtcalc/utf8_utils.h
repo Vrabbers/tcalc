@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <utf8proc.h>
 #include <string>
 
@@ -22,6 +23,6 @@ namespace utf8proc
 
     inline utf8proc_category_t category(char32_t character)
     {
-        return utf8proc_category(static_cast<const int32_t>(character));
+        return utf8proc_category(static_cast<int32_t>(character));
     }
 }

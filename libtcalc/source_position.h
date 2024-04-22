@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 struct tcSourcePosition
 {
     std::uint32_t line;

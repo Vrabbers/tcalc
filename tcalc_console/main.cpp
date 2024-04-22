@@ -2,6 +2,7 @@
 #include <iostream>
 #include <format>
 #include <random>
+#include <cstring>
 
 #include "lexer.h"
 
