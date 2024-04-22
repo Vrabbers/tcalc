@@ -1,7 +1,6 @@
 #include "string_reader.h"
 
 #include <stdexcept>
-#include <vector>
 
 #include "utf8_utils.h"
 
@@ -86,10 +85,10 @@ std::optional<char32_t> tcStringReader::forward()
     return _current;
 }
 
-tcSourceSpan tcStringReader::flush()
+std::unique_ptr<tcSourceSpan> tcStringReader::flush()
 {
     auto substring = _string.substr(_startIx, tokenLength());
-    auto token = tcSourceSpan(std::move(substring), _startPosition);
+    auto token = std::make_unique<tcSourceSpan>(std::move(substring), _startPosition, _startIx);
     discardToken();
     return token;
 }

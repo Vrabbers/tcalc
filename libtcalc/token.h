@@ -12,8 +12,8 @@ public:
     {
     }
 
-    tcToken(const tcTokenKind kind, tcSourceSpan&& source) : _kind(kind),
-                                                             _sourceSpan(std::make_unique<tcSourceSpan>(source))
+    tcToken(const tcTokenKind kind, std::unique_ptr<tcSourceSpan>&& source) : _kind(kind),
+                                                                              _sourceSpan(std::move(source))
     {
     }
 

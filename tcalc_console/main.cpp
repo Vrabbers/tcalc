@@ -13,8 +13,6 @@
 
 static void parse(std::string&& str, bool print = true)
 {
-    std::cout << "input:\n" << str << std::endl;
-
     tcLexer lexer(std::move(str), true);
 
     while (true)
@@ -47,11 +45,12 @@ static void interactive()
         if (input.empty())
             return;
 
+        std::cout << "input:\n" << input << std::endl;
         parse(std::move(input));
     }
 }
 
-static void fuzz(int times)
+static void fuzz(const int times)
 {
     std::random_device rd;
     std::default_random_engine rand(rd());
@@ -61,7 +60,7 @@ static void fuzz(int times)
     {
         for (char& j : buf)
             j = static_cast<char>(rdist(rand));
-        std::cout << "Fuzz # " << i << std::endl;
+        std::cout << "Fuzz #" << i + 1 << std::endl;
         std::string a{buf.cbegin(), buf.cend()};
         parse(std::move(a), false);
     }

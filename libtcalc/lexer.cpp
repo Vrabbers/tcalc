@@ -294,7 +294,7 @@ tcToken tcLexer::lexWord()
     }
 
     auto sourceSpan = _sr->flush();
-    const auto str = sourceSpan.sourceStr();
+    const auto str = sourceSpan->sourceStr();
 
     const static std::unordered_map<std::string_view, tcTokenKind> keywords
     {

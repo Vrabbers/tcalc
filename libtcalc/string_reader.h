@@ -1,9 +1,9 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <string>
-#include <vector>
 
 #include "source_position.h"
 #include "source_span.h"
@@ -48,7 +48,7 @@ public:
     }
 
     [[nodiscard]]
-    tcSourceSpan flush();
+    std::unique_ptr<tcSourceSpan> flush();
 
     void discardToken();
 
