@@ -4,14 +4,14 @@
 
 #include "utf8_utils.h"
 
-std::pair<char32_t, std::ptrdiff_t> tcStringReader::peekAndLength() const
+std::pair<char32_t, std::ptrdiff_t> tc::string_reader::peek_with_length() const
 {
-    if (_endIx >= _string.length())
-        return std::make_pair(EndOfFile, 0);
+    if (_end_ix >= _string.length())
+        return std::make_pair(END_OF_FILE, 0);
 
     char32_t character;
 
-    const auto length = utf8proc::iterateOnceFromIndex(_string, _endIx, &character);
+    const auto length = utf8proc::iterate_one_from_index(_string, _end_ix, &character);
 
     if (length > 0)
         return std::make_pair(character, length);
@@ -19,19 +19,19 @@ std::pair<char32_t, std::ptrdiff_t> tcStringReader::peekAndLength() const
     return std::make_pair(0, 0);
 }
 
-std::optional<char32_t> tcStringReader::peek() const
+std::optional<char32_t> tc::string_reader::peek() const
 {
-    auto [character, size] = peekAndLength();
-    if (size == 0 && character != EndOfFile)
+    auto [character, size] = peek_with_length();
+    if (size == 0 && character != END_OF_FILE)
         return std::nullopt;
     else 
         return character;
 }
 
-std::u32string tcStringReader::peekMany(std::uint32_t count) const
+std::u32string tc::string_reader::peek_many(std::uint32_t count) const
 {
     std::u32string out{};
-    auto index = _endIx;
+    auto index = _end_ix;
 
     for (uint32_t i = 0; i < count; i++)
     {
@@ -39,7 +39,7 @@ std::u32string tcStringReader::peekMany(std::uint32_t count) const
             return out;
 
         char32_t character;
-        const auto length = utf8proc::iterateOnceFromIndex(_string, index, &character);
+        const auto length = utf8proc::iterate_one_from_index(_string, index, &character);
 
         if (length > 0)
         {
@@ -55,28 +55,28 @@ std::u32string tcStringReader::peekMany(std::uint32_t count) const
     return out;
 }
 
-std::optional<char32_t> tcStringReader::forward()
+std::optional<char32_t> tc::string_reader::forward()
 {
-    auto [character, size] = peekAndLength();
+    auto [character, size] = peek_with_length();
 
-    if (size == 0 && character != EndOfFile)
+    if (size == 0 && character != END_OF_FILE)
     {
         // some error happened. try to inch forward.
-        _endIx++;
+        _end_ix++;
         _current = std::nullopt;
     }
     else
     {
-        _endIx += size;
+        _end_ix += size;
 
         if (character == U'\n')
         {
-            _endPosition.column = 1;
-            _endPosition.line++;
+            _end_position.column = 1;
+            _end_position.line++;
         }
         else
         {
-            _endPosition.column++;
+            _end_position.column++;
         }
 
         _current = character;
@@ -85,16 +85,16 @@ std::optional<char32_t> tcStringReader::forward()
     return _current;
 }
 
-std::unique_ptr<tcSourceSpan> tcStringReader::flush()
+std::unique_ptr<tc::source_span> tc::string_reader::flush()
 {
-    auto substring = _string.substr(_startIx, tokenLength());
-    auto token = std::make_unique<tcSourceSpan>(std::move(substring), _startPosition, _startIx);
-    discardToken();
+    auto substring = _string.substr(_start_ix, token_length());
+    auto token = std::make_unique<source_span>(std::move(substring), _start_position, _start_ix);
+    discard_token();
     return token;
 }
 
-void tcStringReader::discardToken()
+void tc::string_reader::discard_token()
 {
-    _startIx = _endIx;
-    _startPosition = _endPosition;
+    _start_ix = _end_ix;
+    _start_position = _end_position;
 }

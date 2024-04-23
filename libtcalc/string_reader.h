@@ -8,57 +8,60 @@
 #include "source_position.h"
 #include "source_span.h"
 
-constexpr char32_t EndOfFile = static_cast<char32_t>(-1);
-
-class tcStringReader final
+namespace tc
 {
-public:
-    explicit tcStringReader(std::string&& input) : _string(std::move(input))
+    constexpr char32_t END_OF_FILE = static_cast<char32_t>(-1);
+
+    class string_reader final
     {
-    }
+    public:
+        explicit string_reader(std::string&& input) : _string(std::move(input))
+        {
+        }
 
-    explicit tcStringReader(const char* input) : _string(input)
-    {
-    }
+        explicit string_reader(const char* input) : _string(input)
+        {
+        }
 
-    [[nodiscard]]
-    std::optional<char32_t> peek() const;
+        [[nodiscard]]
+        std::optional<char32_t> peek() const;
 
-    [[nodiscard]]
-    std::u32string peekMany(std::uint32_t count) const;
+        [[nodiscard]]
+        std::u32string peek_many(std::uint32_t count) const;
 
-    [[nodiscard]]
-    std::optional<char32_t> current() const
-    {
-        return _current;
-    }
+        [[nodiscard]]
+        std::optional<char32_t> current() const
+        {
+            return _current;
+        }
 
-    std::optional<char32_t> forward();
+        std::optional<char32_t> forward();
 
-    void forwardMany(const std::uint32_t count)
-    {
-        for (std::uint32_t i = 0; i < count; i++)
-            forward();
-    }
+        void forward_many(const std::uint32_t count)
+        {
+            for (std::uint32_t i = 0; i < count; i++)
+                forward();
+        }
 
-    [[nodiscard]]
-    std::size_t tokenLength() const
-    {
-        return _endIx - _startIx;
-    }
+        [[nodiscard]]
+        std::size_t token_length() const
+        {
+            return _end_ix - _start_ix;
+        }
 
-    [[nodiscard]]
-    std::unique_ptr<tcSourceSpan> flush();
+        [[nodiscard]]
+        std::unique_ptr<source_span> flush();
 
-    void discardToken();
+        void discard_token();
 
-private:
-    [[nodiscard]]
-    std::pair<char32_t, std::ptrdiff_t> peekAndLength() const;
-    std::optional<char32_t> _current;
-    std::string _string;
-    std::size_t _startIx = 0;
-    std::size_t _endIx = 0;
-    tcSourcePosition _startPosition = {1, 1};
-    tcSourcePosition _endPosition = {1, 1};
-};
+    private:
+        [[nodiscard]]
+        std::pair<char32_t, std::ptrdiff_t> peek_with_length() const;
+        std::optional<char32_t> _current;
+        std::string _string;
+        std::size_t _start_ix = 0;
+        std::size_t _end_ix = 0;
+        source_position _start_position = {1, 1};
+        source_position _end_position = {1, 1};
+    };
+}

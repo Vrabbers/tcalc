@@ -2,13 +2,13 @@
 
 #include <array>
 
-const char* tcDiagnosticTypeName(tcDiagnosticType type)
+const char* tc::diagnostic_type_name(diagnostic_type type)
 {
     static std::array names =
     {
-        "BadNumberLiteral",
-        "BadCharacter",
-        "BadSymbol"
+        "bad_number_literal",
+        "bad_character",
+        "bad_symbol"
     };
 
     return names.at(static_cast<std::size_t>(type));

@@ -2,8 +2,11 @@
 
 #include <cstdint>
 
-struct tcSourcePosition
+namespace tc
 {
-    std::uint32_t line;
-    std::uint32_t column;
-};
+    struct source_position
+    {
+        std::uint32_t line;
+        std::uint32_t column;
+    };
+}

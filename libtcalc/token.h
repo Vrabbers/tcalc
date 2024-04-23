@@ -5,46 +5,48 @@
 #include "source_span.h"
 #include "token_kind.h"
 
-class tcToken final
+namespace tc
 {
-public:
-    tcToken() : _kind(tcTokenKind::Bad)
+    class token final
     {
-    }
+    public:
+        token() : _kind(token_kind::bad)
+        {
+        }
 
-    tcToken(const tcTokenKind kind, std::unique_ptr<tcSourceSpan>&& source) : _kind(kind),
-                                                                              _sourceSpan(std::move(source))
-    {
-    }
+        token(const token_kind kind, std::unique_ptr<source_span>&& source) : _kind(kind), _source_span(std::move(source))
+        {
+        }
 
-    [[nodiscard]]
-    tcTokenKind kind() const
-    {
-        return _kind;
-    }
+        [[nodiscard]]
+        token_kind kind() const
+        {
+            return _kind;
+        }
 
-    [[nodiscard]]
-    const tcSourceSpan& source() const
-    {
-        return *_sourceSpan;
-    }
+        [[nodiscard]]
+        const source_span& source() const
+        {
+            return *_source_span;
+        }
 
-    [[nodiscard]]
-    std::string_view sourceStr() const
-    {
-        return _sourceSpan->sourceStr();
-    }
+        [[nodiscard]]
+        std::string_view source_str() const
+        {
+            return _source_span->source_str();
+        }
 
-    [[nodiscard]]
-    tcSourcePosition position() const
-    {
-        return _sourceSpan->position();
-    }
+        [[nodiscard]]
+        source_position position() const
+        {
+            return _source_span->position();
+        }
 
-    [[nodiscard]]
-    std::string format() const;
+        [[nodiscard]]
+        std::string format() const;
 
-private:
-    tcTokenKind _kind;
-    std::unique_ptr<tcSourceSpan> _sourceSpan;
-};
+    private:
+        token_kind _kind;
+        std::unique_ptr<source_span> _source_span;
+    };
+}

@@ -7,40 +7,43 @@
 #include "token.h"
 #include "string_reader.h"
 
-class tcLexer final
+namespace tc
 {
-public:
-    explicit tcLexer(std::string&& input, bool commaArgSeparator) : _sr(std::make_unique<tcStringReader>(std::move(input))),
-                                                                    _commaArgumentSeparator(commaArgSeparator)
+    class lexer final
     {
-    }
+    public:
+        explicit lexer(std::string&& input, bool commaArgSeparator) : _sr(std::make_unique<string_reader>(std::move(input))),
+            _comma_argument_separator(commaArgSeparator)
+        {
+        }
 
-    explicit tcLexer(const char* input, bool commaArgSeparator) : _sr(std::make_unique<tcStringReader>(input)),
-                                                                  _commaArgumentSeparator(commaArgSeparator)
-    {
-    }
+        explicit lexer(const char* input, bool commaArgSeparator) : _sr(std::make_unique<string_reader>(input)),
+            _comma_argument_separator(commaArgSeparator)
+        {
+        }
 
-    [[nodiscard]]
-    const std::multiset<tcDiagnostic>& diagnosticBag() const
-    {
-        return *_diagnosticBag;
-    }
+        [[nodiscard]]
+        const std::multiset<diagnostic>& diagnostic_bag() const
+        {
+            return *_diagnostic_bag;
+        }
 
-    tcToken next();
+        token next();
 
-private:
-    tcToken flushToken(tcTokenKind);
-    tcToken lexNumber();
-    tcToken lexSuperscriptNumber();
-    tcToken lexSymbol();
-    tcToken lexWord();
+    private:
+        token flush_token(token_kind);
+        token lex_number();
+        token lex_superscript_number();
+        token lex_symbol();
+        token lex_word();
 
-    [[nodiscard]]
-    inline char32_t decimalSeparator() const;
-    [[nodiscard]]
-    inline char32_t argSeparator() const;
+        [[nodiscard]]
+        inline char32_t decimal_separator() const;
+        [[nodiscard]]
+        inline char32_t arg_separator() const;
 
-    std::unique_ptr<std::multiset<tcDiagnostic>> _diagnosticBag = std::make_unique<std::multiset<tcDiagnostic>>();
-    std::unique_ptr<tcStringReader> _sr;
-    bool _commaArgumentSeparator;
-};
+        std::unique_ptr<std::multiset<diagnostic>> _diagnostic_bag = std::make_unique<std::multiset<diagnostic>>();
+        std::unique_ptr<string_reader> _sr;
+        bool _comma_argument_separator;
+    };
+}

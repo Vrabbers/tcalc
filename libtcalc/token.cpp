@@ -3,61 +3,61 @@
 #include <array>
 #include <format>
 
-const char* tcTokenKindName(tcTokenKind type)
+const char* tc::token_kind_name(token_kind type)
 {
-    static std::array typeNames =
+    static std::array type_names =
     {
-        "Bad",
-        "EndOfFile",
+        "bad",
+        "end_of_file",
 
-        "NumericLiteral",
-        "SuperscriptLiteral",
-        "HexLiteral",
-        "BinaryLiteral",
-        "Identifier",
+        "numeric_literal",
+        "superscript_literal",
+        "hex_literal",
+        "binary_literal",
+        "identifier",
 
-        "Plus",
-        "SuperscriptPlus",
-        "Minus",
-        "SuperscriptMinus",
-        "Multiply",
-        "Divide",
-        "Exponentiate",
-        "LeftParens",
-        "RightParens",
-        "Radical",
-        "Percent",
-        "Factorial",
-        "LeftShift",
-        "RightShift",
-        "Greater",
-        "GreaterOrEqual",
-        "Less",
-        "LessOrEqual",
-        "Equal",
-        "Equality",
-        "NotEqual",
-        "Pi",
-        "Tau",
-        "Nand",
-        "Nor",
-        "Xnor",
-        "And",
-        "Or",
-        "Xor",
-        "Not",
+        "plus",
+        "superscript_plus",
+        "minus",
+        "superscript_minus",
+        "multiply",
+        "divide",
+        "exponentiate",
+        "left_parenthesis",
+        "right_parenthesis",
+        "radical",
+        "percent",
+        "factorial",
+        "left_shift",
+        "right_shift",
+        "greater",
+        "greater_or_equal",
+        "less",
+        "less_or_equal",
+        "equal",
+        "equality",
+        "not_equal",
+        "pi",
+        "tau",
+        "binary_nand",
+        "binary_nor",
+        "binary_xnor",
+        "binary_and",
+        "binary_or",
+        "binary_xor",
+        "binary_not",
 
-        "ArgumentSeparator",
-        "EndOfLine"
+        "argument_separator",
+        "end_of_line",
     };
 
-    return typeNames.at(static_cast<std::size_t>(type));
+    return type_names.at(static_cast<std::size_t>(type));
 }
 
-std::string tcToken::format() const
+std::string tc::token::format() const
 {
-    std::string str = std::format("(L:{}, C:{}): {} ", position().line, position().column, tcTokenKindName(kind()));
-    if (kind() != tcTokenKind::EndOfLine && kind() != tcTokenKind::EndOfFile)
-        str += std::format("\"{}\"", sourceStr());
+    std::string str = std::format("(L:{}, C:{}): {} ", position().line, position().column, token_kind_name(kind()));
+    if (kind() != token_kind::end_of_line && kind() != token_kind::end_of_file)
+        str += std::format("\"{}\"", source_str());
     return str;
 }

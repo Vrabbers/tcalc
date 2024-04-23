@@ -3,59 +3,62 @@
 #include <memory>
 #include <set>
 
-enum class tcDiagnosticType
+namespace tc
 {
-    BadNumberLiteral,
-    BadCharacter,
-    BadSymbol
-};
-
-const char* tcDiagnosticTypeName(tcDiagnosticType type);
-
-class tcDiagnostic final
-{
-public:
-    // Constructor makes a copy of the sourceSpan, so it can live longer than the token which owns it.
-    tcDiagnostic(const tcSourceSpan& src, tcDiagnosticType type) : _sourceSpan(std::make_unique<tcSourceSpan>(src)), _type(type)
-    {}
-
-    std::strong_ordering operator<=>(const tcDiagnostic& other) const
+    enum class diagnostic_type
     {
-        return sourceIndex() <=> other.sourceIndex();
-    }
+        bad_number_literal,
+        bad_character,
+        bad_symbol
+    };
 
-    [[nodiscard]]
-    tcDiagnosticType type() const
+    const char* diagnostic_type_name(diagnostic_type type);
+
+    class diagnostic final
     {
-        return _type;
-    }
+    public:
+        // Constructor makes a copy of the sourceSpan, so it can live longer than the token which owns it.
+        diagnostic(const source_span& src, diagnostic_type type) : _source_span(std::make_unique<source_span>(src)), _type(type)
+        {}
 
-    [[nodiscard]]
-    tcSourcePosition position() const
-    {
-        return _sourceSpan->position();
-    }
+        std::strong_ordering operator<=>(const diagnostic& other) const
+        {
+            return source_index() <=> other.source_index();
+        }
 
-    [[nodiscard]]
-    const tcSourceSpan& span() const
-    {
-        return *_sourceSpan;
-    }
+        [[nodiscard]]
+        diagnostic_type type() const
+        {
+            return _type;
+        }
 
-    [[nodiscard]]
-    std::string_view sourceStr() const
-    {
-        return _sourceSpan->sourceStr();
-    }
+        [[nodiscard]]
+        source_position position() const
+        {
+            return _source_span->position();
+        }
 
-    [[nodiscard]]
-    std::size_t sourceIndex() const
-    {
-        return _sourceSpan->sourceIndex();
-    }
+        [[nodiscard]]
+        const source_span& source() const
+        {
+            return *_source_span;
+        }
 
-private:
-    std::unique_ptr<tcSourceSpan> _sourceSpan;
+        [[nodiscard]]
+        std::string_view source_str() const
+        {
+            return _source_span->source_str();
+        }
 
-    tcDiagnosticType _type;
-};
+        [[nodiscard]]
+        std::size_t source_index() const
+        {
+            return _source_span->source_index();
+        }
+
+    private:
+        std::unique_ptr<source_span> _source_span;
+
+        diagnostic_type _type;
+    };
+}

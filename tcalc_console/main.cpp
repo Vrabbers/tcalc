@@ -11,16 +11,16 @@
 #pragma execution_character_set("utf-8")
 #endif
 
-static tcLexer parse(std::string&& str, bool print = true)
+static tc::lexer parse(std::string&& str, bool print = true)
 {
-    tcLexer lexer(std::move(str), true);
+    tc::lexer lexer(std::move(str), true);
 
     while (true)
     {
-        tcToken next = lexer.next();
+        tc::token next = lexer.next();
         if (print)
             std::cout << next.format() << std::endl;
-        if (next.kind() == tcTokenKind::EndOfFile)
+        if (next.kind() == tc::token_kind::end_of_file)
             break;
     }
 
@@ -50,9 +50,9 @@ static void interactive()
         std::cout << "input:\n" << input << std::endl;
         auto lex = parse(std::move(input));
         std::cout << "Diagnostics:" << std::endl;
-        for (const auto& diag : lex.diagnosticBag())
+        for (const auto& diag : lex.diagnostic_bag())
         {
-            std::cout << std::format("{} @ L:{}, C:{}", tcDiagnosticTypeName(diag.type()), diag.position().line, diag.position().column) << std::endl;
+            std::cout << std::format("{} @ L:{}, C:{}", diagnostic_type_name(diag.type()), diag.position().line, diag.position().column) << std::endl;
         }
     }
 }
@@ -71,9 +71,9 @@ static void fuzz(const int times)
         std::string a{buf.cbegin(), buf.cend()};
         auto lex = parse(std::move(a), false);
         std::cout << "Diagnostics:" << std::endl;
-        for (const auto& diag : lex.diagnosticBag())
+        for (const auto& diag : lex.diagnostic_bag())
         {
-            std::cout << std::format("{} @ L:{}, C:{}", tcDiagnosticTypeName(diag.type()), diag.position().line, diag.position().column) << std::endl;
+            std::cout << std::format("{} @ L:{}, C:{}", diagnostic_type_name(diag.type()), diag.position().line, diag.position().column) << std::endl;
         }
     }
 }

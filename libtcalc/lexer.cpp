@@ -5,7 +5,7 @@
 
 #include "utf8_utils.h"
 
-static bool isWhitespace(std::optional<char32_t> chr)
+static bool is_whitespace(std::optional<char32_t> chr)
 {
     if (!chr.has_value())
         return false;
@@ -13,7 +13,7 @@ static bool isWhitespace(std::optional<char32_t> chr)
     return chr == U'\t' || utf8proc::category(*chr) == UTF8PROC_CATEGORY_ZS;
 }
 
-static bool isLetter(std::optional<char32_t> chr)
+static bool is_letter(std::optional<char32_t> chr)
 {
     if (!chr.has_value())
         return false;
@@ -23,62 +23,62 @@ static bool isLetter(std::optional<char32_t> chr)
         || c == UTF8PROC_CATEGORY_NO;
 }
 
-static bool isDigit(std::optional<char32_t> chr)
+static bool is_decimal_digit(std::optional<char32_t> chr)
 {
     return chr >= U'0' && chr <= U'9';
 }
 
-static bool isHexDigit(std::optional<char32_t> chr)
+static bool is_hex_digit(std::optional<char32_t> chr)
 {
-    return isDigit(chr) || (chr >= U'a' && chr <= U'f') || (chr >= U'A' && chr <= U'F');
+    return is_decimal_digit(chr) || (chr >= U'a' && chr <= U'f') || (chr >= U'A' && chr <= U'F');
 }
 
-static const std::set superscriptDigits = {U'²', U'³', U'¹', U'⁰', U'⁴', U'⁵', U'⁶', U'⁷', U'⁸', U'⁹'};
+static const std::set superscript_digits = {U'²', U'³', U'¹', U'⁰', U'⁴', U'⁵', U'⁶', U'⁷', U'⁸', U'⁹'};
 
-static bool isSuperscriptDigit(std::optional<char32_t> chr)
+static bool is_superscript_digit(std::optional<char32_t> chr)
 {
     if (!chr.has_value())
         return false;
-    return superscriptDigits.contains(*chr);
+    return superscript_digits.contains(*chr);
 }
 
-tcToken tcLexer::next()
+tc::token tc::lexer::next()
 {
-    while (isWhitespace(_sr->peek()))
+    while (is_whitespace(_sr->peek()))
         _sr->forward();
 
-    _sr->discardToken();
+    _sr->discard_token();
 
     auto first = _sr->forward();
 
     if (!first.has_value())
     {
-        auto token = flushToken(tcTokenKind::Bad);
-        _diagnosticBag->insert(tcDiagnostic(token.source(), tcDiagnosticType::BadCharacter));
+        auto token = flush_token(token_kind::bad);
+        _diagnostic_bag->insert(diagnostic(token.source(), diagnostic_type::bad_character));
         return token;
     }
 
-    if (*first == EndOfFile)
-        return flushToken(tcTokenKind::EndOfFile);
+    if (*first == END_OF_FILE)
+        return flush_token(token_kind::end_of_file);
     if (*first == U'\n')
-        return flushToken(tcTokenKind::EndOfLine);
-    if (isDigit(first))
-        return lexNumber();
-    if (isSuperscriptDigit(first))
-        return lexSuperscriptNumber();
-    if (isLetter(first))
-        return lexWord();
+        return flush_token(token_kind::end_of_line);
+    if (is_decimal_digit(first))
+        return lex_number();
+    if (is_superscript_digit(first))
+        return lex_superscript_number();
+    if (is_letter(first))
+        return lex_word();
 
-    return lexSymbol();
+    return lex_symbol();
 }
 
-tcToken tcLexer::flushToken(tcTokenKind type)
+tc::token tc::lexer::flush_token(token_kind type)
 {
     auto span = _sr->flush();
     return {type, std::move(span)};
 }
 
-tcToken tcLexer::lexNumber()
+tc::token tc::lexer::lex_number()
 {
     auto first = _sr->current();
     auto next = _sr->peek();
@@ -88,255 +88,255 @@ tcToken tcLexer::lexNumber()
         while (_sr->peek() == U'0' || _sr->peek() == U'1' || _sr->peek() == U'_')
             _sr->forward();
 
-        return flushToken(tcTokenKind::BinaryLiteral);
+        return flush_token(token_kind::binary_literal);
     }
 
     if (first == U'0' && next == U'x')
     {
         _sr->forward();
-        while (isHexDigit(_sr->peek()) || _sr->peek() == U'_')
+        while (is_hex_digit(_sr->peek()) || _sr->peek() == U'_')
             _sr->forward();
 
-        return flushToken(tcTokenKind::HexLiteral);
+        return flush_token(token_kind::hex_literal);
     }
 
-    bool readingDecimal = false;
-    bool readingExponent = false;
+    bool reading_decimal = false;
+    bool reading_exponent = false;
     while (true)
     {
         next = _sr->peek();
 
-        if (isDigit(next) || next == U'_')
+        if (is_decimal_digit(next) || next == U'_')
         {
             _sr->forward();
         }
-        else if (next == decimalSeparator())
+        else if (next == decimal_separator())
         {
             _sr->forward();
 
-            if (!readingDecimal && !readingExponent)
+            if (!reading_decimal && !reading_exponent)
             {
-                readingDecimal = true;
+                reading_decimal = true;
             }
             else
             {
-                auto token = flushToken(tcTokenKind::Bad);
-                _diagnosticBag->insert(tcDiagnostic(token.source(), tcDiagnosticType::BadNumberLiteral));
+                auto token = flush_token(token_kind::bad);
+                _diagnostic_bag->insert(diagnostic(token.source(), diagnostic_type::bad_number_literal));
                 return token;
             }
         }
         else if (next == U'e' || next == U'E')
         {
-            if (!readingExponent)
+            if (!reading_exponent)
             {
-                auto next3 = _sr->peekMany(3);
+                auto next3 = _sr->peek_many(3);
                 if (next3.length() >= 2) // Otherwise we don't have enough input to keep going
                 {
                     if (next3[1] == U'+' || next3[1] == U'-')
                     {
-                        if (next3.length() == 3 && isDigit(next3[2])) // If it was a +/-, we need to consume a digit
+                        if (next3.length() == 3 && is_decimal_digit(next3[2])) // If it was a +/-, we need to consume a digit
                         {
-                            readingExponent = true;
-                            _sr->forwardMany(3);
+                            reading_exponent = true;
+                            _sr->forward_many(3);
                             continue;
                         }
                     }
-                    else if (isDigit(next3[1])) // If is already a digit, try to read more
+                    else if (is_decimal_digit(next3[1])) // If is already a digit, try to read more
                     {
-                        readingExponent = true;
-                        _sr->forwardMany(2);
+                        reading_exponent = true;
+                        _sr->forward_many(2);
                         continue;
                     }
                 }
             }
             // In any other case, finish reading early.
-            return flushToken(tcTokenKind::NumericLiteral);
+            return flush_token(token_kind::numeric_literal);
         }
         else
         {
             if (_sr->peek() == U'i')
                 _sr->forward();
 
-            return flushToken(tcTokenKind::NumericLiteral);
+            return flush_token(token_kind::numeric_literal);
         }
     }
 }
 
-tcToken tcLexer::lexSuperscriptNumber()
+tc::token tc::lexer::lex_superscript_number()
 {
-    bool readingExponent = false;
+    bool reading_exponent = false;
     while (true)
     {
         auto next = _sr->peek();
 
-        if (isSuperscriptDigit(next))
+        if (is_superscript_digit(next))
         {
             _sr->forward();
         }
         else if (next == U'ᵉ' || next == U'ᴱ')
         {
-            // cf. similar code in lexNumber()
-            if (!readingExponent)
+            // cf. similar code in lex_number()
+            if (!reading_exponent)
             {
-                auto next3 = _sr->peekMany(3);
+                auto next3 = _sr->peek_many(3);
                 if (next3.length() >= 2)
                 {
                     if (next3[1] == U'⁺' || next3[1] == U'⁻')
                     {
-                        if (next3.length() == 3 && isSuperscriptDigit(next3[2]))
+                        if (next3.length() == 3 && is_superscript_digit(next3[2]))
                         {
-                            readingExponent = true;
-                            _sr->forwardMany(3);
+                            reading_exponent = true;
+                            _sr->forward_many(3);
                             continue;
                         }
                     }
-                    else if (isSuperscriptDigit(next3[1]))
+                    else if (is_superscript_digit(next3[1]))
                     {
-                        readingExponent = true;
-                        _sr->forwardMany(2);
+                        reading_exponent = true;
+                        _sr->forward_many(2);
                         continue;
                     }
                 }
             }
-            return flushToken(tcTokenKind::SuperscriptLiteral);
+            return flush_token(token_kind::superscript_literal);
         }
         else
         {
             if (_sr->peek() == U'ⁱ')
                 _sr->forward();
 
-            return flushToken(tcTokenKind::SuperscriptLiteral);
+            return flush_token(token_kind::superscript_literal);
         }
     }
 }
 
-tcToken tcLexer::lexSymbol()
+tc::token tc::lexer::lex_symbol()
 {
-    if (_sr->current() == argSeparator())
-        return flushToken(tcTokenKind::ArgumentSeparator);
+    if (_sr->current() == arg_separator())
+        return flush_token(token_kind::argument_separator);
 
     std::optional<char32_t> next;
     switch (*_sr->current())
     {
         case U'+':
-            return flushToken(tcTokenKind::Plus);
+            return flush_token(token_kind::plus);
         case U'⁺':
-            return flushToken(tcTokenKind::SuperscriptPlus);
+            return flush_token(token_kind::superscript_plus);
         case U'-':
-            return flushToken(tcTokenKind::Minus);
+            return flush_token(token_kind::minus);
         case U'⁻':
-            return flushToken(tcTokenKind::SuperscriptMinus);
+            return flush_token(token_kind::superscript_minus);
         case U'*':
         case U'×':
         case U'∙':
-            return flushToken(tcTokenKind::Multiply);
+            return flush_token(token_kind::multiply);
         case U'/':
         case U'÷':
-            return flushToken(tcTokenKind::Divide);
+            return flush_token(token_kind::divide);
         case U'^':
-            return flushToken(tcTokenKind::Exponentiate);
+            return flush_token(token_kind::exponentiate);
         case U'(':
-            return flushToken(tcTokenKind::LeftParens);
+            return flush_token(token_kind::left_parenthesis);
         case U')':
-            return flushToken(tcTokenKind::RightParens);
+            return flush_token(token_kind::right_parenthesis);
         case U'√':
-            return flushToken(tcTokenKind::Radical);
+            return flush_token(token_kind::radical);
         case U'%':
-            return flushToken(tcTokenKind::Percent);
+            return flush_token(token_kind::percent);
         case U'!':
             if (_sr->peek() == U'=')
             {
                 _sr->forward();
-                return flushToken(tcTokenKind::NotEqual);
+                return flush_token(token_kind::not_equal);
             }
-            return flushToken(tcTokenKind::Factorial);
+            return flush_token(token_kind::factorial);
         case U'>':
             next = _sr->peek();
             if (next == U'>')
             {
                 _sr->forward();
-                return flushToken(tcTokenKind::RightShift);
+                return flush_token(token_kind::right_shift);
             }
             if (next == U'=')
             {
                 _sr->forward();
-                return flushToken(tcTokenKind::GreaterOrEqual);
+                return flush_token(token_kind::greater_or_equal);
             }
-            return flushToken(tcTokenKind::Greater);
+            return flush_token(token_kind::greater);
         case U'<':
             next = _sr->peek();
             if (next == U'<')
             {
                 _sr->forward();
-                return flushToken(tcTokenKind::LeftShift);
+                return flush_token(token_kind::left_shift);
             }
             if (next == U'=')
             {
                 _sr->forward();
-                return flushToken(tcTokenKind::LessOrEqual);
+                return flush_token(token_kind::less_or_equal);
             }
-            return flushToken(tcTokenKind::Less);
+            return flush_token(token_kind::less);
         case U'≥':
-            return flushToken(tcTokenKind::GreaterOrEqual);
+            return flush_token(token_kind::greater_or_equal);
         case U'≤':
-            return flushToken(tcTokenKind::LessOrEqual);
+            return flush_token(token_kind::less_or_equal);
         case U'=':
             if (_sr->peek() == U'=')
             {
                 _sr->forward();
-                return flushToken(tcTokenKind::Equality);
+                return flush_token(token_kind::equality);
             }
-            return flushToken(tcTokenKind::Equal);
+            return flush_token(token_kind::equal);
         case U'≠':
-            return flushToken(tcTokenKind::NotEqual);
+            return flush_token(token_kind::not_equal);
         default:
-            auto token = flushToken(tcTokenKind::Bad);
-            _diagnosticBag->insert(tcDiagnostic(token.source(), tcDiagnosticType::BadSymbol));
+            auto token = flush_token(token_kind::bad);
+            _diagnostic_bag->insert(diagnostic(token.source(), diagnostic_type::bad_symbol));
             return token;
     }
 }
 
-tcToken tcLexer::lexWord()
+tc::token tc::lexer::lex_word()
 {
     auto peek = _sr->peek();
 
-    while (isLetter(peek) || isDigit(peek))
+    while (is_letter(peek) || is_decimal_digit(peek))
     {
         _sr->forward();
         peek = _sr->peek();
     }
 
     auto sourceSpan = _sr->flush();
-    const auto str = sourceSpan->sourceStr();
+    const auto str = sourceSpan->source_str();
 
-    const static std::unordered_map<std::string_view, tcTokenKind> keywords
+    const static std::unordered_map<std::string_view, token_kind> keywords
     {
-        {"NAND", tcTokenKind::Nand},
-        {"NOR", tcTokenKind::Nor},
-        {"XNOR", tcTokenKind::Xnor},
-        {"AND", tcTokenKind::And},
-        {"OR", tcTokenKind::Or},
-        {"XOR", tcTokenKind::Xor},
-        {"NOT", tcTokenKind::Not},
-        {"π", tcTokenKind::Pi},
-        {"τ", tcTokenKind::Tau},
-        {"i", tcTokenKind::NumericLiteral},
-        {"ⁱ", tcTokenKind::SuperscriptLiteral},
+        {"NAND", token_kind::binary_nand},
+        {"NOR", token_kind::binary_nor},
+        {"XNOR", token_kind::binary_xnor},
+        {"AND", token_kind::binary_and},
+        {"OR", token_kind::binary_or},
+        {"XOR", token_kind::binary_xor},
+        {"NOT", token_kind::binary_not},
+        {"π", token_kind::pi},
+        {"τ", token_kind::tau},
+        {"i", token_kind::numeric_literal},
+        {"ⁱ", token_kind::superscript_literal},
     };
 
-    const auto typeIter = keywords.find(str);
-    if (typeIter != keywords.end())
-        return {typeIter->second, std::move(sourceSpan)};
+    const auto type_iter = keywords.find(str);
+    if (type_iter != keywords.end())
+        return {type_iter->second, std::move(sourceSpan)};
 
-    return {tcTokenKind::Identifier, std::move(sourceSpan)};
+    return {token_kind::identifier, std::move(sourceSpan)};
 }
 
-char32_t tcLexer::decimalSeparator() const
+char32_t tc::lexer::decimal_separator() const
 {
-    return _commaArgumentSeparator ? U'.' : U',';
+    return _comma_argument_separator ? U'.' : U',';
 }
 
-char32_t tcLexer::argSeparator() const
+char32_t tc::lexer::arg_separator() const
 {
-    return _commaArgumentSeparator ? U',' : U';';
+    return _comma_argument_separator ? U',' : U';';
 }
