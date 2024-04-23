@@ -4,14 +4,12 @@
 
 #include "utf8_utils.h"
 
-std::pair<char32_t, std::ptrdiff_t> tc::string_reader::peek_with_length() const
+std::pair<char32_t, ptrdiff_t> tc::string_reader::peek_with_length() const
 {
     if (_end_ix >= _string.length())
         return std::make_pair(end_of_file, 0);
 
-    char32_t character;
-
-    const auto length = utf8proc::iterate_one_from_index(_string, _end_ix, &character);
+    const auto [length, character] = utf8proc::iterate_one_from_index(_string, _end_ix);
 
     if (length > 0)
         return std::make_pair(character, length);
@@ -28,18 +26,17 @@ std::optional<char32_t> tc::string_reader::peek() const
         return character;
 }
 
-std::u32string tc::string_reader::peek_many(std::uint32_t count) const
+std::u32string tc::string_reader::peek_many(int32_t count) const
 {
     std::u32string out{};
     auto index = _end_ix;
 
-    for (uint32_t i = 0; i < count; i++)
+    for (int32_t i = 0; i < count; i++)
     {
         if (index >= _string.length())
             return out;
 
-        char32_t character;
-        const auto length = utf8proc::iterate_one_from_index(_string, index, &character);
+        const auto [length, character] = utf8proc::iterate_one_from_index(_string, index);
 
         if (length > 0)
         {

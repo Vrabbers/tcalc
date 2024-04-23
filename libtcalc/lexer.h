@@ -2,7 +2,7 @@
 
 #include <string>
 #include <memory>
-#include <set>
+#include <vector>
 
 #include "diagnostic.h"
 #include "token.h"
@@ -18,15 +18,15 @@ namespace tc
         {
         }
 
-        explicit lexer(const char* input, bool commaArgSeparator) : _sr(std::make_unique<string_reader>(input)),
+        explicit lexer(const std::string& input, bool commaArgSeparator) : _sr(std::make_unique<string_reader>(input)),
             _comma_argument_separator(commaArgSeparator)
         {
         }
 
         [[nodiscard]]
-        const std::multiset<diagnostic>& diagnostic_bag() const
+        const std::vector<diagnostic>& diagnostic_bag() const
         {
-            return *_diagnostic_bag;
+            return _diagnostic_bag;
         }
 
         token next();
@@ -50,7 +50,7 @@ namespace tc
             return _comma_argument_separator ? U',' : U';';
         }
 
-        std::unique_ptr<std::multiset<diagnostic>> _diagnostic_bag = std::make_unique<std::multiset<diagnostic>>();
+        std::vector<diagnostic> _diagnostic_bag{};
         std::unique_ptr<string_reader> _sr;
         bool _comma_argument_separator;
     };

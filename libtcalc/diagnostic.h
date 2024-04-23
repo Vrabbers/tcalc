@@ -17,13 +17,9 @@ namespace tc
     class diagnostic final
     {
     public:
-        // Constructor makes a copy of the sourceSpan, so it can live longer than the token which owns it.
+        // Constructor makes a copy of the sourceSpan, so it can live longer than the token which originally owned it.
         diagnostic(const source_span& src, diagnostic_type type) : _source_span(std::make_unique<source_span>(src)), _type(type)
-        {}
-
-        std::strong_ordering operator<=>(const diagnostic& other) const
         {
-            return source_index() <=> other.source_index();
         }
 
         [[nodiscard]]
@@ -51,7 +47,7 @@ namespace tc
         }
 
         [[nodiscard]]
-        std::size_t source_index() const
+        size_t source_index() const
         {
             return _source_span->source_index();
         }

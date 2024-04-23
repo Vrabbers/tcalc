@@ -8,7 +8,7 @@ namespace tc
     class source_span final
     {
     public:
-        source_span(std::string&& str, const source_position start, const std::size_t src_ix) : _string(str),
+        source_span(std::string&& str, const source_position start, const size_t src_ix) : _string(str),
             _position(start), _source_index(src_ix)
         {
         }
@@ -26,7 +26,7 @@ namespace tc
         }
 
         [[nodiscard]]
-        std::size_t source_index() const
+        size_t source_index() const
         {
             return _source_index;
         }
@@ -34,6 +34,6 @@ namespace tc
     private:
         std::string _string;
         source_position _position;
-        std::size_t _source_index;
+        size_t _source_index;
     };
 }

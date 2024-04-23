@@ -55,7 +55,7 @@ tc::token tc::lexer::next()
     if (!first.has_value())
     {
         auto token = flush_token(token_kind::bad);
-        _diagnostic_bag->insert(diagnostic(token.source(), diagnostic_type::bad_character));
+        _diagnostic_bag.emplace_back(token.source(), diagnostic_type::bad_character);
         return token;
     }
 
@@ -122,7 +122,7 @@ tc::token tc::lexer::lex_number()
             else
             {
                 auto token = flush_token(token_kind::bad);
-                _diagnostic_bag->insert(diagnostic(token.source(), diagnostic_type::invalid_number_literal));
+                _diagnostic_bag.emplace_back(token.source(), diagnostic_type::invalid_number_literal);
                 return token;
             }
         }
@@ -292,7 +292,7 @@ tc::token tc::lexer::lex_symbol()
             return flush_token(token_kind::not_equal);
         default:
             auto token = flush_token(token_kind::bad);
-            _diagnostic_bag->insert(diagnostic(token.source(), diagnostic_type::invalid_symbol));
+            _diagnostic_bag.emplace_back(token.source(), diagnostic_type::invalid_symbol);
             return token;
     }
 }

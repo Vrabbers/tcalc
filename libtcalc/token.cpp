@@ -51,7 +51,7 @@ const char* tc::token_kind_name(token_kind type)
         "end_of_line",
     };
 
-    return type_names.at(static_cast<std::size_t>(type));
+    return type_names.at(static_cast<size_t>(type));
 }
 
 std::string tc::token::format() const

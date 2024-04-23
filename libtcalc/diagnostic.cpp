@@ -11,5 +11,5 @@ const char* tc::diagnostic_type_name(diagnostic_type type)
         "invalid_symbol"
     };
 
-    return names.at(static_cast<std::size_t>(type));
+    return names.at(static_cast<size_t>(type));
 }

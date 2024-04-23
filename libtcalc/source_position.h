@@ -6,7 +6,7 @@ namespace tc
 {
     struct source_position
     {
-        std::uint32_t line;
-        std::uint32_t column;
+        int32_t line;
+        int32_t column;
     };
 }

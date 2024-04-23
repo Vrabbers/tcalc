@@ -19,7 +19,7 @@ namespace tc
         {
         }
 
-        explicit string_reader(const char* input) : _string(input)
+        explicit string_reader(const std::string& input) : _string(input)
         {
         }
 
@@ -27,7 +27,7 @@ namespace tc
         std::optional<char32_t> peek() const;
 
         [[nodiscard]]
-        std::u32string peek_many(std::uint32_t count) const;
+        std::u32string peek_many(int32_t count) const;
 
         [[nodiscard]]
         std::optional<char32_t> current() const
@@ -37,14 +37,14 @@ namespace tc
 
         std::optional<char32_t> forward();
 
-        void forward_many(const std::uint32_t count)
+        void forward_many(const int32_t count)
         {
-            for (std::uint32_t i = 0; i < count; i++)
+            for (int32_t i = 0; i < count; i++)
                 forward();
         }
 
         [[nodiscard]]
-        std::size_t token_length() const
+        size_t token_length() const
         {
             return _end_ix - _start_ix;
         }
@@ -60,11 +60,11 @@ namespace tc
 
     private:
         [[nodiscard]]
-        std::pair<char32_t, std::ptrdiff_t> peek_with_length() const;
+        std::pair<char32_t, ptrdiff_t> peek_with_length() const;
         std::optional<char32_t> _current;
         std::string _string;
-        std::size_t _start_ix = 0;
-        std::size_t _end_ix = 0;
+        size_t _start_ix = 0;
+        size_t _end_ix = 0;
         source_position _start_position = {1, 1};
         source_position _end_position = {1, 1};
     };
