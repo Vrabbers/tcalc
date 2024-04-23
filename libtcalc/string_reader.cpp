@@ -92,9 +92,3 @@ std::unique_ptr<tc::source_span> tc::string_reader::flush()
     discard_token();
     return token;
 }
-
-void tc::string_reader::discard_token()
-{
-    _start_ix = _end_ix;
-    _start_position = _end_position;
-}

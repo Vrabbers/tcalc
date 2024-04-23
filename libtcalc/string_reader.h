@@ -17,7 +17,7 @@ namespace tc
     public:
         explicit string_reader(std::string&& input) : _string(std::move(input))
         {
-        }
+            }
 
         explicit string_reader(const char* input) : _string(input)
         {
@@ -52,7 +52,11 @@ namespace tc
         [[nodiscard]]
         std::unique_ptr<source_span> flush();
 
-        void discard_token();
+        void discard_token()
+        {
+            _start_ix = _end_ix;
+            _start_position = _end_position;
+        }
 
     private:
         [[nodiscard]]

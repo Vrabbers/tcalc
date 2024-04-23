@@ -19,7 +19,7 @@ static tc::lexer parse(std::string&& str, bool print = true)
     {
         tc::token next = lexer.next();
         if (print)
-            std::cout << next.format() << std::endl;
+            std::cout << next.format() << '\n';
         if (next.kind() == tc::token_kind::end_of_file)
             break;
     }
@@ -29,7 +29,7 @@ static tc::lexer parse(std::string&& str, bool print = true)
 
 static void interactive()
 {
-    std::cout << "tcalc console" << std::endl;
+    std::cout << "tcalc console\n";
 
     while (true)
     {
@@ -47,13 +47,14 @@ static void interactive()
         if (input.empty())
             return;
 
-        std::cout << "input:\n" << input << std::endl;
+        std::cout << "input:\n" << input << '\n';
         auto lex = parse(std::move(input));
-        std::cout << "Diagnostics:" << std::endl;
+        std::cout << "\n\x1b[0;31mDiagnostics:\n";
         for (const auto& diag : lex.diagnostic_bag())
         {
-            std::cout << std::format("{} @ L:{}, C:{}", diagnostic_type_name(diag.type()), diag.position().line, diag.position().column) << std::endl;
+            std::cout << std::format("{} @ L:{}, C:{} \n", diagnostic_type_name(diag.type()), diag.position().line, diag.position().column);
         }
+        std::cout << "\x1b[0m\n";
     }
 }
 
@@ -67,22 +68,17 @@ static void fuzz(const int times)
     {
         for (char& j : buf)
             j = static_cast<char>(rdist(rand));
-        std::cout << "Fuzz #" << i + 1 << std::endl;
+        std::cout << "Fuzz #" << i + 1 << '\n';
         std::string a{buf.cbegin(), buf.cend()};
-        auto lex = parse(std::move(a), false);
-        std::cout << "Diagnostics:" << std::endl;
-        for (const auto& diag : lex.diagnostic_bag())
-        {
-            std::cout << std::format("{} @ L:{}, C:{}", diagnostic_type_name(diag.type()), diag.position().line, diag.position().column) << std::endl;
-        }
+        parse(std::move(a), false);
     }
 }
 
 int main(int argc, char* argv[])
 {
 #ifdef _WIN32
-    SetConsoleCP(65001);
-    SetConsoleOutputCP(65001);
+    SetConsoleCP(CP_UTF8);
+    SetConsoleOutputCP(CP_UTF8);
 #endif
     if (argc == 3 && std::strcmp(argv[1], "fuzz") == 0)
         fuzz(std::stoi(argv[2]));

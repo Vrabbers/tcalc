@@ -7,9 +7,9 @@ namespace tc
 {
     enum class diagnostic_type
     {
-        bad_number_literal,
         bad_character,
-        bad_symbol
+        invalid_number_literal,
+        invalid_symbol
     };
 
     const char* diagnostic_type_name(diagnostic_type type);
