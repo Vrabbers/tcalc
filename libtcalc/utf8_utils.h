@@ -17,11 +17,11 @@ namespace utf8proc
     // WARNING! Make sure index < string.size()!
     inline std::ptrdiff_t iterate_one_from_index(const std::string& string, const std::size_t index, char32_t* character)
     {
-        const auto start_ptr = reinterpret_cast<const std::uint8_t*>(&string.c_str()[index]);
+        auto start_ptr = reinterpret_cast<const std::uint8_t*>(&string.c_str()[index]);
         return utf8proc_iterate(start_ptr, -1, reinterpret_cast<int32_t*>(character));
     }
 
-    inline utf8proc_category_t category(char32_t character)
+    inline utf8proc_category_t category(const char32_t character)
     {
         return utf8proc_category(static_cast<int32_t>(character));
     }

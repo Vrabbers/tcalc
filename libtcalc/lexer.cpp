@@ -2,6 +2,7 @@
 
 #include <set>
 #include <unordered_map>
+#include <optional>
 
 #include "utf8_utils.h"
 
@@ -58,7 +59,7 @@ tc::token tc::lexer::next()
         return token;
     }
 
-    if (*first == END_OF_FILE)
+    if (*first == end_of_file)
         return flush_token(token_kind::end_of_file);
     if (*first == U'\n')
         return flush_token(token_kind::end_of_line);
@@ -331,12 +332,3 @@ tc::token tc::lexer::lex_word()
     return {token_kind::identifier, std::move(sourceSpan)};
 }
 
-char32_t tc::lexer::decimal_separator() const
-{
-    return _comma_argument_separator ? U'.' : U',';
-}
-
-char32_t tc::lexer::arg_separator() const
-{
-    return _comma_argument_separator ? U',' : U';';
-}

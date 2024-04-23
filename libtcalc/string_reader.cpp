@@ -1,13 +1,13 @@
 #include "string_reader.h"
 
-#include <stdexcept>
+#include <optional>
 
 #include "utf8_utils.h"
 
 std::pair<char32_t, std::ptrdiff_t> tc::string_reader::peek_with_length() const
 {
     if (_end_ix >= _string.length())
-        return std::make_pair(END_OF_FILE, 0);
+        return std::make_pair(end_of_file, 0);
 
     char32_t character;
 
@@ -22,7 +22,7 @@ std::pair<char32_t, std::ptrdiff_t> tc::string_reader::peek_with_length() const
 std::optional<char32_t> tc::string_reader::peek() const
 {
     auto [character, size] = peek_with_length();
-    if (size == 0 && character != END_OF_FILE)
+    if (size == 0 && character != end_of_file)
         return std::nullopt;
     else 
         return character;
@@ -59,7 +59,7 @@ std::optional<char32_t> tc::string_reader::forward()
 {
     auto [character, size] = peek_with_length();
 
-    if (size == 0 && character != END_OF_FILE)
+    if (size == 0 && character != end_of_file)
     {
         // some error happened. try to inch forward.
         _end_ix++;

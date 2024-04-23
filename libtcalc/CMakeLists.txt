@@ -23,7 +23,6 @@ set(HEADERS
     source_span.h
     token.h
     lexer.h
-    token_kind.h
     string_reader.h
     diagnostic.h
 )

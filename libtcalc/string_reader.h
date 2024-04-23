@@ -10,14 +10,14 @@
 
 namespace tc
 {
-    constexpr char32_t END_OF_FILE = static_cast<char32_t>(-1);
+    constexpr char32_t end_of_file = static_cast<char32_t>(-1);
 
     class string_reader final
     {
     public:
         explicit string_reader(std::string&& input) : _string(std::move(input))
         {
-            }
+        }
 
         explicit string_reader(const char* input) : _string(input)
         {
