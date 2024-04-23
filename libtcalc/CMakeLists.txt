@@ -15,6 +15,7 @@ set(SOURCES
     string_reader.cpp
     lexer.cpp
     token.cpp
+    diagnostic.cpp
 )
 
 set(HEADERS
@@ -24,6 +25,7 @@ set(HEADERS
     lexer.h
     token_kind.h
     string_reader.h
+    diagnostic.h
 )
 
 set(PRIVATE_HEADERS

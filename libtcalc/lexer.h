@@ -2,6 +2,8 @@
 
 #include <string>
 #include <memory>
+
+#include "diagnostic.h"
 #include "token.h"
 #include "string_reader.h"
 
@@ -18,6 +20,12 @@ public:
     {
     }
 
+    [[nodiscard]]
+    const std::multiset<tcDiagnostic>& diagnosticBag() const
+    {
+        return *_diagnosticBag;
+    }
+
     tcToken next();
 
 private:
@@ -32,6 +40,7 @@ private:
     [[nodiscard]]
     inline char32_t argSeparator() const;
 
+    std::unique_ptr<std::multiset<tcDiagnostic>> _diagnosticBag = std::make_unique<std::multiset<tcDiagnostic>>();
     std::unique_ptr<tcStringReader> _sr;
     bool _commaArgumentSeparator;
 };

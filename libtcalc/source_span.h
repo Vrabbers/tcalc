@@ -22,6 +22,7 @@ public:
         return _position;
     }
 
+    [[nodiscard]]
     std::size_t sourceIndex() const
     {
         return _sourceIndex;

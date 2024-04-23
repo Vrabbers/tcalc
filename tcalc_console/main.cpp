@@ -11,7 +11,7 @@
 #pragma execution_character_set("utf-8")
 #endif
 
-static void parse(std::string&& str, bool print = true)
+static tcLexer parse(std::string&& str, bool print = true)
 {
     tcLexer lexer(std::move(str), true);
 
@@ -23,6 +23,8 @@ static void parse(std::string&& str, bool print = true)
         if (next.kind() == tcTokenKind::EndOfFile)
             break;
     }
+
+    return lexer;
 }
 
 static void interactive()
@@ -46,7 +48,12 @@ static void interactive()
             return;
 
         std::cout << "input:\n" << input << std::endl;
-        parse(std::move(input));
+        auto lex = parse(std::move(input));
+        std::cout << "Diagnostics:" << std::endl;
+        for (const auto& diag : lex.diagnosticBag())
+        {
+            std::cout << std::format("{} @ L:{}, C:{}", tcDiagnosticTypeName(diag.type()), diag.position().line, diag.position().column) << std::endl;
+        }
     }
 }
 
@@ -62,7 +69,12 @@ static void fuzz(const int times)
             j = static_cast<char>(rdist(rand));
         std::cout << "Fuzz #" << i + 1 << std::endl;
         std::string a{buf.cbegin(), buf.cend()};
-        parse(std::move(a), false);
+        auto lex = parse(std::move(a), false);
+        std::cout << "Diagnostics:" << std::endl;
+        for (const auto& diag : lex.diagnosticBag())
+        {
+            std::cout << std::format("{} @ L:{}, C:{}", tcDiagnosticTypeName(diag.type()), diag.position().line, diag.position().column) << std::endl;
+        }
     }
 }
 

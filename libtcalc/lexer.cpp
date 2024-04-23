@@ -52,7 +52,12 @@ tcToken tcLexer::next()
     auto first = _sr->forward();
 
     if (!first.has_value())
-        return flushToken(tcTokenKind::Bad);
+    {
+        auto token = flushToken(tcTokenKind::Bad);
+        _diagnosticBag->insert(tcDiagnostic(token.source(), tcDiagnosticType::BadCharacter));
+        return token;
+    }
+
     if (*first == EndOfFile)
         return flushToken(tcTokenKind::EndOfFile);
     if (*first == U'\n')
@@ -109,10 +114,16 @@ tcToken tcLexer::lexNumber()
         {
             _sr->forward();
 
-            if (!readingDecimal)
+            if (!readingDecimal && !readingExponent)
+            {
                 readingDecimal = true;
+            }
             else
-                return flushToken(tcTokenKind::Bad);
+            {
+                auto token = flushToken(tcTokenKind::Bad);
+                _diagnosticBag->insert(tcDiagnostic(token.source(), tcDiagnosticType::BadNumberLiteral));
+                return token;
+            }
         }
         else if (next == U'e' || next == U'E')
         {
@@ -279,7 +290,9 @@ tcToken tcLexer::lexSymbol()
         case U'≠':
             return flushToken(tcTokenKind::NotEqual);
         default:
-            return flushToken(tcTokenKind::Bad);
+            auto token = flushToken(tcTokenKind::Bad);
+            _diagnosticBag->insert(tcDiagnostic(token.source(), tcDiagnosticType::BadSymbol));
+            return token;
     }
 }
 
