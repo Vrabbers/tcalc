@@ -7,28 +7,29 @@
 std::pair<char32_t, ptrdiff_t> tc::string_reader::peek_with_length() const
 {
     if (_end_ix >= _string.length())
-        return std::make_pair(end_of_file, 0);
+        return {end_of_file, 0};
 
     const auto [length, character] = utf8proc::iterate_one_from_index(_string, _end_ix);
 
     if (length > 0)
-        return std::make_pair(character, length);
+        return {character, length};
 
-    return std::make_pair(0, 0);
+    return {0, 0};
 }
 
 std::optional<char32_t> tc::string_reader::peek() const
 {
-    auto [character, size] = peek_with_length();
+    const auto [character, size] = peek_with_length();
+
     if (size == 0 && character != end_of_file)
         return std::nullopt;
-    else 
-        return character;
+
+    return character;
 }
 
 std::u32string tc::string_reader::peek_many(int32_t count) const
 {
-    std::u32string out{};
+    std::u32string out;
     auto index = _end_ix;
 
     for (int32_t i = 0; i < count; i++)
@@ -54,7 +55,7 @@ std::u32string tc::string_reader::peek_many(int32_t count) const
 
 std::optional<char32_t> tc::string_reader::forward()
 {
-    auto [character, size] = peek_with_length();
+    const auto [character, size] = peek_with_length();
 
     if (size == 0 && character != end_of_file)
     {
@@ -82,10 +83,10 @@ std::optional<char32_t> tc::string_reader::forward()
     return _current;
 }
 
-std::unique_ptr<tc::source_span> tc::string_reader::flush()
+tc::source_span tc::string_reader::flush()
 {
     auto substring = _string.substr(_start_ix, token_length());
-    auto token = std::make_unique<source_span>(std::move(substring), _start_position, _start_ix);
+    source_span token{std::move(substring), _start_position, _start_ix};
     discard_token();
     return token;
 }

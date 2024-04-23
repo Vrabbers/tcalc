@@ -6,6 +6,8 @@
 
 #include "utf8_utils.h"
 
+using namespace tc;
+
 static bool is_whitespace(std::optional<char32_t> chr)
 {
     if (!chr.has_value())
@@ -43,14 +45,14 @@ static bool is_superscript_digit(std::optional<char32_t> chr)
     return superscript_digits.contains(*chr);
 }
 
-tc::token tc::lexer::next()
+token lexer::next()
 {
-    while (is_whitespace(_sr->peek()))
-        _sr->forward();
+    while (is_whitespace(_sr.peek()))
+        _sr.forward();
 
-    _sr->discard_token();
+    _sr.discard_token();
 
-    auto first = _sr->forward();
+    auto first = _sr.forward();
 
     if (!first.has_value())
     {
@@ -73,30 +75,30 @@ tc::token tc::lexer::next()
     return lex_symbol();
 }
 
-tc::token tc::lexer::flush_token(token_kind type)
+token lexer::flush_token(token_kind type)
 {
-    auto span = _sr->flush();
+    auto span = _sr.flush();
     return {type, std::move(span)};
 }
 
-tc::token tc::lexer::lex_number()
+token lexer::lex_number()
 {
-    auto first = _sr->current();
-    auto next = _sr->peek();
+    auto first = _sr.current();
+    auto next = _sr.peek();
     if (first == U'0' && next == U'b')
     {
-        _sr->forward();
-        while (_sr->peek() == U'0' || _sr->peek() == U'1' || _sr->peek() == U'_')
-            _sr->forward();
+        _sr.forward();
+        while (_sr.peek() == U'0' || _sr.peek() == U'1' || _sr.peek() == U'_')
+            _sr.forward();
 
         return flush_token(token_kind::binary_literal);
     }
 
     if (first == U'0' && next == U'x')
     {
-        _sr->forward();
-        while (is_hex_digit(_sr->peek()) || _sr->peek() == U'_')
-            _sr->forward();
+        _sr.forward();
+        while (is_hex_digit(_sr.peek()) || _sr.peek() == U'_')
+            _sr.forward();
 
         return flush_token(token_kind::hex_literal);
     }
@@ -105,15 +107,15 @@ tc::token tc::lexer::lex_number()
     bool reading_exponent = false;
     while (true)
     {
-        next = _sr->peek();
+        next = _sr.peek();
 
         if (is_decimal_digit(next) || next == U'_')
         {
-            _sr->forward();
+            _sr.forward();
         }
         else if (next == decimal_separator())
         {
-            _sr->forward();
+            _sr.forward();
 
             if (!reading_decimal && !reading_exponent)
             {
@@ -130,7 +132,7 @@ tc::token tc::lexer::lex_number()
         {
             if (!reading_exponent)
             {
-                auto next3 = _sr->peek_many(3);
+                auto next3 = _sr.peek_many(3);
                 if (next3.length() >= 2) // Otherwise we don't have enough input to keep going
                 {
                     if (next3[1] == U'+' || next3[1] == U'-')
@@ -138,14 +140,14 @@ tc::token tc::lexer::lex_number()
                         if (next3.length() == 3 && is_decimal_digit(next3[2])) // If it was a +/-, we need to consume a digit
                         {
                             reading_exponent = true;
-                            _sr->forward_many(3);
+                            _sr.forward_many(3);
                             continue;
                         }
                     }
                     else if (is_decimal_digit(next3[1])) // If is already a digit, try to read more
                     {
                         reading_exponent = true;
-                        _sr->forward_many(2);
+                        _sr.forward_many(2);
                         continue;
                     }
                 }
@@ -155,31 +157,31 @@ tc::token tc::lexer::lex_number()
         }
         else
         {
-            if (_sr->peek() == U'i')
-                _sr->forward();
+            if (_sr.peek() == U'i')
+                _sr.forward();
 
             return flush_token(token_kind::numeric_literal);
         }
     }
 }
 
-tc::token tc::lexer::lex_superscript_number()
+token lexer::lex_superscript_number()
 {
     bool reading_exponent = false;
     while (true)
     {
-        auto next = _sr->peek();
+        auto next = _sr.peek();
 
         if (is_superscript_digit(next))
         {
-            _sr->forward();
+            _sr.forward();
         }
         else if (next == U'ᵉ' || next == U'ᴱ')
         {
             // cf. similar code in lex_number()
             if (!reading_exponent)
             {
-                auto next3 = _sr->peek_many(3);
+                auto next3 = _sr.peek_many(3);
                 if (next3.length() >= 2)
                 {
                     if (next3[1] == U'⁺' || next3[1] == U'⁻')
@@ -187,14 +189,14 @@ tc::token tc::lexer::lex_superscript_number()
                         if (next3.length() == 3 && is_superscript_digit(next3[2]))
                         {
                             reading_exponent = true;
-                            _sr->forward_many(3);
+                            _sr.forward_many(3);
                             continue;
                         }
                     }
                     else if (is_superscript_digit(next3[1]))
                     {
                         reading_exponent = true;
-                        _sr->forward_many(2);
+                        _sr.forward_many(2);
                         continue;
                     }
                 }
@@ -203,21 +205,21 @@ tc::token tc::lexer::lex_superscript_number()
         }
         else
         {
-            if (_sr->peek() == U'ⁱ')
-                _sr->forward();
+            if (_sr.peek() == U'ⁱ')
+                _sr.forward();
 
             return flush_token(token_kind::superscript_literal);
         }
     }
 }
 
-tc::token tc::lexer::lex_symbol()
+token lexer::lex_symbol()
 {
-    if (_sr->current() == arg_separator())
+    if (_sr.current() == arg_separator())
         return flush_token(token_kind::argument_separator);
 
     std::optional<char32_t> next;
-    switch (*_sr->current())
+    switch (*_sr.current())
     {
         case U'+':
             return flush_token(token_kind::plus);
@@ -245,35 +247,35 @@ tc::token tc::lexer::lex_symbol()
         case U'%':
             return flush_token(token_kind::percent);
         case U'!':
-            if (_sr->peek() == U'=')
+            if (_sr.peek() == U'=')
             {
-                _sr->forward();
+                _sr.forward();
                 return flush_token(token_kind::not_equal);
             }
             return flush_token(token_kind::factorial);
         case U'>':
-            next = _sr->peek();
+            next = _sr.peek();
             if (next == U'>')
             {
-                _sr->forward();
+                _sr.forward();
                 return flush_token(token_kind::right_shift);
             }
             if (next == U'=')
             {
-                _sr->forward();
+                _sr.forward();
                 return flush_token(token_kind::greater_or_equal);
             }
             return flush_token(token_kind::greater);
         case U'<':
-            next = _sr->peek();
+            next = _sr.peek();
             if (next == U'<')
             {
-                _sr->forward();
+                _sr.forward();
                 return flush_token(token_kind::left_shift);
             }
             if (next == U'=')
             {
-                _sr->forward();
+                _sr.forward();
                 return flush_token(token_kind::less_or_equal);
             }
             return flush_token(token_kind::less);
@@ -282,9 +284,9 @@ tc::token tc::lexer::lex_symbol()
         case U'≤':
             return flush_token(token_kind::less_or_equal);
         case U'=':
-            if (_sr->peek() == U'=')
+            if (_sr.peek() == U'=')
             {
-                _sr->forward();
+                _sr.forward();
                 return flush_token(token_kind::equality);
             }
             return flush_token(token_kind::equal);
@@ -297,18 +299,18 @@ tc::token tc::lexer::lex_symbol()
     }
 }
 
-tc::token tc::lexer::lex_word()
+token lexer::lex_word()
 {
-    auto peek = _sr->peek();
+    auto peek = _sr.peek();
 
     while (is_letter(peek) || is_decimal_digit(peek))
     {
-        _sr->forward();
-        peek = _sr->peek();
+        _sr.forward();
+        peek = _sr.peek();
     }
 
-    auto sourceSpan = _sr->flush();
-    const auto str = sourceSpan->source_str();
+    auto sourceSpan = _sr.flush();
+    const auto str = sourceSpan.source_str();
 
     const static std::unordered_map<std::string_view, token_kind> keywords
     {
@@ -331,4 +333,3 @@ tc::token tc::lexer::lex_word()
 
     return {token_kind::identifier, std::move(sourceSpan)};
 }
-

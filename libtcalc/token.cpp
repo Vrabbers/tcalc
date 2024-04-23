@@ -3,58 +3,61 @@
 #include <array>
 #include <format>
 
-const char* tc::token_kind_name(token_kind type)
+using namespace tc;
+
+std::string_view tc::token_kind_name(token_kind type)
 {
-    static std::array type_names =
+    using namespace std::literals;
+    constexpr static std::array type_names =
     {
-        "bad",
-        "end_of_file",
+        "bad"sv,
+        "end_of_file"sv,
 
-        "numeric_literal",
-        "superscript_literal",
-        "hex_literal",
-        "binary_literal",
-        "identifier",
+        "numeric_literal"sv,
+        "superscript_literal"sv,
+        "hex_literal"sv,
+        "binary_literal"sv,
+        "identifier"sv,
 
-        "plus",
-        "superscript_plus",
-        "minus",
-        "superscript_minus",
-        "multiply",
-        "divide",
-        "exponentiate",
-        "left_parenthesis",
-        "right_parenthesis",
-        "radical",
-        "percent",
-        "factorial",
-        "left_shift",
-        "right_shift",
-        "greater",
-        "greater_or_equal",
-        "less",
-        "less_or_equal",
-        "equal",
-        "equality",
-        "not_equal",
-        "pi",
-        "tau",
-        "binary_nand",
-        "binary_nor",
-        "binary_xnor",
-        "binary_and",
-        "binary_or",
-        "binary_xor",
-        "binary_not",
+        "plus"sv,
+        "superscript_plus"sv,
+        "minus"sv,
+        "superscript_minus"sv,
+        "multiply"sv,
+        "divide"sv,
+        "exponentiate"sv,
+        "left_parenthesis"sv,
+        "right_parenthesis"sv,
+        "radical"sv,
+        "percent"sv,
+        "factorial"sv,
+        "left_shift"sv,
+        "right_shift"sv,
+        "greater"sv,
+        "greater_or_equal"sv,
+        "less"sv,
+        "less_or_equal"sv,
+        "equal"sv,
+        "equality"sv,
+        "not_equal"sv,
+        "pi"sv,
+        "tau"sv,
+        "binary_nand"sv,
+        "binary_nor"sv,
+        "binary_xnor"sv,
+        "binary_and"sv,
+        "binary_or"sv,
+        "binary_xor"sv,
+        "binary_not"sv,
 
-        "argument_separator",
-        "end_of_line",
+        "argument_separator"sv,
+        "end_of_line"sv,
     };
 
     return type_names.at(static_cast<size_t>(type));
 }
 
-std::string tc::token::format() const
+std::string token::format() const
 {
     std::string str = std::format("(L:{}, C:{}): {} ", position().line, position().column, token_kind_name(kind()));
     if (kind() != token_kind::end_of_line && kind() != token_kind::end_of_file)

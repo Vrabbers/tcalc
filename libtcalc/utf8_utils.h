@@ -19,10 +19,10 @@ namespace utf8proc
     // WARNING! Make sure index < string.size()!
     inline std::pair<ptrdiff_t, char32_t> iterate_one_from_index(const std::string& string, const size_t index)
     {
-        char32_t character;
+        char32_t character = U'\0';
         auto start_ptr = reinterpret_cast<const uint8_t*>(&string.c_str()[index]);
         auto len = utf8proc_iterate(start_ptr, -1, reinterpret_cast<int32_t*>(&character));
-        return std::make_pair(len, character);
+        return {len, character};
     }
 
     inline utf8proc_category_t category(const char32_t character)

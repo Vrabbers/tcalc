@@ -4,6 +4,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include "source_position.h"
 #include "source_span.h"
@@ -15,11 +16,11 @@ namespace tc
     class string_reader final
     {
     public:
-        explicit string_reader(std::string&& input) : _string(std::move(input))
+        explicit string_reader(std::string&& input) : _string{std::move(input)}
         {
         }
 
-        explicit string_reader(const std::string& input) : _string(input)
+        explicit string_reader(const std::string& input) : _string{input}
         {
         }
 
@@ -50,7 +51,7 @@ namespace tc
         }
 
         [[nodiscard]]
-        std::unique_ptr<source_span> flush();
+        source_span flush();
 
         void discard_token()
         {

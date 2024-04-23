@@ -2,13 +2,14 @@
 
 #include <array>
 
-const char* tc::diagnostic_type_name(diagnostic_type type)
+std::string_view tc::diagnostic_type_name(diagnostic_type type)
 {
-    static std::array names =
+    using namespace std::literals;
+    constexpr static std::array names =
     {
-        "bad_character",
-        "invalid_number_literal",
-        "invalid_symbol"
+        "bad_character"sv,
+        "invalid_number_literal"sv,
+        "invalid_symbol"sv,
     };
 
     return names.at(static_cast<size_t>(type));

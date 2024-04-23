@@ -13,13 +13,13 @@ namespace tc
     class lexer final
     {
     public:
-        explicit lexer(std::string&& input, bool commaArgSeparator) : _sr(std::make_unique<string_reader>(std::move(input))),
-            _comma_argument_separator(commaArgSeparator)
+        explicit lexer(std::string&& input, bool comma_arg_separator) :
+            _sr{std::move(input)}, _comma_argument_separator{comma_arg_separator}
         {
         }
 
-        explicit lexer(const std::string& input, bool commaArgSeparator) : _sr(std::make_unique<string_reader>(input)),
-            _comma_argument_separator(commaArgSeparator)
+        explicit lexer(const std::string& input, bool comma_arg_separator) :
+            _sr{input}, _comma_argument_separator{comma_arg_separator}
         {
         }
 
@@ -51,7 +51,7 @@ namespace tc
         }
 
         std::vector<diagnostic> _diagnostic_bag{};
-        std::unique_ptr<string_reader> _sr;
+        string_reader _sr;
         bool _comma_argument_separator;
     };
 }

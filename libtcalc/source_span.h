@@ -8,8 +8,12 @@ namespace tc
     class source_span final
     {
     public:
-        source_span(std::string&& str, const source_position start, const size_t src_ix) : _string(str),
-            _position(start), _source_index(src_ix)
+        source_span() : _position{}, _source_index{}
+        {
+        }
+
+        source_span(std::string&& str, const source_position start, const size_t src_ix) :
+            _string{std::move(str)}, _position{start}, _source_index{src_ix}
         {
         }
 
