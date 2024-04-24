@@ -33,6 +33,9 @@ namespace tcalc
 
     private:
         token flush_token(token_kind);
+        token lex_hex_number();
+        token lex_decimal_number();
+        token lex_binary_number();
         token lex_number();
         token lex_superscript_number();
         token lex_symbol();

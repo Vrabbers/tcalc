@@ -36,13 +36,26 @@ static bool is_hex_digit(std::optional<char32_t> chr)
     return is_decimal_digit(chr) || (chr >= U'a' && chr <= U'f') || (chr >= U'A' && chr <= U'F');
 }
 
-static const std::set superscript_digits = {U'²', U'³', U'¹', U'⁰', U'⁴', U'⁵', U'⁶', U'⁷', U'⁸', U'⁹'};
-
 static bool is_superscript_digit(std::optional<char32_t> chr)
 {
     if (!chr.has_value())
         return false;
-    return superscript_digits.contains(*chr);
+    switch (*chr)
+    {
+        case U'²':
+        case U'³':
+        case U'¹':
+        case U'⁰':
+        case U'⁴':
+        case U'⁵':
+        case U'⁶':
+        case U'⁷':
+        case U'⁸':
+        case U'⁹':
+            return true;
+        default:
+            return false;
+    }
 }
 
 token lexer::next()
@@ -79,33 +92,73 @@ token lexer::flush_token(token_kind type)
     return {type, std::move(span)};
 }
 
-token lexer::lex_number()
+token lexer::lex_binary_number()
 {
-    auto first = _sr.current();
-    auto next = _sr.peek();
-    if (first == U'0' && next == U'b')
-    {
+    _sr.forward();
+    while (_sr.peek() == U'0' || _sr.peek() == U'1' || _sr.peek() == U'_')
         _sr.forward();
-        while (_sr.peek() == U'0' || _sr.peek() == U'1' || _sr.peek() == U'_')
-            _sr.forward();
 
-        return flush_token(token_kind::binary_literal);
-    }
+    return flush_token(token_kind::binary_literal);
+}
 
-    if (first == U'0' && next == U'x')
-    {
+token lexer::lex_hex_number()
+{
+    _sr.forward();
+    while (is_hex_digit(_sr.peek()) || _sr.peek() == U'_')
         _sr.forward();
-        while (is_hex_digit(_sr.peek()) || _sr.peek() == U'_')
-            _sr.forward();
 
-        return flush_token(token_kind::hex_literal);
+    return flush_token(token_kind::hex_literal);
+}
+
+consteval static char32_t plus(bool is_superscript)
+{
+    return is_superscript ? U'⁺' : U'+';
+}
+
+consteval static char32_t minus(bool is_superscript)
+{
+    return is_superscript ? U'⁻' : U'-';
+}
+
+template<bool Is_superscript>
+static bool is_digit(char32_t chr)
+{
+    if constexpr (Is_superscript)
+        return is_superscript_digit(chr);
+    else
+        return is_decimal_digit(chr);
+}
+
+template<bool Is_superscript>
+static bool start_reading_exponent(string_reader& sr)
+{
+    const auto next3 = sr.peek_many(3);
+    if (next3.length() >= 2) // Otherwise we don't have enough input to keep going
+    {
+        if (next3[1] == plus(Is_superscript) || next3[1] == minus(Is_superscript))
+        {
+            if (next3.length() == 3 && is_digit<Is_superscript>(next3[2])) // If it was a +/-, we need to consume a digit
+            {
+                sr.forward_many(3);
+                return true;
+            }
+        }
+        else if (is_digit<Is_superscript>(next3[1]))// If is already a digit, need to read them and then start reading exponent
+        {
+            sr.forward_many(2);
+            return true;
+        }
     }
+    return false; // If not enough input, or if characters we didnt want were there
+}
 
+token lexer::lex_decimal_number()
+{
     bool reading_decimal = false;
     bool reading_exponent = false;
     while (true)
     {
-        next = _sr.peek();
+        const auto next = _sr.peek();
 
         if (is_decimal_digit(next) || next == U'_')
         {
@@ -130,27 +183,11 @@ token lexer::lex_number()
         {
             if (!reading_exponent)
             {
-                auto next3 = _sr.peek_many(3);
-                if (next3.length() >= 2) // Otherwise we don't have enough input to keep going
-                {
-                    if (next3[1] == U'+' || next3[1] == U'-')
-                    {
-                        if (next3.length() == 3 && is_decimal_digit(next3[2])) // If it was a +/-, we need to consume a digit
-                        {
-                            reading_exponent = true;
-                            _sr.forward_many(3);
-                            continue;
-                        }
-                    }
-                    else if (is_decimal_digit(next3[1])) // If is already a digit, try to read more
-                    {
-                        reading_exponent = true;
-                        _sr.forward_many(2);
-                        continue;
-                    }
-                }
+                reading_exponent = start_reading_exponent<false>(_sr);
+                if (reading_exponent)
+                    continue;
             }
-            // In any other case, finish reading early.
+            // If we didn't start reading exponent, finish early.
             return flush_token(token_kind::numeric_literal);
         }
         else
@@ -163,12 +200,25 @@ token lexer::lex_number()
     }
 }
 
+token lexer::lex_number()
+{
+    const auto first = _sr.current();
+    const auto next = _sr.peek();
+    if (first == U'0' && next == U'b')
+        return lex_binary_number();
+
+    if (first == U'0' && next == U'x')
+        return lex_hex_number();
+
+    return lex_decimal_number();
+}
+
 token lexer::lex_superscript_number()
 {
     bool reading_exponent = false;
     while (true)
     {
-        auto next = _sr.peek();
+        const auto next = _sr.peek();
 
         if (is_superscript_digit(next))
         {
@@ -176,29 +226,13 @@ token lexer::lex_superscript_number()
         }
         else if (next == U'ᵉ' || next == U'ᴱ')
         {
-            // cf. similar code in lex_number()
             if (!reading_exponent)
             {
-                auto next3 = _sr.peek_many(3);
-                if (next3.length() >= 2)
-                {
-                    if (next3[1] == U'⁺' || next3[1] == U'⁻')
-                    {
-                        if (next3.length() == 3 && is_superscript_digit(next3[2]))
-                        {
-                            reading_exponent = true;
-                            _sr.forward_many(3);
-                            continue;
-                        }
-                    }
-                    else if (is_superscript_digit(next3[1]))
-                    {
-                        reading_exponent = true;
-                        _sr.forward_many(2);
-                        continue;
-                    }
-                }
+                reading_exponent = start_reading_exponent<true>(_sr);
+                if (reading_exponent)
+                    continue;
             }
+
             return flush_token(token_kind::superscript_literal);
         }
         else
