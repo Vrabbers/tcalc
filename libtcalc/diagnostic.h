@@ -1,10 +1,11 @@
 #pragma once
-#include "source_span.h"
+
 #include <memory>
-#include <set>
 #include <utility>
 
-namespace tc
+#include "source_span.h"
+
+namespace tcalc
 {
     enum class diagnostic_type
     {
@@ -30,12 +31,6 @@ namespace tc
         }
 
         [[nodiscard]]
-        source_position position() const
-        {
-            return _source_span.position();
-        }
-
-        [[nodiscard]]
         const source_span& source() const
         {
             return _source_span;
@@ -48,9 +43,15 @@ namespace tc
         }
 
         [[nodiscard]]
-        size_t source_index() const
+        size_t start_index() const
         {
-            return _source_span.source_index();
+            return _source_span.start_index();
+        }
+
+        [[nodiscard]]
+        size_t end_index() const
+        {
+            return _source_span.end_index();
         }
 
     private:

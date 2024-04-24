@@ -6,10 +6,9 @@
 #include <string>
 #include <utility>
 
-#include "source_position.h"
 #include "source_span.h"
 
-namespace tc
+namespace tcalc
 {
     constexpr char32_t end_of_file = static_cast<char32_t>(-1);
 
@@ -56,7 +55,6 @@ namespace tc
         void discard_token()
         {
             _start_ix = _end_ix;
-            _start_position = _end_position;
         }
 
     private:
@@ -66,7 +64,5 @@ namespace tc
         std::string _string;
         size_t _start_ix = 0;
         size_t _end_ix = 0;
-        source_position _start_position = {1, 1};
-        source_position _end_position = {1, 1};
     };
 }

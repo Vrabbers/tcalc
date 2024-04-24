@@ -1,19 +1,18 @@
 #pragma once
 
 #include <string>
-#include "source_position.h"
 
-namespace tc
+namespace tcalc
 {
     class source_span final
     {
     public:
-        source_span() : _position{}, _source_index{}
+        source_span() : _start_index{}
         {
         }
 
-        source_span(std::string&& str, const source_position start, const size_t src_ix) :
-            _string{std::move(str)}, _position{start}, _source_index{src_ix}
+        source_span(std::string&& str, const size_t src_ix) :
+            _string{std::move(str)}, _start_index{src_ix}
         {
         }
 
@@ -24,20 +23,19 @@ namespace tc
         }
 
         [[nodiscard]]
-        source_position position() const
+        size_t start_index() const
         {
-            return _position;
+            return _start_index;
         }
 
         [[nodiscard]]
-        size_t source_index() const
+        size_t end_index() const
         {
-            return _source_index;
+            return start_index() + _string.length();
         }
 
     private:
         std::string _string;
-        source_position _position;
-        size_t _source_index;
+        size_t _start_index;
     };
 }

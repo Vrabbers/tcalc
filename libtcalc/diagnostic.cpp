@@ -2,7 +2,7 @@
 
 #include <array>
 
-std::string_view tc::diagnostic_type_name(diagnostic_type type)
+std::string_view tcalc::diagnostic_type_name(diagnostic_type type)
 {
     using namespace std::literals;
     constexpr static std::array names =

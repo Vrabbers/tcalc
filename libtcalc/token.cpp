@@ -3,9 +3,9 @@
 #include <array>
 #include <format>
 
-using namespace tc;
+using namespace tcalc;
 
-std::string_view tc::token_kind_name(token_kind type)
+std::string_view tcalc::token_kind_name(token_kind type)
 {
     using namespace std::literals;
     constexpr static std::array type_names =
@@ -51,7 +51,7 @@ std::string_view tc::token_kind_name(token_kind type)
         "binary_not"sv,
 
         "argument_separator"sv,
-        "end_of_line"sv,
+        "expression_separator"sv,
     };
 
     return type_names.at(static_cast<size_t>(type));
@@ -59,8 +59,8 @@ std::string_view tc::token_kind_name(token_kind type)
 
 std::string token::format() const
 {
-    std::string str = std::format("(L:{}, C:{}): {} ", position().line, position().column, token_kind_name(kind()));
-    if (kind() != token_kind::end_of_line && kind() != token_kind::end_of_file)
-        str += std::format("\"{}\"", source_str());
+    std::string str = std::format("({}-{}): {} ", start_index(), end_index(), token_kind_name(kind()));
+    if (kind() != token_kind::expression_separator && kind() != token_kind::end_of_file)
+        str.append(std::format("\"{}\"", source_str()));
     return str;
 }

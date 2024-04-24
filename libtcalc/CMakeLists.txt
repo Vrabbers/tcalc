@@ -19,7 +19,6 @@ set(SOURCES
 )
 
 set(HEADERS
-    source_position.h
     source_span.h
     token.h
     lexer.h

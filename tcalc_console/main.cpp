@@ -11,16 +11,16 @@
 #pragma execution_character_set("utf-8")
 #endif
 
-static tc::lexer parse(std::string&& str, bool print = true)
+static tcalc::lexer parse(std::string&& str, bool print = true)
 {
-    tc::lexer lexer(std::move(str), true);
+    tcalc::lexer lexer(std::move(str), true);
 
     while (true)
     {
-        tc::token next = lexer.next();
+        tcalc::token next = lexer.next();
         if (print)
             std::cout << next.format() << '\n';
-        if (next.kind() == tc::token_kind::end_of_file)
+        if (next.kind() == tcalc::token_kind::end_of_file)
             break;
     }
 
@@ -34,25 +34,17 @@ static void interactive()
     while (true)
     {
         std::string input;
-        std::string aux;
-        while (true)
-        {
-            std::cout << "> ";
-            std::getline(std::cin, aux);
-            if (aux.empty())
-                break;
-            else
-                input += aux + "\n";
-        }
-        if (input.empty())
+        std::cout << "> ";
+        std::getline(std::cin, input);
+
+        if (input == "quit")
             return;
 
-        std::cout << "input:\n" << input << '\n';
+        std::cout << "\ninput:\n" << input << '\n';
         auto lex = parse(std::move(input));
-        std::cout << "\n\x1b[0;31mDiagnostics:\n";
         for (const auto& diag : lex.diagnostic_bag())
         {
-            std::cout << std::format("{} @ L:{}, C:{} \n", diagnostic_type_name(diag.type()), diag.position().line, diag.position().column);
+            std::cout << std::format("{} @ {}-{} \n", diagnostic_type_name(diag.type()), diag.start_index(), diag.end_index());
         }
         std::cout << "\x1b[0m\n";
     }

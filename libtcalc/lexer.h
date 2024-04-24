@@ -8,7 +8,7 @@
 #include "token.h"
 #include "string_reader.h"
 
-namespace tc
+namespace tcalc
 {
     class lexer final
     {

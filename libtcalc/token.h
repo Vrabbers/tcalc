@@ -4,7 +4,7 @@
 
 #include "source_span.h"
 
-namespace tc
+namespace tcalc
 {
     enum class token_kind
     {
@@ -49,7 +49,7 @@ namespace tc
         binary_not,
 
         argument_separator,
-        end_of_line,
+        expression_separator,
     };
 
     std::string_view token_kind_name(token_kind kind);
@@ -80,9 +80,15 @@ namespace tc
         }
 
         [[nodiscard]]
-        source_position position() const
+        size_t start_index() const
         {
-            return _source_span.position();
+            return _source_span.start_index();
+        }
+
+        [[nodiscard]]
+        size_t end_index() const
+        {
+            return _source_span.end_index();
         }
 
         [[nodiscard]]

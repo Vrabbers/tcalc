@@ -6,7 +6,7 @@
 
 #include "utf8_utils.h"
 
-using namespace tc;
+using namespace tcalc;
 
 static bool is_whitespace(std::optional<char32_t> chr)
 {
@@ -52,7 +52,7 @@ token lexer::next()
 
     _sr.discard_token();
 
-    auto first = _sr.forward();
+    const auto first = _sr.forward();
 
     if (!first.has_value())
     {
@@ -63,8 +63,6 @@ token lexer::next()
 
     if (*first == end_of_file)
         return flush_token(token_kind::end_of_file);
-    if (*first == U'\n')
-        return flush_token(token_kind::end_of_line);
     if (is_decimal_digit(first))
         return lex_number();
     if (is_superscript_digit(first))
@@ -231,7 +229,7 @@ token lexer::lex_symbol()
             return flush_token(token_kind::superscript_minus);
         case U'*':
         case U'×':
-        case U'∙':
+        case U'⋅':
             return flush_token(token_kind::multiply);
         case U'/':
         case U'÷':
@@ -292,6 +290,9 @@ token lexer::lex_symbol()
             return flush_token(token_kind::equal);
         case U'≠':
             return flush_token(token_kind::not_equal);
+        case U'\n':
+        case U':':
+            return flush_token(token_kind::expression_separator);
         default:
             auto token = flush_token(token_kind::bad);
             _diagnostic_bag.emplace_back(token.source(), diagnostic_type::invalid_symbol);
