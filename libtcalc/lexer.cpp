@@ -120,30 +120,30 @@ consteval static char32_t minus(bool is_superscript)
     return is_superscript ? U'⁻' : U'-';
 }
 
-template<bool Is_superscript>
+template<bool Superscript>
 static bool is_digit(char32_t chr)
 {
-    if constexpr (Is_superscript)
+    if constexpr (Superscript)
         return is_superscript_digit(chr);
     else
         return is_decimal_digit(chr);
 }
 
-template<bool Is_superscript>
+template<bool Superscript>
 static bool start_reading_exponent(string_reader& sr)
 {
     const auto next3 = sr.peek_many(3);
     if (next3.length() >= 2) // Otherwise we don't have enough input to keep going
     {
-        if (next3[1] == plus(Is_superscript) || next3[1] == minus(Is_superscript))
+        if (next3[1] == plus(Superscript) || next3[1] == minus(Superscript))
         {
-            if (next3.length() == 3 && is_digit<Is_superscript>(next3[2])) // If it was a +/-, we need to consume a digit
+            if (next3.length() == 3 && is_digit<Superscript>(next3[2])) // If it was a +/-, we need to consume a digit
             {
                 sr.forward_many(3);
                 return true;
             }
         }
-        else if (is_digit<Is_superscript>(next3[1]))// If is already a digit, need to read them and then start reading exponent
+        else if (is_digit<Superscript>(next3[1]))// If is already a digit, need to read them and then start reading exponent
         {
             sr.forward_many(2);
             return true;
