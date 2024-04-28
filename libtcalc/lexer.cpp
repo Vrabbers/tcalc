@@ -162,7 +162,7 @@ token lexer::lex_decimal_number()
     {
         const auto next = _sr.peek();
 
-        if (is_decimal_digit(next) || next == U'_')
+        if (is_decimal_digit(next) || next == U'\'')
         {
             _sr.forward();
         }
@@ -194,7 +194,7 @@ token lexer::lex_decimal_number()
         }
         else
         {
-            if (_sr.peek() == U'i')
+            if (next == U'i')
                 _sr.forward();
 
             return flush_token(token_kind::numeric_literal);

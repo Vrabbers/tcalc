@@ -5,18 +5,17 @@
 static std::string make_mpfr_format(std::string_view from)
 {
     std::string str{};
-    str.reserve(from.length() + 5);
-    
+    str.reserve(from.length()); // Most of the time, it will be just as long, and it won't ever be any longer
+
     for (auto c : from)
     {
-        if (c == '_' || c == 'i')
+        if (c == '\'' || c == 'i') // Ignore imaginary i and thousands separator
             continue;
-        if (c == ',' || c == '.')
+        if (c == ',' || c == '.') // Make either decimal point just a period, as MPFR will always accept it as dcimal
             str.push_back('.');
         else
-            str.push_back(c);
+            str.push_back(c); // Otherwise just add the character on
     }
-
     return str;
 }
 
@@ -34,25 +33,25 @@ void tcalc::number::set_imaginary(std::string_view imaginary)
 
 static std::string real_only_string(const mpc_t handle)
 {
-    auto size = mpfr_snprintf(nullptr, 0, "%Rg", mpc_realref(handle)) + 1;
+    auto size = mpfr_snprintf(nullptr, 0, "%.18Rg", mpc_realref(handle)) + 1;
     std::string str(static_cast<size_t>(size), '\0');
-    mpfr_snprintf(str.data(), size, "%Rg", mpc_realref(handle));
+    mpfr_snprintf(str.data(), size, "%.18Rg", mpc_realref(handle));
     return str;
 }
 
 static std::string both_string_positive_imaginary(const mpc_t handle)
 {
-    auto size = mpfr_snprintf(nullptr, 0, "%Rg+%Rg i", mpc_realref(handle), mpc_imagref(handle)) + 1;
+    auto size = mpfr_snprintf(nullptr, 0, "%.18Rg+%.18Rgi", mpc_realref(handle), mpc_imagref(handle)) + 1;
     std::string str(static_cast<size_t>(size), '\0');
-    mpfr_snprintf(str.data(), size, "%Rg+%Rgi", mpc_realref(handle), mpc_imagref(handle));
+    mpfr_snprintf(str.data(), size, "%.18Rg+%.18Rgi", mpc_realref(handle), mpc_imagref(handle));
     return str;
 }
 
 static std::string both_string_negative_imaginary(const mpc_t handle)
 {
-    auto size = mpfr_snprintf(nullptr, 0, "%Rg%Rg i", mpc_realref(handle), mpc_imagref(handle)) + 1;
+    auto size = mpfr_snprintf(nullptr, 0, "%.18Rg%.18Rgi", mpc_realref(handle), mpc_imagref(handle)) + 1;
     std::string str(static_cast<size_t>(size), '\0');
-    mpfr_snprintf(str.data(), size, "%Rg%Rgi", mpc_realref(handle), mpc_imagref(handle));
+    mpfr_snprintf(str.data(), size, "%.18Rg%.18Rgi", mpc_realref(handle), mpc_imagref(handle));
     return str;
 }
 

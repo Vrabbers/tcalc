@@ -75,7 +75,7 @@ int main(int argc, char* argv[])
 #endif
 
     tcalc::number number{64};
-    number.set_imaginary("2.342345e2");
+    number.set_real("0.1");
         std::cout << number.string() << '\n';
 
     number.square();
