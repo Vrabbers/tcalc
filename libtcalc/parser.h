@@ -1,5 +1,4 @@
 #pragma once
-#include <span>
 
 #include "expression.h"
 #include "lexer.h"
@@ -29,7 +28,7 @@ namespace tcalc
         const token& peek()
         {
             if (!_peek.has_value())
-                _peek = std::move(_lexer.next());
+                _peek = _lexer.next();
             return *_peek;
         }
 

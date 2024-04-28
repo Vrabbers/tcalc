@@ -1,0 +1,19 @@
+include(FindPackageHandleStandardArgs)
+
+find_library(UTF8PROC_LIBRARIES
+    NAMES utf8proc
+)
+
+find_path(UTF8PROC_INCLUDES
+    NAMES utf8proc.h
+)
+
+find_package_handle_standard_args(UTF8PROC
+    REQUIRED_VARS UTF8PROC_LIBRARIES UTF8PROC_INCLUDES)
+
+if (UTF8PROC_FOUND AND NOT TARGET UTF8PROC::UTF8PROC)
+    add_library(UTF8PROC::UTF8PROC UNKNOWN IMPORTED)
+    set_target_properties(UTF8PROC::UTF8PROC PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${UTF8PROC_INCLUDES}"
+        IMPORTED_LOCATION "${UTF8PROC_LIBRARIES}")
+endif()
