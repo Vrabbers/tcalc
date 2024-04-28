@@ -36,7 +36,6 @@ namespace tcalc
         less,
         less_or_equal,
         equal,
-        equality,
         not_equal,
         pi,
         tau,

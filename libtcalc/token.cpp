@@ -5,7 +5,7 @@
 
 using namespace tcalc;
 
-std::string_view tcalc::token_kind_name(token_kind type)
+std::string_view tcalc::token_kind_name(const token_kind kind)
 {
     using namespace std::literals;
     constexpr static std::array type_names =
@@ -38,7 +38,6 @@ std::string_view tcalc::token_kind_name(token_kind type)
         "less"sv,
         "less_or_equal"sv,
         "equal"sv,
-        "equality"sv,
         "not_equal"sv,
         "pi"sv,
         "tau"sv,
@@ -54,7 +53,7 @@ std::string_view tcalc::token_kind_name(token_kind type)
         "expression_separator"sv,
     };
 
-    return type_names.at(static_cast<size_t>(type));
+    return type_names.at(static_cast<size_t>(kind));
 }
 
 std::string token::format() const

@@ -5,6 +5,7 @@
 #include <cstring>
 
 #include "lexer.h"
+#include "number.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -72,6 +73,15 @@ int main(int argc, char* argv[])
     SetConsoleCP(CP_UTF8);
     SetConsoleOutputCP(CP_UTF8);
 #endif
+
+    tcalc::number number{64};
+    number.set(0, 1);
+    number.square();
+    std::cout << number.string();
+    tcalc::number number2 = std::move(number);
+    number2.square();
+    number2.add(number2, number2);
+    std::cout << number2.string();
     if (argc == 3 && std::strcmp(argv[1], "fuzz") == 0)
         fuzz(std::stoi(argv[2]));
     else

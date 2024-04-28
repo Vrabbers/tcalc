@@ -1,6 +1,5 @@
 #include "lexer.h"
 
-#include <set>
 #include <unordered_map>
 #include <optional>
 
@@ -20,7 +19,7 @@ static bool is_letter(std::optional<char32_t> chr)
 {
     if (!chr.has_value())
         return false;
-    auto c = utf8proc::category(*chr);
+    const auto c = utf8proc::category(*chr);
     return (c >= UTF8PROC_CATEGORY_LU && c <= UTF8PROC_CATEGORY_LO)
         || c == UTF8PROC_CATEGORY_PC
         || c == UTF8PROC_CATEGORY_NO;
@@ -75,7 +74,10 @@ token lexer::next()
     }
 
     if (*first == end_of_file)
+    {
+        _reached_end = true;
         return flush_token(token_kind::end_of_file);
+    }
     if (is_decimal_digit(first))
         return lex_number();
     if (is_superscript_digit(first))
@@ -316,11 +318,6 @@ token lexer::lex_symbol()
         case U'≤':
             return flush_token(token_kind::less_or_equal);
         case U'=':
-            if (_sr.peek() == U'=')
-            {
-                _sr.forward();
-                return flush_token(token_kind::equality);
-            }
             return flush_token(token_kind::equal);
         case U'≠':
             return flush_token(token_kind::not_equal);

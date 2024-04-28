@@ -20,7 +20,7 @@ namespace tcalc
     {
     public:
         // Constructor makes a copy of the source_span, so it can live longer than the token which originally owned it.
-        diagnostic(source_span  src, diagnostic_type type) : _source_span{std::move(src)}, _type{type}
+        diagnostic(source_span src, const diagnostic_type type) : _source_span{std::move(src)}, _type{type}
         {
         }
 

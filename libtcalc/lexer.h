@@ -24,12 +24,18 @@ namespace tcalc
         }
 
         [[nodiscard]]
-        const std::vector<diagnostic>& diagnostic_bag() const
+        std::vector<diagnostic>& diagnostic_bag()
         {
             return _diagnostic_bag;
         }
 
         token next();
+
+        [[nodiscard]]
+        bool reached_end() const
+        {
+            return _reached_end;
+        }
 
     private:
         token flush_token(token_kind);
@@ -56,5 +62,6 @@ namespace tcalc
         std::vector<diagnostic> _diagnostic_bag{};
         string_reader _sr;
         bool _comma_argument_separator;
+        bool _reached_end{false};
     };
 }
