@@ -10,7 +10,7 @@
 #pragma warning(pop)
 #endif
 
-#include <optional>
+#include <string>
 
 namespace tcalc
 {
@@ -18,10 +18,12 @@ namespace tcalc
     {
     public:
         static constexpr mpc_rnd_t round_mode = MPC_RNDNN;
+        static constexpr mpfr_rnd_t fr_round_mode = MPFR_RNDN;
 
         explicit number(mpfr_prec_t precision)
         {
             mpc_init2(_handle, precision);
+            set(0, 0);
         }
 
         number(const number& other)
@@ -55,6 +57,17 @@ namespace tcalc
                 mpc_set_si_si(_handle, real, imaginary, round_mode);
         }
 
+        void set_real(std::string_view real);
+
+        void set_imaginary(std::string_view imaginary);
+
+        bool is_real() const
+        {
+            if (_owns)
+                return mpfr_zero_p(mpc_imagref(_handle));
+            return false;
+        }
+
         void add(const number& a, const number& b)
         {
             if (_owns)
@@ -62,16 +75,7 @@ namespace tcalc
         }
 
         [[nodiscard]]
-        std::string string() const
-        {
-            if (!_owns)
-                return {};
-
-            char* str = mpc_get_str(10, 0, _handle, round_mode);
-            auto string = std::string{str};
-            mpc_free_str(str);
-            return string;
-        }
+        std::string string() const;
 
     private:
         mpc_t _handle{};

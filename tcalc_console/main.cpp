@@ -75,15 +75,19 @@ int main(int argc, char* argv[])
 #endif
 
     tcalc::number number{64};
-    number.set(0, 1);
+    number.set_imaginary("2.342345e2");
+        std::cout << number.string() << '\n';
+
     number.square();
-    std::cout << number.string();
+    std::cout << number.string() << '\n';
     tcalc::number number2 = std::move(number);
     number2.square();
     number2.add(number2, number2);
-    std::cout << number2.string();
+    std::cout << number2.string() << '\n';
     if (argc == 3 && std::strcmp(argv[1], "fuzz") == 0)
         fuzz(std::stoi(argv[2]));
     else
         interactive();
+
+    mpfr_mp_memory_cleanup();
 }

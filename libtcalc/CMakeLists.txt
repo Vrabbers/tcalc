@@ -13,6 +13,7 @@ set(SOURCES
     diagnostic.cpp
     parser.cpp
     expression.cpp
+    number.cpp
 )
 
 set(HEADERS
