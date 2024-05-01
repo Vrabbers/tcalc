@@ -353,8 +353,6 @@ token lexer::lex_word()
         {"OR", token_kind::binary_or},
         {"XOR", token_kind::binary_xor},
         {"NOT", token_kind::binary_not},
-        {"π", token_kind::pi},
-        {"τ", token_kind::tau},
         {"i", token_kind::numeric_literal},
         {"ⁱ", token_kind::superscript_literal},
     };

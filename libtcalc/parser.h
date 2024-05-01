@@ -13,6 +13,12 @@ namespace tcalc
         }
 
         expression parse_expression();
+
+        const std::vector<diagnostic>& diagnostic_bag()
+        {
+            return _diagnostic_bag;
+        }
+
     private:
         token forward()
         {
@@ -31,6 +37,9 @@ namespace tcalc
                 _peek = _lexer.next();
             return *_peek;
         }
+
+        void parse_arithmetic(std::vector<operation> &parsing, int enclosing_precedence = -1, bool enclosing_right_assoc = false);
+        void parse_primary_term(std::vector<operation> &parsing, int enclosing_precedence = -1);
 
         token _current;
         std::optional<token> _peek;

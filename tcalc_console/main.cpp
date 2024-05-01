@@ -5,6 +5,8 @@
 #include <cstring>
 
 #include "lexer.h"
+#include "parser.h"
+#include "operation.h"
 #include "number.h"
 
 #ifdef _WIN32
@@ -12,20 +14,12 @@
 #pragma execution_character_set("utf-8")
 #endif
 
-static tcalc::lexer parse(std::string&& str, bool print = true)
+static tcalc::parser parse(std::string&& str)
 {
-    tcalc::lexer lexer(std::move(str), true);
+    tcalc::lexer lexer{std::move(str), true};
+    tcalc::parser parser{std::move(lexer)};
 
-    while (true)
-    {
-        tcalc::token next = lexer.next();
-        if (print)
-            std::cout << next.format() << '\n';
-        if (next.kind() == tcalc::token_kind::end_of_file)
-            break;
-    }
-
-    return lexer;
+    return parser;
 }
 
 static void interactive()
@@ -42,8 +36,13 @@ static void interactive()
             return;
 
         std::cout << "\ninput:\n" << input << '\n';
-        auto lex = parse(std::move(input));
-        for (const auto& diag : lex.diagnostic_bag())
+        auto p = parse(std::move(input));
+        auto arith = p.parse_expression();
+        for (const auto& op : std::get<tcalc::arithmetic_expression>(arith).tokens)
+        {
+            std::cout << op_to_string(op) << ' ';
+        }
+        for (const auto& diag : p.diagnostic_bag())
         {
             std::cout << std::format("{} @ {}-{} \n", diagnostic_type_name(diag.type()), diag.start_index(), diag.end_index());
         }
@@ -63,7 +62,7 @@ static void fuzz(const int times)
             j = static_cast<char>(rdist(rand));
         std::cout << "Fuzz #" << i + 1 << '\n';
         std::string a{buf.cbegin(), buf.cend()};
-        parse(std::move(a), false);
+        parse(std::move(a));
     }
 }
 
@@ -74,16 +73,6 @@ int main(int argc, char* argv[])
     SetConsoleOutputCP(CP_UTF8);
 #endif
 
-    tcalc::number number{64};
-    number.set_real("0.1");
-        std::cout << number.string() << '\n';
-
-    number.square();
-    std::cout << number.string() << '\n';
-    tcalc::number number2 = std::move(number);
-    number2.square();
-    number2.add(number2, number2);
-    std::cout << number2.string() << '\n';
     if (argc == 3 && std::strcmp(argv[1], "fuzz") == 0)
         fuzz(std::stoi(argv[2]));
     else

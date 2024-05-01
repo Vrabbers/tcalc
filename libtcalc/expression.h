@@ -3,13 +3,13 @@
 #include <variant>
 #include <vector>
 
+#include "operation.h"
 #include "token.h"
-
 namespace tcalc
 {
     struct arithmetic_expression final
     {
-        std::vector<token> tokens;
+        std::vector<operation> tokens;
     };
 
     struct assignment_expression final

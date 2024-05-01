@@ -14,6 +14,7 @@ set(SOURCES
     parser.cpp
     expression.cpp
     number.cpp
+    operation.cpp
 )
 
 set(HEADERS
@@ -25,6 +26,7 @@ set(HEADERS
     parser.h
     expression.h
     number.h
+    operation.h
 )
 
 set(PRIVATE_HEADERS
