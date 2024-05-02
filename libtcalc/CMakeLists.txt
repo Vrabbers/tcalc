@@ -39,6 +39,5 @@ set_target_properties(libtcalc PROPERTIES
     OUTPUT_NAME tcalc
 )
 
-target_include_directories(libtcalc PUBLIC ${UTF8PROC_INCLUDE_DIRS} ${GMP_INCLUDE_DIRS} ${MPFR_INCLUDE_DIRS} ${MPC_INCLUDE_DIRS})
+target_include_directories(libtcalc PUBLIC ${UTF8PROC_INCLUDES} ${GMP_INCLUDES} ${MPFR_INCLUDES} ${MPC_INCLUDES})
 target_link_libraries(libtcalc PUBLIC ${UTF8PROC_LIBRARIES} ${GMP_LIBRARIES} ${MPFR_LIBRARIES} ${MPC_LIBRARIES})
-target_compile_definitions(libtcalc PRIVATE UTF8PROC_STATIC TCALC_LIBRARY)

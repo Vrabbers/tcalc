@@ -4,6 +4,7 @@
 #include <random>
 #include <cstring>
 
+#include "expression.h"
 #include "lexer.h"
 #include "parser.h"
 #include "operation.h"
@@ -40,13 +41,19 @@ static void interactive()
         auto arith = p.parse_expression();
         for (const auto& op : std::get<tcalc::arithmetic_expression>(arith).tokens)
         {
-            std::cout << op_to_string(op) << ' ';
+            std::cout << tcalc::op_to_string(op) << ' ';
         }
-        for (const auto& diag : p.diagnostic_bag())
+
+        if (!p.diagnostic_bag().empty())
         {
-            std::cout << std::format("{} @ {}-{} \n", diagnostic_type_name(diag.type()), diag.start_index(), diag.end_index());
+            std::cout << "\n\x1b[31mdiagnostics:\n";
+            for (const auto& diag : p.diagnostic_bag())
+            {
+                std::cout << std::format("{} @ {}-{} \n", tcalc::diagnostic_type_name(diag.type()), diag.start_index(), diag.end_index());
+            }
+            std::cout << "\x1b[0m";
         }
-        std::cout << "\x1b[0m\n";
+        std::cout << '\n';
     }
 }
 

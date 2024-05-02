@@ -2,38 +2,6 @@
 
 using namespace tcalc;
 
-static bool ends_expr(const token_kind kind)
-{
-    switch (kind)
-    {
-        case token_kind::expression_separator:
-        case token_kind::end_of_file:
-        case token_kind::bad:
-            return true;
-        default:
-            return false;
-    }
-}
-
-static bool ends_arith(const token_kind kind)
-{
-    switch (kind)
-    {
-        case token_kind::equal:
-        case token_kind::less:
-        case token_kind::less_or_equal:
-        case token_kind::greater:
-        case token_kind::greater_or_equal:
-        case token_kind::not_equal:
-        case token_kind::expression_separator:
-        case token_kind::end_of_file:
-        case token_kind::bad:
-            return true;
-        default:
-            return false;
-    }
-}
-
 static int binary_precedence(const token_kind kind)
 {
     switch (kind)
@@ -65,6 +33,11 @@ static int unary_precendence(const token_kind kind)
     }
 }
 
+static bool is_right_associative(const token_kind kind)
+{
+    return kind == token_kind::exponentiate;
+}
+
 expression parser::parse_expression()
 {
     std::vector<operation> parse;
@@ -93,15 +66,18 @@ void parser::parse_arithmetic(std::vector<operation>& parsing, int enclosing_pre
     while (true)
     {
         auto prec = binary_precedence(_current.kind());
+        
+        // If not a binary operator
         if (prec == -1)
             return;
+
         // TODO: Need to check right-associative (i.e. right-associative exponentiate)
-        if (prec < enclosing_precedence)
+        if (enclosing_right_assoc ? prec < enclosing_precedence : prec <= enclosing_precedence)
             return;
 
         auto op_kind = forward().kind();
         // parse right-hand side, up to where the operator precedence will allow us
-        parse_arithmetic(parsing, prec, op_kind == token_kind::exponentiate);
+        parse_arithmetic(parsing, prec, is_right_associative(op_kind));
         parsing.emplace_back(binary_operator{op_kind}); // and put operator
     }
 }
@@ -130,7 +106,8 @@ void parser::parse_primary_term(std::vector<operation>& parsing, int enclosing_p
             parsing.emplace_back(literal_number{std::move(num)});
             break;
         }
-        default: 
+        default:
+            _diagnostic_bag.emplace_back(_current.source(), diagnostic_type::unexpected_token);
             break;
     }
     forward();

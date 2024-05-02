@@ -13,6 +13,8 @@ std::string_view tcalc::diagnostic_type_name(const diagnostic_type type)
             return "invalid_number_literal"sv;
         case diagnostic_type::invalid_symbol:
             return "invalid_symbol"sv;
+        case diagnostic_type::unexpected_token:
+            return "unexpected_token"sv;
         default:
             return {};
     }

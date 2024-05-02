@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "source_span.h"
 
@@ -11,7 +12,8 @@ namespace tcalc
     {
         bad_character,
         invalid_number_literal,
-        invalid_symbol
+        invalid_symbol,
+        unexpected_token
     };
 
     std::string_view diagnostic_type_name(diagnostic_type type);
@@ -19,8 +21,13 @@ namespace tcalc
     class diagnostic final
     {
     public:
-        // Constructor makes a copy of the source_span, so it can live longer than the token which originally owned it.
-        diagnostic(source_span src, const diagnostic_type type) : _source_span{std::move(src)}, _type{type}
+        diagnostic(const source_span& src, const diagnostic_type type) :
+            _start_index{src.start_index()}, _end_index{src.end_index()}, _type{type}
+        {
+        }
+
+        diagnostic(const source_span& src, const diagnostic_type type, std::vector<std::string>&& arguments) :
+            _start_index{src.start_index()}, _end_index{src.end_index()}, _arguments{std::move(arguments)}, _type{type}
         {
         }
 
@@ -31,31 +38,21 @@ namespace tcalc
         }
 
         [[nodiscard]]
-        const source_span& source() const
-        {
-            return _source_span;
-        }
-
-        [[nodiscard]]
-        std::string_view source_str() const
-        {
-            return _source_span.source_str();
-        }
-
-        [[nodiscard]]
         size_t start_index() const
         {
-            return _source_span.start_index();
+            return _end_index;
         }
 
         [[nodiscard]]
         size_t end_index() const
         {
-            return _source_span.end_index();
+            return _end_index;
         }
 
     private:
-        source_span _source_span;
+        size_t _start_index;
+        size_t _end_index;
+        std::vector<std::string> _arguments;
         diagnostic_type _type;
     };
 }
