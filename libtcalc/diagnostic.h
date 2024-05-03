@@ -31,6 +31,11 @@ namespace tcalc
         {
         }
 
+        diagnostic(const source_span& src, const diagnostic_type type, const std::string_view argument) :
+            _start_index{src.start_index()}, _end_index{src.end_index()}, _arguments{std::string{argument}}, _type{type}
+        {
+        }
+
         [[nodiscard]]
         diagnostic_type type() const
         {

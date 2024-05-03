@@ -39,7 +39,9 @@ namespace tcalc
         }
 
         void parse_arithmetic(std::vector<operation> &parsing, int enclosing_precedence = -1, bool enclosing_right_assoc = false);
-        void parse_primary_term(std::vector<operation> &parsing, int enclosing_precedence = -1);
+        void parse_function(std::vector<operation>& parsing);
+        void unexpected_token(const token& err_token);
+        void parse_primary_term(std::vector<operation> &parsing);
 
         token _current;
         std::optional<token> _peek;
