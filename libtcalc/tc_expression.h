@@ -3,8 +3,9 @@
 #include <variant>
 #include <vector>
 
-#include "operation.h"
-#include "token.h"
+#include "tc_operation.h"
+#include "tc_token.h"
+
 namespace tcalc
 {
     struct arithmetic_expression final

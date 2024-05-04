@@ -4,7 +4,7 @@
 #include <utility>
 #include <vector>
 
-#include "source_span.h"
+#include "tc_source_span.h"
 
 namespace tcalc
 {
@@ -52,6 +52,11 @@ namespace tcalc
         size_t end_index() const
         {
             return _end_index;
+        }
+
+        const std::vector<std::string>& arguments() const
+        {
+            return _arguments;
         }
 
     private:

@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "source_span.h"
+#include "tc_source_span.h"
 
 namespace tcalc
 {

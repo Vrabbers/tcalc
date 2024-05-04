@@ -1,8 +1,8 @@
-#include "string_reader.h"
+#include "tc_string_reader.h"
 
 #include <optional>
 
-#include "utf8_utils.h"
+#include "tc_utf8_utils.h"
 
 std::pair<char32_t, ptrdiff_t> tcalc::string_reader::peek_with_length() const
 {

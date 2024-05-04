@@ -1,7 +1,7 @@
 #pragma once
 
-#include "expression.h"
-#include "lexer.h"
+#include "tc_expression.h"
+#include "tc_lexer.h"
 
 namespace tcalc
 {

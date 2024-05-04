@@ -7,30 +7,29 @@ find_package(MPFR REQUIRED)
 find_package(MPC REQUIRED)
 
 set(SOURCES
-    string_reader.cpp
-    lexer.cpp
-    token.cpp
-    diagnostic.cpp
-    parser.cpp
-    expression.cpp
-    number.cpp
-    operation.cpp
+    tc_string_reader.cpp
+    tc_lexer.cpp
+    tc_token.cpp
+    tc_diagnostic.cpp
+    tc_parser.cpp
+    tc_number.cpp
+    tc_operation.cpp
 )
 
 set(HEADERS
-    source_span.h
-    token.h
-    lexer.h
-    string_reader.h
-    diagnostic.h
-    parser.h
-    expression.h
-    number.h
-    operation.h
+    tc_source_span.h
+    tc_token.h
+    tc_lexer.h
+    tc_string_reader.h
+    tc_diagnostic.h
+    tc_parser.h
+    tc_expression.h
+    tc_number.h
+    tc_operation.h
 )
 
 set(PRIVATE_HEADERS
-    utf8_utils.h
+    tc_utf8_utils.h
 )
 
 add_library(libtcalc STATIC ${SOURCES} ${HEADERS} ${PRIVATE_HEADERS})

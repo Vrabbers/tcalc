@@ -3,8 +3,8 @@
 #include <variant>
 #include <string>
 
-#include "token.h"
-#include "number.h"
+#include "tc_token.h"
+#include "tc_number.h"
 namespace tcalc
 {
     struct binary_operator

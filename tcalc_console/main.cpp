@@ -5,10 +5,11 @@
 #include <cstring>
 #include <iomanip>
 
-#include "expression.h"
-#include "lexer.h"
-#include "operation.h"
-#include "number.h"
+#include "tc_expression.h"
+#include "tc_lexer.h"
+#include "tc_operation.h"
+#include "tc_number.h"
+#include "tc_parser.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -62,7 +63,7 @@ static void interactive()
         {
             std::cout << "boolean " << std::quoted(tcalc::token_kind_name(blnexp->kind)) << " with ";
             show_arith(blnexp->lhs);
-            std::cout << " and ";
+            std::cout << "and ";
             show_arith(blnexp->rhs);
         }
         else if (const auto* fndef = std::get_if<tcalc::func_def_expression>(&expr))
@@ -77,7 +78,10 @@ static void interactive()
             std::cout << "\n\x1b[31mdiagnostics:\n";
             for (const auto& diag : p.diagnostic_bag())
             {
-                std::cout << std::format("{} @ {}-{} \n", tcalc::diagnostic_type_name(diag.type()), diag.start_index(), diag.end_index());
+                std::cout << std::format("{} @ {}-{} ", tcalc::diagnostic_type_name(diag.type()), diag.start_index(), diag.end_index());
+                for (const auto& arg : diag.arguments())
+                    std::cout << std::quoted(arg) << ' ';
+                std::cout << '\n';
             }
             std::cout << "\x1b[0m";
         }

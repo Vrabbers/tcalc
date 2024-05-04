@@ -1,9 +1,9 @@
-#include "lexer.h"
+#include "tc_lexer.h"
 
 #include <unordered_map>
 #include <optional>
 
-#include "utf8_utils.h"
+#include "tc_utf8_utils.h"
 
 using namespace tcalc;
 

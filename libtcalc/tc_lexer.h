@@ -4,9 +4,9 @@
 #include <memory>
 #include <vector>
 
-#include "diagnostic.h"
-#include "token.h"
-#include "string_reader.h"
+#include "tc_diagnostic.h"
+#include "tc_token.h"
+#include "tc_string_reader.h"
 
 namespace tcalc
 {
