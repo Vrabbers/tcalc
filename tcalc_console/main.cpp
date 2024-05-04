@@ -3,10 +3,10 @@
 #include <format>
 #include <random>
 #include <cstring>
+#include <iomanip>
 
 #include "expression.h"
 #include "lexer.h"
-#include "parser.h"
 #include "operation.h"
 #include "number.h"
 
@@ -23,6 +23,14 @@ static tcalc::parser parse(std::string&& str)
     return parser;
 }
 
+static void show_arith(const tcalc::arithmetic_expression& arith)
+{
+    for (const auto& op : arith.tokens)
+    {
+        std::cout << tcalc::op_to_string(op) << ' ';
+    }
+}
+
 static void interactive()
 {
     std::cout << "tcalc console\n";
@@ -36,13 +44,33 @@ static void interactive()
         if (input == "quit")
             return;
 
-        std::cout << "\ninput:\n" << input << '\n';
+        std::cout << "input: " << input;
+        std::cout << "\n\nparse:\n";
         auto p = parse(std::move(input));
-        auto arith = p.parse_expression();
-        for (const auto& op : std::get<tcalc::arithmetic_expression>(arith).tokens)
+        auto expr = p.parse_expression();
+        if (const auto* arith = std::get_if<tcalc::arithmetic_expression>(&expr))
         {
-            std::cout << tcalc::op_to_string(op) << ' ';
+            std::cout << "arithmetic ";
+            show_arith(*arith);
         }
+        else if (const auto* asgn = std::get_if<tcalc::assignment_expression>(&expr))
+        {
+            std::cout << "assigning to " << asgn->variable << ": ";
+            show_arith(asgn->expression);
+        }
+        else if (const auto* blnexp = std::get_if<tcalc::boolean_expression>(&expr))
+        {
+            std::cout << "boolean " << std::quoted(tcalc::token_kind_name(blnexp->kind)) << " with ";
+            show_arith(blnexp->lhs);
+            std::cout << " and ";
+            show_arith(blnexp->rhs);
+        }
+        else if (const auto* fndef = std::get_if<tcalc::func_def_expression>(&expr))
+        {
+            std::cout << "defining function " << fndef->name << " as ";
+            show_arith(fndef->expression);
+        }
+        std::cout << '\n';
 
         if (!p.diagnostic_bag().empty())
         {

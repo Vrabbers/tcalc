@@ -273,9 +273,9 @@ token lexer::lex_symbol()
         case U'^':
             return flush_token(token_kind::exponentiate);
         case U'(':
-            return flush_token(token_kind::left_parenthesis);
+            return flush_token(token_kind::open_parenthesis);
         case U')':
-            return flush_token(token_kind::right_parenthesis);
+            return flush_token(token_kind::close_parenthesis);
         case U'√':
             return flush_token(token_kind::radical);
         case U'%':
@@ -299,7 +299,7 @@ token lexer::lex_symbol()
                 _sr.forward();
                 return flush_token(token_kind::greater_or_equal);
             }
-            return flush_token(token_kind::greater);
+            return flush_token(token_kind::greater_than);
         case U'<':
             next = _sr.peek();
             if (next == U'<')
@@ -312,7 +312,7 @@ token lexer::lex_symbol()
                 _sr.forward();
                 return flush_token(token_kind::less_or_equal);
             }
-            return flush_token(token_kind::less);
+            return flush_token(token_kind::less_than);
         case U'≥':
             return flush_token(token_kind::greater_or_equal);
         case U'≤':

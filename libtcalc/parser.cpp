@@ -1,5 +1,7 @@
 #include "parser.h"
 
+#include <stdexcept>
+
 using namespace tcalc;
 
 static int binary_precedence(const token_kind kind)
@@ -38,8 +40,52 @@ static bool is_right_associative(const token_kind kind)
     return kind == token_kind::exponentiate;
 }
 
+static bool ends_arith(const token_kind kind)
+{
+    switch (kind)
+    {
+        case token_kind::expression_separator:
+        case token_kind::end_of_file:
+            return true;
+        default:
+            return false;
+    }
+}
+
+static bool is_valid_func_def(const std::vector<operation>& parse)
+{
+    if (!std::holds_alternative<function_call>(parse.back()))
+        return false;
+
+    if (std::get<function_call>(parse.back()).arity != parse.size() - 1) // 1 token for each ident + 1 for the fn call
+        return false;
+
+    for (int i = 0; i < parse.size() - 1; i++)
+    {
+        if (!std::holds_alternative<variable_reference>(parse[i]))
+            return false;
+    }
+    return true;
+}
+
+static std::vector<std::string> collect_args(std::vector<operation>& parse)
+{
+    std::vector<std::string> idents;
+    for (int i = 0; i < parse.size() - 1; i++)
+    {
+        idents.emplace_back(std::move(std::get<variable_reference>(parse[i]).identifier));
+    }
+    return idents;
+}
+
 expression parser::parse_expression()
 {
+    auto expect_end = [&]
+    {
+        if (!ends_arith(_current.kind()))
+            unexpected_token(_current);
+        forward();
+    };
     std::vector<operation> lhs_parse;
     parse_arithmetic(lhs_parse); // Parse full expression or left hand side of function call or assignment
     const auto token = forward();
@@ -47,7 +93,38 @@ expression parser::parse_expression()
     {
         case token_kind::expression_separator:
         case token_kind::end_of_file:
-            return arithmetic_expression{lhs_parse};
+            return arithmetic_expression{std::move(lhs_parse)};
+        case token_kind::equal:
+            // can be assignment, or function def, or boolean expr
+            if (lhs_parse.size() == 1 && std::holds_alternative<variable_reference>(lhs_parse[0]))
+            {
+                // this is a variable assignment expression 😁
+                std::vector<operation> rhs_parse;
+                parse_arithmetic(rhs_parse);
+                expect_end();
+                auto var = std::get<variable_reference>(lhs_parse[0]).identifier;
+                return assignment_expression{std::move(var), std::move(rhs_parse)};
+            }
+            if (is_valid_func_def(lhs_parse))
+            {
+                std::vector<operation> def_parse;
+                parse_arithmetic(def_parse);
+                expect_end();
+                auto fn_name = std::get<function_call>(lhs_parse.back()).identifier;
+                return func_def_expression{std::move(fn_name), collect_args(lhs_parse), std::move(def_parse)};
+            }
+        [[fallthrough]]; // in the case that it is not assignment or function def, we try to parse as a boolean expression
+        case token_kind::not_equal:
+        case token_kind::less_than:
+        case token_kind::less_or_equal:
+        case token_kind::greater_than:
+        case token_kind::greater_or_equal:
+            {
+                std::vector<operation> rhs_parse;
+                parse_arithmetic(rhs_parse);
+                expect_end();
+                return boolean_expression{std::move(lhs_parse), std::move(rhs_parse), token.kind()};
+            }
         default:
             unexpected_token(token);
             return arithmetic_expression{lhs_parse};
@@ -95,7 +172,7 @@ void parser::parse_primary_term(std::vector<operation>& parsing)
     switch(_current.kind())
     {
         case token_kind::identifier:
-            if (peek().kind() != token_kind::left_parenthesis)
+            if (peek().kind() != token_kind::open_parenthesis)
                 parsing.emplace_back(variable_reference{std::string{forward().source_str()}});
             else
                 parse_function(parsing);
@@ -118,11 +195,11 @@ void parser::parse_primary_term(std::vector<operation>& parsing)
                 parsing.emplace_back(literal_number{std::move(num)});
                 return;
             }
-        case token_kind::left_parenthesis:
+        case token_kind::open_parenthesis:
             forward();
             parse_arithmetic(parsing);
             // like a lot of calculators, silenty ignore missing close parens
-            if (_current.kind() == token_kind::right_parenthesis)
+            if (_current.kind() == token_kind::close_parenthesis)
                 forward();
             return;
 
@@ -135,7 +212,7 @@ void parser::parse_primary_term(std::vector<operation>& parsing)
 void parser::parse_function(std::vector<operation>& parsing)
 {
     std::string fn_name{forward().source_str()};
-    if (forward().kind() == token_kind::right_parenthesis)
+    if (forward().kind() == token_kind::close_parenthesis)
     {
         parsing.emplace_back(function_call{std::move(fn_name), 0});
         return;
@@ -152,7 +229,7 @@ void parser::parse_function(std::vector<operation>& parsing)
             break;
     }
 
-    if (_current.kind() == token_kind::right_parenthesis)
+    if (_current.kind() == token_kind::close_parenthesis)
         forward();
 
     parsing.emplace_back(function_call{std::move(fn_name), arity});

@@ -18,29 +18,19 @@ namespace tcalc
         arithmetic_expression expression;
     };
 
-    struct function_expression final
+    struct func_def_expression final
     {
-        std::string variable;
+        std::string name;
         std::vector<std::string> parameters;
         arithmetic_expression expression;
     };
 
     struct boolean_expression final
     {
-        enum class kind
-        {
-            equal,
-            not_equal,
-            less_than,
-            less_equal,
-            greater_than,
-            greater_equal,
-        };
-
         arithmetic_expression lhs;
         arithmetic_expression rhs;
-        kind kind = kind::equal;
+        token_kind kind;
     };
 
-    using expression = std::variant<arithmetic_expression, assignment_expression, function_expression, boolean_expression>;
+    using expression = std::variant<arithmetic_expression, assignment_expression, func_def_expression, boolean_expression>;
 }
