@@ -57,10 +57,10 @@ static bool is_valid_func_def(const std::vector<operation>& parse)
     if (!std::holds_alternative<function_call>(parse.back()))
         return false;
 
-    if (std::get<function_call>(parse.back()).arity != parse.size() - 1) // 1 token for each ident + 1 for the fn call
+    if (std::get<function_call>(parse.back()).arity != static_cast<int32_t>(parse.size() - 1)) // 1 token for each ident + 1 for the fn call
         return false;
 
-    for (int i = 0; i < parse.size() - 1; i++)
+    for (int32_t i = 0; i < static_cast<int32_t>(parse.size() - 1); i++)
     {
         if (!std::holds_alternative<variable_reference>(parse[i]))
             return false;
@@ -71,7 +71,7 @@ static bool is_valid_func_def(const std::vector<operation>& parse)
 static std::vector<std::string> collect_args(std::vector<operation>& parse)
 {
     std::vector<std::string> idents;
-    for (int i = 0; i < parse.size() - 1; i++)
+    for (int32_t i = 0; i < static_cast<int32_t>(parse.size() - 1); i++)
     {
         idents.emplace_back(std::move(std::get<variable_reference>(parse[i]).identifier));
     }
@@ -103,7 +103,7 @@ expression parser::parse_expression()
                 parse_arithmetic(rhs_parse);
                 expect_end();
                 auto var = std::get<variable_reference>(lhs_parse[0]).identifier;
-                return assignment_expression{std::move(var), std::move(rhs_parse)};
+                return assignment_expression{std::move(var), {std::move(rhs_parse)}};
             }
             if (is_valid_func_def(lhs_parse))
             {
@@ -111,7 +111,7 @@ expression parser::parse_expression()
                 parse_arithmetic(def_parse);
                 expect_end();
                 auto fn_name = std::get<function_call>(lhs_parse.back()).identifier;
-                return func_def_expression{std::move(fn_name), collect_args(lhs_parse), std::move(def_parse)};
+                return func_def_expression{std::move(fn_name), collect_args(lhs_parse), {std::move(def_parse)}};
             }
         [[fallthrough]]; // in the case that it is not assignment or function def, we try to parse as a boolean expression
         case token_kind::not_equal:
@@ -123,7 +123,7 @@ expression parser::parse_expression()
                 std::vector<operation> rhs_parse;
                 parse_arithmetic(rhs_parse);
                 expect_end();
-                return boolean_expression{std::move(lhs_parse), std::move(rhs_parse), token.kind()};
+                return boolean_expression{{std::move(lhs_parse)}, {std::move(rhs_parse)}, token.kind()};
             }
         default:
             unexpected_token(token);

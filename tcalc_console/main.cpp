@@ -101,7 +101,8 @@ static void fuzz(const int times)
             j = static_cast<char>(rdist(rand));
         std::cout << "Fuzz #" << i + 1 << '\n';
         std::string a{buf.cbegin(), buf.cend()};
-        parse(std::move(a));
+        auto parser = parse(std::move(a));
+        auto parse = parser.parse_expression();
     }
 }
 
