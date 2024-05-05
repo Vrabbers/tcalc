@@ -48,31 +48,32 @@ static void interactive()
         std::cout << "input: " << input;
         std::cout << "\n\nparse:\n";
         auto p = parse(std::move(input));
-        auto expr = p.parse_expression();
-        if (const auto* arith = std::get_if<tcalc::arithmetic_expression>(&expr))
+        for (const auto& expr : p.parse_all())
         {
-            std::cout << "arithmetic ";
-            show_arith(*arith);
+            if (const auto* arith = std::get_if<tcalc::arithmetic_expression>(&expr))
+            {
+                std::cout << "arithmetic ";
+                show_arith(*arith);
+            }
+            else if (const auto* asgn = std::get_if<tcalc::assignment_expression>(&expr))
+            {
+                std::cout << "assigning to " << asgn->variable << ": ";
+                show_arith(asgn->expression);
+            }
+            else if (const auto* blnexp = std::get_if<tcalc::boolean_expression>(&expr))
+            {
+                std::cout << "boolean " << std::quoted(tcalc::token_kind_name(blnexp->kind)) << " with ";
+                show_arith(blnexp->lhs);
+                std::cout << "and ";
+                show_arith(blnexp->rhs);
+            }
+            else if (const auto* fndef = std::get_if<tcalc::func_def_expression>(&expr))
+            {
+                std::cout << "defining function " << fndef->name << " as ";
+                show_arith(fndef->expression);
+            }
+            std::cout << '\n';
         }
-        else if (const auto* asgn = std::get_if<tcalc::assignment_expression>(&expr))
-        {
-            std::cout << "assigning to " << asgn->variable << ": ";
-            show_arith(asgn->expression);
-        }
-        else if (const auto* blnexp = std::get_if<tcalc::boolean_expression>(&expr))
-        {
-            std::cout << "boolean " << std::quoted(token_kind_name(blnexp->kind)) << " with ";
-            show_arith(blnexp->lhs);
-            std::cout << "and ";
-            show_arith(blnexp->rhs);
-        }
-        else if (const auto* fndef = std::get_if<tcalc::func_def_expression>(&expr))
-        {
-            std::cout << "defining function " << fndef->name << " as ";
-            show_arith(fndef->expression);
-        }
-        std::cout << '\n';
-
         if (!p.diagnostic_bag().empty())
         {
             std::cout << "\n\x1b[31mdiagnostics:\n";
@@ -102,7 +103,7 @@ static void fuzz(const int times)
         std::cout << "Fuzz #" << i + 1 << '\n';
         std::string a{buf.cbegin(), buf.cend()};
         auto parser = parse(std::move(a));
-        auto parse = parser.parse_expression();
+        auto parse = parser.parse_all();
     }
 }
 

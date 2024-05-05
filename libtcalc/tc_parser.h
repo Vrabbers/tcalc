@@ -12,9 +12,11 @@ namespace tcalc
         {
         }
 
+        std::vector<expression> parse_all();
         expression parse_expression();
 
-        const std::vector<diagnostic>& diagnostic_bag()
+        [[nodiscard]]
+        const std::vector<diagnostic>& diagnostic_bag() const
         {
             return _diagnostic_bag;
         }

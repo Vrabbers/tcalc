@@ -90,6 +90,16 @@ static bool can_insert_implicit_multiply(const token_kind kind)
     }
 }
 
+std::vector<expression> parser::parse_all()
+{
+    std::vector<expression> exprs;
+    do
+    {
+        exprs.push_back(parse_expression());
+    } while(_current.kind() != token_kind::end_of_file);
+    return exprs;
+}
+
 expression parser::parse_expression()
 {
     auto expect_end = [&]
