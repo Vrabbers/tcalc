@@ -6,7 +6,7 @@
 #include <string>
 #include <utility>
 
-#include "tc_source_span.h"
+#include "tc_source_position.h"
 
 namespace tcalc
 {
@@ -50,7 +50,7 @@ namespace tcalc
         }
 
         [[nodiscard]]
-        source_span flush();
+        std::pair<tcalc::source_position, std::string_view> flush();
 
         void discard_token()
         {
@@ -59,7 +59,7 @@ namespace tcalc
 
     private:
         [[nodiscard]]
-        std::pair<char32_t, ptrdiff_t> peek_with_length() const;
+        std::pair<char32_t, size_t> peek_with_length() const;
         std::optional<char32_t> _current;
         std::string _string;
         size_t _start_ix = 0;

@@ -203,23 +203,23 @@ void parser::parse_primary_term(std::vector<operation>& parsing)
     {
         case token_kind::identifier:
             if (peek().kind() != token_kind::open_parenthesis)
-                parsing.emplace_back(variable_reference{std::string{forward().source_str()}});
+                parsing.emplace_back(variable_reference{std::string{forward().source()}});
             else
                 parse_function(parsing);
             return;
         case token_kind::numeric_literal:
             {
                 auto num = number{64}; // TODO: not magic constant
-                if (_current.source_str().back() == 'i')
+                if (_current.source().back() == 'i')
                 {
-                    if (_current.source_str().length() == 1)
+                    if (_current.source().length() == 1)
                         num.set(0, 1); // string is "i", set to 0 + 1i
                     else
-                        num.set_imaginary(_current.source_str());
+                        num.set_imaginary(_current.source());
                 }
                 else
                 {
-                    num.set_real(_current.source_str());
+                    num.set_real(_current.source());
                 }
                 forward();
                 parsing.emplace_back(literal_number{std::move(num)});
@@ -241,7 +241,7 @@ void parser::parse_primary_term(std::vector<operation>& parsing)
 
 void parser::parse_function(std::vector<operation>& parsing)
 {
-    std::string fn_name{forward().source_str()};
+    std::string fn_name{forward().source()};
     if (forward().kind() == token_kind::close_parenthesis)
     {
         parsing.emplace_back(function_call{std::move(fn_name), 0});
@@ -267,5 +267,5 @@ void parser::parse_function(std::vector<operation>& parsing)
 
 void parser::unexpected_token(const token& err_token)
 {
-    _diagnostic_bag.emplace_back(err_token.source(), diagnostic_type::unexpected_token, token_kind_name(err_token.kind()));
+    _diagnostic_bag.emplace_back(err_token.position(), diagnostic_type::unexpected_token, token_kind_name(err_token.kind()));
 }

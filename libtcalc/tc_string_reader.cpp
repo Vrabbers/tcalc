@@ -4,7 +4,7 @@
 
 #include "tc_utf8_utils.h"
 
-std::pair<char32_t, ptrdiff_t> tcalc::string_reader::peek_with_length() const
+std::pair<char32_t, size_t> tcalc::string_reader::peek_with_length() const
 {
     if (_end_ix >= _string.length())
         return {end_of_file, 0};
@@ -72,10 +72,10 @@ std::optional<char32_t> tcalc::string_reader::forward()
     return _current;
 }
 
-tcalc::source_span tcalc::string_reader::flush()
+std::pair<tcalc::source_position, std::string_view> tcalc::string_reader::flush()
 {
-    auto substring = _string.substr(_start_ix, token_length());
-    source_span token{std::move(substring), _start_ix};
+    auto substr = std::string_view{_string}.substr(_start_ix, token_length());
+    const source_position position{_start_ix, _end_ix};
     discard_token();
-    return token;
+    return {position, substr};
 }

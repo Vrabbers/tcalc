@@ -20,7 +20,7 @@ namespace tcalc
         static constexpr mpc_rnd_t round_mode = MPC_RNDNN;
         static constexpr mpfr_rnd_t fr_round_mode = MPFR_RNDN;
 
-        explicit number(mpfr_prec_t precision)
+        explicit number(const mpfr_prec_t precision)
         {
             mpc_init2(_handle, precision);
             set(0, 0);
@@ -28,7 +28,7 @@ namespace tcalc
 
         number(const number& other)
         {
-            auto prec = mpc_get_prec(other._handle);
+            const auto prec = mpc_get_prec(other._handle);
             mpc_init2(_handle, prec);
             mpc_set(_handle, other._handle, round_mode);
         }
@@ -61,6 +61,7 @@ namespace tcalc
 
         void set_imaginary(std::string_view imaginary);
 
+        [[nodiscard]]
         bool is_real() const
         {
             if (_owns)

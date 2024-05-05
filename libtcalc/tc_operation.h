@@ -7,27 +7,27 @@
 #include "tc_number.h"
 namespace tcalc
 {
-    struct binary_operator
+    struct binary_operator final
     {
         token_kind operation;
     };
 
-    struct unary_operator
+    struct unary_operator final
     {
         token_kind operation;
     };
 
-    struct literal_number
+    struct literal_number final
     {
         number num;
     };
 
-    struct variable_reference
+    struct variable_reference final
     {
         std::string identifier;
     };
 
-    struct function_call
+    struct function_call final
     {
         std::string identifier;
         int32_t arity;

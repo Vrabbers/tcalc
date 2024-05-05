@@ -17,7 +17,7 @@ set(SOURCES
 )
 
 set(HEADERS
-    tc_source_span.h
+    tc_source_position.h
     tc_token.h
     tc_lexer.h
     tc_string_reader.h

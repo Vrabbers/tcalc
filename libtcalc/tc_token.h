@@ -1,8 +1,9 @@
 #pragma once
 
 #include <memory>
+#include <string>
 
-#include "tc_source_span.h"
+#include "tc_source_position.h"
 
 namespace tcalc
 {
@@ -54,9 +55,13 @@ namespace tcalc
     class token final
     {
     public:
-        token(const token_kind kind, source_span&& source) : _kind{kind}, _source_span{std::move(source)}
+        token(const token_kind kind, std::string&& str, const source_position pos) :
+            _source{std::move(str)}, _position{pos}, _kind{kind}
         {
         }
+
+        [[nodiscard]]
+        std::string format() const;
 
         [[nodiscard]]
         token_kind kind() const
@@ -65,33 +70,31 @@ namespace tcalc
         }
 
         [[nodiscard]]
-        const source_span& source() const
+        const source_position& position() const
         {
-            return _source_span;
+            return _position;
         }
 
         [[nodiscard]]
-        std::string_view source_str() const
+        std::string_view source() const
         {
-            return _source_span.source_str();
+            return _source;
         }
 
         [[nodiscard]]
         size_t start_index() const
         {
-            return _source_span.start_index();
+            return _position.start_index;
         }
 
         [[nodiscard]]
         size_t end_index() const
         {
-            return _source_span.end_index();
+            return _position.end_index;
         }
-
-        [[nodiscard]]
-        std::string format() const;
     private:
+        std::string _source;
+        source_position _position;
         token_kind _kind;
-        source_span _source_span;
     };
 }

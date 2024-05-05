@@ -58,6 +58,6 @@ std::string token::format() const
 {
     std::string str = std::format("({}-{}): {} ", start_index(), end_index(), token_kind_name(kind()));
     if (kind() != token_kind::expression_separator && kind() != token_kind::end_of_file)
-        str.append(std::format("\"{}\"", source_str()));
+        str.append(std::format("\"{}\"", source()));
     return str;
 }

@@ -7,7 +7,7 @@
 
 using namespace tcalc;
 
-static bool is_whitespace(std::optional<char32_t> chr)
+static bool is_whitespace(const std::optional<char32_t> chr)
 {
     if (!chr.has_value())
         return false;
@@ -15,7 +15,7 @@ static bool is_whitespace(std::optional<char32_t> chr)
     return chr == U'\t' || utf8proc::category(*chr) == UTF8PROC_CATEGORY_ZS;
 }
 
-static bool is_letter(std::optional<char32_t> chr)
+static bool is_letter(const std::optional<char32_t> chr)
 {
     if (!chr.has_value())
         return false;
@@ -25,17 +25,17 @@ static bool is_letter(std::optional<char32_t> chr)
         || c == UTF8PROC_CATEGORY_NO;
 }
 
-static bool is_decimal_digit(std::optional<char32_t> chr)
+static bool is_decimal_digit(const std::optional<char32_t> chr)
 {
     return chr >= U'0' && chr <= U'9';
 }
 
-static bool is_hex_digit(std::optional<char32_t> chr)
+static bool is_hex_digit(const std::optional<char32_t> chr)
 {
     return is_decimal_digit(chr) || (chr >= U'a' && chr <= U'f') || (chr >= U'A' && chr <= U'F');
 }
 
-static bool is_superscript_digit(std::optional<char32_t> chr)
+static bool is_superscript_digit(const std::optional<char32_t> chr)
 {
     if (!chr.has_value())
         return false;
@@ -69,7 +69,7 @@ token lexer::next()
     if (!first.has_value())
     {
         auto token = flush_token(token_kind::bad);
-        _diagnostic_bag.emplace_back(token.source(), diagnostic_type::bad_character);
+        _diagnostic_bag.emplace_back(token.position(), diagnostic_type::bad_character);
         return token;
     }
 
@@ -88,10 +88,10 @@ token lexer::next()
     return lex_symbol();
 }
 
-token lexer::flush_token(token_kind type)
+token lexer::flush_token(const token_kind kind)
 {
-    auto span = _sr.flush();
-    return {type, std::move(span)};
+    auto [pos, str_view] = _sr.flush();
+    return {kind, std::string{str_view}, pos};
 }
 
 token lexer::lex_binary_number()
@@ -177,7 +177,7 @@ token lexer::lex_decimal_number()
             else
             {
                 auto token = flush_token(token_kind::bad);
-                _diagnostic_bag.emplace_back(token.source(), diagnostic_type::invalid_number_literal);
+                _diagnostic_bag.emplace_back(token.position(), diagnostic_type::invalid_number_literal);
                 return token;
             }
         }
@@ -326,7 +326,7 @@ token lexer::lex_symbol()
             return flush_token(token_kind::expression_separator);
         default:
             auto token = flush_token(token_kind::bad);
-            _diagnostic_bag.emplace_back(token.source(), diagnostic_type::invalid_symbol);
+            _diagnostic_bag.emplace_back(token.position(), diagnostic_type::invalid_symbol);
             return token;
     }
 }
@@ -341,8 +341,7 @@ token lexer::lex_word()
         peek = _sr.peek();
     }
 
-    auto sourceSpan = _sr.flush();
-    const auto str = sourceSpan.source_str();
+    const auto [pos, str_view] = _sr.flush();
 
     const static std::unordered_map<std::string_view, token_kind> keywords
     {
@@ -357,9 +356,9 @@ token lexer::lex_word()
         {"ⁱ", token_kind::superscript_literal},
     };
 
-    const auto type_iter = keywords.find(str);
+    const auto type_iter = keywords.find(str_view);
     if (type_iter != keywords.end())
-        return {type_iter->second, std::move(sourceSpan)};
+        return {type_iter->second, std::string{str_view}, pos};
 
-    return {token_kind::identifier, std::move(sourceSpan)};
+    return {token_kind::identifier, std::string{str_view}, pos};
 }
