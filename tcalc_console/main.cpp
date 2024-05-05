@@ -28,7 +28,7 @@ static void show_arith(const tcalc::arithmetic_expression& arith)
 {
     for (const auto& op : arith.tokens)
     {
-        std::cout << tcalc::op_to_string(op) << ' ';
+        std::cout << op_to_string(op) << ' ';
     }
 }
 
@@ -61,7 +61,7 @@ static void interactive()
         }
         else if (const auto* blnexp = std::get_if<tcalc::boolean_expression>(&expr))
         {
-            std::cout << "boolean " << std::quoted(tcalc::token_kind_name(blnexp->kind)) << " with ";
+            std::cout << "boolean " << std::quoted(token_kind_name(blnexp->kind)) << " with ";
             show_arith(blnexp->lhs);
             std::cout << "and ";
             show_arith(blnexp->rhs);
@@ -78,7 +78,7 @@ static void interactive()
             std::cout << "\n\x1b[31mdiagnostics:\n";
             for (const auto& diag : p.diagnostic_bag())
             {
-                std::cout << std::format("{} @ {}-{} ", tcalc::diagnostic_type_name(diag.type()), diag.start_index(), diag.end_index());
+                std::cout << std::format("{} @ {}-{} ", diagnostic_type_name(diag.type()), diag.start_index(), diag.end_index());
                 for (const auto& arg : diag.arguments())
                     std::cout << std::quoted(arg) << ' ';
                 std::cout << '\n';

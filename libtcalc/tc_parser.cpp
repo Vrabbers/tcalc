@@ -68,7 +68,7 @@ static bool is_valid_func_def(const std::vector<operation>& parse)
     return true;
 }
 
-static std::vector<std::string> collect_args(std::vector<operation>& parse)
+static std::vector<std::string> collect_arg_names(std::vector<operation>& parse)
 {
     std::vector<std::string> idents;
     for (int32_t i = 0; i < static_cast<int32_t>(parse.size() - 1); i++)
@@ -76,6 +76,18 @@ static std::vector<std::string> collect_args(std::vector<operation>& parse)
         idents.emplace_back(std::move(std::get<variable_reference>(parse[i]).identifier));
     }
     return idents;
+}
+
+static bool can_insert_implicit_multiply(const token_kind kind)
+{
+    switch (kind)
+    {
+        case token_kind::identifier:
+        case token_kind::open_parenthesis:
+            return true;
+        default:
+            return unary_precendence(kind) != -1;
+    }
 }
 
 expression parser::parse_expression()
@@ -88,8 +100,8 @@ expression parser::parse_expression()
     };
     std::vector<operation> lhs_parse;
     parse_arithmetic(lhs_parse); // Parse full expression or left hand side of function call or assignment
-    const auto token = forward();
-    switch (token.kind())
+    const auto delimiter = forward();
+    switch (delimiter.kind())
     {
         case token_kind::expression_separator:
         case token_kind::end_of_file:
@@ -111,7 +123,7 @@ expression parser::parse_expression()
                 parse_arithmetic(def_parse);
                 expect_end();
                 auto fn_name = std::get<function_call>(lhs_parse.back()).identifier;
-                return func_def_expression{std::move(fn_name), collect_args(lhs_parse), {std::move(def_parse)}};
+                return func_def_expression{std::move(fn_name), collect_arg_names(lhs_parse), {std::move(def_parse)}};
             }
         [[fallthrough]]; // in the case that it is not assignment or function def, we try to parse as a boolean expression
         case token_kind::not_equal:
@@ -123,10 +135,10 @@ expression parser::parse_expression()
                 std::vector<operation> rhs_parse;
                 parse_arithmetic(rhs_parse);
                 expect_end();
-                return boolean_expression{{std::move(lhs_parse)}, {std::move(rhs_parse)}, token.kind()};
+                return boolean_expression{{std::move(lhs_parse)}, {std::move(rhs_parse)}, delimiter.kind()};
             }
         default:
-            unexpected_token(token);
+            unexpected_token(delimiter);
             return arithmetic_expression{lhs_parse};
     }
 }
@@ -151,16 +163,24 @@ void parser::parse_arithmetic(std::vector<operation>& parsing, int enclosing_pre
 
     while (true)
     {
-        auto prec = binary_precedence(_current.kind());
-        
-        // If not a binary operator
-        if (prec == -1)
-            return;
+        const auto prec = binary_precedence(_current.kind());
+        token_kind op_kind;
+        if (prec != -1) // is binary operator
+        {
+            if (enclosing_right_assoc ? prec < enclosing_precedence : prec <= enclosing_precedence)
+                return;
 
-        if (enclosing_right_assoc ? prec < enclosing_precedence : prec <= enclosing_precedence)
-            return;
-
-        const auto op_kind = forward().kind();
+            op_kind = forward().kind();
+        }
+        else if (can_insert_implicit_multiply(_current.kind()))
+        {
+            // insert implicit multiply
+            op_kind = token_kind::multiply;
+        }
+        else
+        {
+            return; // if not a kind that starts a term, or binary operator, stop.
+        }
         // parse right-hand side, up to where the operator precedence will allow us
         parse_arithmetic(parsing, prec, is_right_associative(op_kind));
         parsing.emplace_back(binary_operator{op_kind}); // and put operator
