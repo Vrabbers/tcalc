@@ -101,20 +101,73 @@ std::vector<expression> parser::parse_all()
     return exprs;
 }
 
+expression parser::parse_variable_assignment(const size_t lhs_start_ix, std::vector<operation>&& lhs_parse)
+{
+    const size_t rhs_start_ix = _current.start_index();
+    // this is a variable assignment expression 😁
+    std::vector<operation> rhs_parse;
+    parse_arithmetic(rhs_parse);
+    const size_t rhs_end_ix = _current.end_index();
+    expect_end();
+    auto var = std::get<variable_reference>(lhs_parse[0]).identifier;
+    return assignment_expression{
+        .variable = std::move(var),
+        .expression = arithmetic_expression{
+            .tokens = std::move(rhs_parse),
+            .position = {rhs_start_ix, rhs_end_ix}
+        },
+        .position = {lhs_start_ix, rhs_end_ix}
+    };
+}
+
+expression parser::parse_function_definition(const size_t lhs_start_ix, std::vector<operation>&& lhs_parse)
+{
+    const size_t rhs_start_ix = _current.start_index();
+    std::vector<operation> def_parse;
+    parse_arithmetic(def_parse);
+    const size_t rhs_end_ix = _current.end_index();
+    expect_end();
+    auto fn_name = std::get<function_call>(lhs_parse.back()).identifier;
+    return func_def_expression{
+        .name = std::move(fn_name),
+        .parameters = collect_arg_names(lhs_parse),
+        .expression = arithmetic_expression{
+            .tokens = std::move(def_parse),
+            .position = {rhs_start_ix, rhs_end_ix}
+        },
+        .position = {lhs_start_ix, rhs_end_ix}
+    };
+}
+
+expression parser::parse_boolean_expression(const size_t lhs_start_ix, const size_t lhs_end_ix,
+                                            std::vector<operation>&& lhs_parse, const token_kind delimiter)
+{
+    const size_t rhs_start_ix = _current.start_index();
+    std::vector<operation> rhs_parse;
+    parse_arithmetic(rhs_parse);
+    const size_t rhs_end_ix = _current.end_index();
+    expect_end();
+    return boolean_expression{
+        .lhs = arithmetic_expression{
+            .tokens = std::move(lhs_parse),
+            .position = {lhs_start_ix, lhs_end_ix}
+        },
+        .rhs = arithmetic_expression{
+            .tokens = std::move(rhs_parse),
+            .position = {rhs_start_ix, rhs_end_ix}
+        },
+        .kind = delimiter,
+        .position = {lhs_start_ix, rhs_end_ix}
+    };
+}
+
 expression parser::parse_expression()
 {
-    auto expect_end = [&]
-    {
-        if (!ends_arith(_current.kind()))
-            unexpected_token(_current);
-        forward();
-    };
-    size_t lhs_start_ix = _current.start_index();
+    const size_t lhs_start_ix = _current.start_index();
     std::vector<operation> lhs_parse;
     parse_arithmetic(lhs_parse); // Parse full expression or left hand side of function call or assignment
     const size_t lhs_end_ix = _current.start_index();
     const auto delimiter = forward();
-    const size_t rhs_start_ix = _current.start_index();
     switch (delimiter.kind())
     {
         case token_kind::expression_separator:
@@ -123,63 +176,16 @@ expression parser::parse_expression()
         case token_kind::equal:
             // can be assignment, or function def, or boolean expr
             if (lhs_parse.size() == 1 && std::holds_alternative<variable_reference>(lhs_parse[0]))
-            {
-                // this is a variable assignment expression 😁
-                std::vector<operation> rhs_parse;
-                parse_arithmetic(rhs_parse);
-                const size_t rhs_end_ix = _current.end_index();
-                expect_end();
-                auto var = std::get<variable_reference>(lhs_parse[0]).identifier;
-                return assignment_expression{
-                    .variable = std::move(var),
-                    .expression = arithmetic_expression{
-                        .tokens = std::move(rhs_parse),
-                        .position = {rhs_start_ix, rhs_end_ix}
-                    },
-                    .position = {lhs_start_ix, rhs_end_ix}
-                };
-            }
+                return parse_variable_assignment(lhs_start_ix, std::move(lhs_parse));
             if (is_valid_func_def(lhs_parse))
-            {
-                std::vector<operation> def_parse;
-                parse_arithmetic(def_parse);
-                const size_t rhs_end_ix = _current.end_index();
-                expect_end();
-                auto fn_name = std::get<function_call>(lhs_parse.back()).identifier;
-                return func_def_expression{
-                    .name = std::move(fn_name),
-                    .parameters = collect_arg_names(lhs_parse),
-                    .expression = arithmetic_expression{
-                        .tokens = std::move(def_parse),
-                        .position = {rhs_start_ix, rhs_end_ix}
-                    },
-                    .position = {lhs_start_ix, rhs_end_ix}
-                };
-            }
+                return parse_function_definition(lhs_start_ix, std::move(lhs_parse));
         [[fallthrough]]; // in the case that it is not assignment or function def, we try to parse as a boolean expression
         case token_kind::not_equal:
         case token_kind::less_than:
         case token_kind::less_or_equal:
         case token_kind::greater_than:
         case token_kind::greater_or_equal:
-            {
-                std::vector<operation> rhs_parse;
-                parse_arithmetic(rhs_parse);
-                const size_t rhs_end_ix = _current.end_index();
-                expect_end();
-                return boolean_expression{
-                    .lhs = arithmetic_expression{
-                        .tokens = std::move(lhs_parse),
-                        .position = {lhs_start_ix, lhs_end_ix}
-                    },
-                    .rhs = arithmetic_expression{
-                        .tokens = std::move(rhs_parse),
-                        .position = {rhs_start_ix, rhs_end_ix}
-                    },
-                    .kind = delimiter.kind(),
-                    .position = {lhs_start_ix, rhs_end_ix}
-                };
-            }
+            return parse_boolean_expression(lhs_start_ix, lhs_end_ix, std::move(lhs_parse), delimiter.kind());
         default:
             unexpected_token(delimiter);
             return arithmetic_expression{lhs_parse};
@@ -187,7 +193,7 @@ expression parser::parse_expression()
 }
 
 // The parsing functions share a single vector around, placing elements onto the parse stack as necessary.
-void parser::parse_arithmetic(std::vector<operation>& parsing, int enclosing_precedence, bool enclosing_right_assoc)
+void parser::parse_arithmetic(std::vector<operation>& parsing, const int enclosing_precedence, const bool enclosing_right_assoc)
 {
     const int unary_prec = unary_precendence(_current.kind());
     if (unary_prec == -1) // not unary operator
@@ -288,6 +294,13 @@ void parser::parse_primary_term(std::vector<operation>& parsing)
             unexpected_token(forward());
             return;
     }
+}
+
+void parser::expect_end()
+{
+    if (!ends_arith(_current.kind()))
+        unexpected_token(_current);
+    forward();
 }
 
 void parser::parse_function(std::vector<operation>& parsing)
