@@ -50,7 +50,7 @@ namespace tcalc
         }
 
         [[nodiscard]]
-        std::pair<tcalc::source_position, std::string_view> flush();
+        std::pair<source_position, std::string_view> flush();
 
         void discard_token()
         {

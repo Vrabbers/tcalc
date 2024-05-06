@@ -4,15 +4,22 @@
 
 std::string tcalc::op_to_string(const operation &op)
 {
-    if (std::holds_alternative<binary_operator>(op))
-        return std::format("[{}]", token_kind_name(std::get<binary_operator>(op).operation));
-    if (std::holds_alternative<unary_operator>(op))
-        return std::format("[unary {}]", token_kind_name(std::get<unary_operator>(op).operation));
-    if (std::holds_alternative<literal_number>(op))
-        return std::format("({})", std::get<literal_number>(op).num.string());
-    if (std::holds_alternative<variable_reference>(op))
-        return std::format("({})", std::get<variable_reference>(op).identifier);
-    if (std::holds_alternative<function_call>(op))
-        return std::format("[{}/{}]", std::get<function_call>(op).identifier, std::get<function_call>(op).arity);
+    if (const auto* bin = std::get_if<binary_operator>(&op))
+        return std::format("[{}]@{}-{}", token_kind_name(bin->operation), bin->position.start_index,
+                           bin->position.end_index);
+
+    if (const auto* un = std::get_if<unary_operator>(&op))
+        return std::format("[unary {}]@{}-{}", token_kind_name(un->operation), un->position.start_index,
+                           un->position.end_index);
+
+    if (const auto* num = std::get_if<literal_number>(&op))
+        return std::format("({})@{}-{}", num->num.string(), num->position.start_index, num->position.end_index);
+
+    if (const auto* var = std::get_if<variable_reference>(&op))
+        return std::format("({})@{}-{}", var->identifier, var->position.start_index, var->position.end_index);
+
+    if (const auto* fn = std::get_if<function_call>(&op))
+        return std::format("[{}/{}]@{}-{}", fn->identifier, fn->arity, fn->position.start_index, fn->position.end_index);
+
     return {};
 }

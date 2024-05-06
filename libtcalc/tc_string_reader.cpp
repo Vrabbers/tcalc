@@ -2,9 +2,11 @@
 
 #include <optional>
 
-#include "tc_utf8_utils.h"
+#include "utf8_utils.h"
 
-std::pair<char32_t, size_t> tcalc::string_reader::peek_with_length() const
+using namespace tcalc;
+
+std::pair<char32_t, size_t> string_reader::peek_with_length() const
 {
     if (_end_ix >= _string.length())
         return {end_of_file, 0};
@@ -17,7 +19,7 @@ std::pair<char32_t, size_t> tcalc::string_reader::peek_with_length() const
     return {0, 0};
 }
 
-std::optional<char32_t> tcalc::string_reader::peek() const
+std::optional<char32_t> string_reader::peek() const
 {
     const auto [character, size] = peek_with_length();
 
@@ -27,7 +29,7 @@ std::optional<char32_t> tcalc::string_reader::peek() const
     return character;
 }
 
-std::u32string tcalc::string_reader::peek_many(int32_t count) const
+std::u32string string_reader::peek_many(int32_t count) const
 {
     std::u32string out;
     auto index = _end_ix;
@@ -53,7 +55,7 @@ std::u32string tcalc::string_reader::peek_many(int32_t count) const
     return out;
 }
 
-std::optional<char32_t> tcalc::string_reader::forward()
+std::optional<char32_t> string_reader::forward()
 {
     const auto [character, size] = peek_with_length();
 
@@ -72,7 +74,7 @@ std::optional<char32_t> tcalc::string_reader::forward()
     return _current;
 }
 
-std::pair<tcalc::source_position, std::string_view> tcalc::string_reader::flush()
+std::pair<source_position, std::string_view> string_reader::flush()
 {
     auto substr = std::string_view{_string}.substr(_start_ix, token_length());
     const source_position position{_start_ix, _end_ix};

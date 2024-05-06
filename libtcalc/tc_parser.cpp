@@ -1,5 +1,6 @@
 #include "tc_parser.h"
 
+#include <cassert>
 #include <stdexcept>
 
 using namespace tcalc;
@@ -108,14 +109,17 @@ expression parser::parse_expression()
             unexpected_token(_current);
         forward();
     };
+    size_t lhs_start_ix = _current.start_index();
     std::vector<operation> lhs_parse;
     parse_arithmetic(lhs_parse); // Parse full expression or left hand side of function call or assignment
+    const size_t lhs_end_ix = _current.start_index();
     const auto delimiter = forward();
+    const size_t rhs_start_ix = _current.start_index();
     switch (delimiter.kind())
     {
         case token_kind::expression_separator:
         case token_kind::end_of_file:
-            return arithmetic_expression{std::move(lhs_parse)};
+            return arithmetic_expression{std::move(lhs_parse), {lhs_start_ix, lhs_end_ix}};
         case token_kind::equal:
             // can be assignment, or function def, or boolean expr
             if (lhs_parse.size() == 1 && std::holds_alternative<variable_reference>(lhs_parse[0]))
@@ -123,17 +127,34 @@ expression parser::parse_expression()
                 // this is a variable assignment expression 😁
                 std::vector<operation> rhs_parse;
                 parse_arithmetic(rhs_parse);
+                const size_t rhs_end_ix = _current.end_index();
                 expect_end();
                 auto var = std::get<variable_reference>(lhs_parse[0]).identifier;
-                return assignment_expression{std::move(var), {std::move(rhs_parse)}};
+                return assignment_expression{
+                    .variable = std::move(var),
+                    .expression = arithmetic_expression{
+                        .tokens = std::move(rhs_parse),
+                        .position = {rhs_start_ix, rhs_end_ix}
+                    },
+                    .position = {lhs_start_ix, rhs_end_ix}
+                };
             }
             if (is_valid_func_def(lhs_parse))
             {
                 std::vector<operation> def_parse;
                 parse_arithmetic(def_parse);
+                const size_t rhs_end_ix = _current.end_index();
                 expect_end();
                 auto fn_name = std::get<function_call>(lhs_parse.back()).identifier;
-                return func_def_expression{std::move(fn_name), collect_arg_names(lhs_parse), {std::move(def_parse)}};
+                return func_def_expression{
+                    .name = std::move(fn_name),
+                    .parameters = collect_arg_names(lhs_parse),
+                    .expression = arithmetic_expression{
+                        .tokens = std::move(def_parse),
+                        .position = {rhs_start_ix, rhs_end_ix}
+                    },
+                    .position = {lhs_start_ix, rhs_end_ix}
+                };
             }
         [[fallthrough]]; // in the case that it is not assignment or function def, we try to parse as a boolean expression
         case token_kind::not_equal:
@@ -144,8 +165,20 @@ expression parser::parse_expression()
             {
                 std::vector<operation> rhs_parse;
                 parse_arithmetic(rhs_parse);
+                const size_t rhs_end_ix = _current.end_index();
                 expect_end();
-                return boolean_expression{{std::move(lhs_parse)}, {std::move(rhs_parse)}, delimiter.kind()};
+                return boolean_expression{
+                    .lhs = arithmetic_expression{
+                        .tokens = std::move(lhs_parse),
+                        .position = {lhs_start_ix, lhs_end_ix}
+                    },
+                    .rhs = arithmetic_expression{
+                        .tokens = std::move(rhs_parse),
+                        .position = {rhs_start_ix, rhs_end_ix}
+                    },
+                    .kind = delimiter.kind(),
+                    .position = {lhs_start_ix, rhs_end_ix}
+                };
             }
         default:
             unexpected_token(delimiter);
@@ -173,27 +206,40 @@ void parser::parse_arithmetic(std::vector<operation>& parsing, int enclosing_pre
 
     while (true)
     {
-        const auto prec = binary_precedence(_current.kind());
+        auto prec = binary_precedence(_current.kind());
         token_kind op_kind;
+        source_position position;
+
         if (prec != -1) // is binary operator
         {
-            if (enclosing_right_assoc ? prec < enclosing_precedence : prec <= enclosing_precedence)
-                return;
-
-            op_kind = forward().kind();
+            op_kind = _current.kind();
+            position = _current.position();
+            forward();
         }
         else if (can_insert_implicit_multiply(_current.kind()))
         {
             // insert implicit multiply
             op_kind = token_kind::multiply;
+            prec = binary_precedence(token_kind::multiply);
+            position = {_current.position().start_index, _current.position().start_index};
+        }
+        else if (_current.kind() == token_kind::factorial)
+        {
+            // handle factorial operator
+            parsing.emplace_back(unary_operator{token_kind::factorial, forward().position()});
+            return;
         }
         else
         {
             return; // if not a kind that starts a term, or binary operator, stop.
         }
+
+        if (enclosing_right_assoc ? prec < enclosing_precedence : prec <= enclosing_precedence)
+            return;
+
         // parse right-hand side, up to where the operator precedence will allow us
         parse_arithmetic(parsing, prec, is_right_associative(op_kind));
-        parsing.emplace_back(binary_operator{op_kind}); // and put operator
+        parsing.emplace_back(binary_operator{op_kind, position}); // and put operator
     }
 }
 
@@ -203,13 +249,18 @@ void parser::parse_primary_term(std::vector<operation>& parsing)
     {
         case token_kind::identifier:
             if (peek().kind() != token_kind::open_parenthesis)
-                parsing.emplace_back(variable_reference{std::string{forward().source()}});
+            {
+                parsing.emplace_back(variable_reference{std::string{_current.source()}, _current.position()});
+                forward();
+            }
             else
+            {
                 parse_function(parsing);
+            }
             return;
         case token_kind::numeric_literal:
             {
-                auto num = number{64}; // TODO: not magic constant
+                auto num = number{_number_precision};
                 if (_current.source().back() == 'i')
                 {
                     if (_current.source().length() == 1)
@@ -221,8 +272,8 @@ void parser::parse_primary_term(std::vector<operation>& parsing)
                 {
                     num.set_real(_current.source());
                 }
-                forward();
-                parsing.emplace_back(literal_number{std::move(num)});
+                const auto token = forward();
+                parsing.emplace_back(literal_number{std::move(num), token.position()});
                 return;
             }
         case token_kind::open_parenthesis:
@@ -241,10 +292,17 @@ void parser::parse_primary_term(std::vector<operation>& parsing)
 
 void parser::parse_function(std::vector<operation>& parsing)
 {
-    std::string fn_name{forward().source()};
-    if (forward().kind() == token_kind::close_parenthesis)
+    const auto name_token = forward(); // Consume name token
+    const auto position = name_token.position();
+    std::string fn_name{name_token.source()};
+
+    assert(_current.kind() == token_kind::open_parenthesis);
+    forward(); // Consume open parens
+
+    if (_current.kind() == token_kind::close_parenthesis)
     {
-        parsing.emplace_back(function_call{std::move(fn_name), 0});
+        forward();
+        parsing.emplace_back(function_call{std::move(fn_name), 0, position});
         return;
     }
     int arity = 0;
@@ -262,7 +320,7 @@ void parser::parse_function(std::vector<operation>& parsing)
     if (_current.kind() == token_kind::close_parenthesis)
         forward();
 
-    parsing.emplace_back(function_call{std::move(fn_name), arity});
+    parsing.emplace_back(function_call{std::move(fn_name), arity, position});
 }
 
 void parser::unexpected_token(const token& err_token)

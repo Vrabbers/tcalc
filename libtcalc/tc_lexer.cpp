@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include <optional>
 
-#include "tc_utf8_utils.h"
+#include "utf8_utils.h"
 
 using namespace tcalc;
 

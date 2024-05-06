@@ -8,7 +8,11 @@ namespace tcalc
     class parser final
     {
     public:
-        explicit parser(lexer&& lexer) : _current{lexer.next()}, _lexer{std::move(lexer)}, _diagnostic_bag{_lexer.diagnostic_bag()}
+        explicit parser(lexer&& lexer, const mpfr_prec_t number_precision) :
+            _current{lexer.next()},
+            _lexer{std::move(lexer)},
+            _diagnostic_bag{_lexer.diagnostic_bag()},
+            _number_precision{number_precision}
         {
         }
 
@@ -49,5 +53,6 @@ namespace tcalc
         std::optional<token> _peek;
         lexer _lexer;
         std::vector<diagnostic>& _diagnostic_bag;
+        mpfr_prec_t _number_precision;
     };
 }

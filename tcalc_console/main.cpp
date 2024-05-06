@@ -19,7 +19,7 @@
 static tcalc::parser parse(std::string&& str)
 {
     tcalc::lexer lexer{std::move(str), true};
-    tcalc::parser parser{std::move(lexer)};
+    tcalc::parser parser{std::move(lexer), 64};
 
     return parser;
 }
@@ -54,11 +54,13 @@ static void interactive()
             {
                 std::cout << "arithmetic ";
                 show_arith(*arith);
+                std::cout << " @" << arith->position.start_index << '-' << arith->position.end_index;
             }
             else if (const auto* asgn = std::get_if<tcalc::assignment_expression>(&expr))
             {
                 std::cout << "assigning to " << asgn->variable << ": ";
                 show_arith(asgn->expression);
+                std::cout << " @" << asgn->position.start_index << '-' << asgn->position.end_index;
             }
             else if (const auto* blnexp = std::get_if<tcalc::boolean_expression>(&expr))
             {
@@ -66,11 +68,13 @@ static void interactive()
                 show_arith(blnexp->lhs);
                 std::cout << "and ";
                 show_arith(blnexp->rhs);
+                std::cout << " @" << blnexp->position.start_index << '-' << blnexp->position.end_index;
             }
             else if (const auto* fndef = std::get_if<tcalc::func_def_expression>(&expr))
             {
                 std::cout << "defining function " << fndef->name << " as ";
                 show_arith(fndef->expression);
+                std::cout << " @" << fndef->position.start_index << '-' << fndef->position.end_index;
             }
             std::cout << '\n';
         }

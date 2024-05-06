@@ -28,11 +28,8 @@ set(HEADERS
     tc_operation.h
 )
 
-set(PRIVATE_HEADERS
-    tc_utf8_utils.h
-)
 
-add_library(libtcalc STATIC ${SOURCES} ${HEADERS} ${PRIVATE_HEADERS})
+add_library(libtcalc STATIC ${SOURCES} ${HEADERS})
 
 set_target_properties(libtcalc PROPERTIES
     OUTPUT_NAME tcalc

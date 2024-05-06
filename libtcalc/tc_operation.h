@@ -5,32 +5,38 @@
 
 #include "tc_token.h"
 #include "tc_number.h"
+
 namespace tcalc
 {
     struct binary_operator final
     {
         token_kind operation;
+        source_position position;
     };
 
     struct unary_operator final
     {
         token_kind operation;
+        source_position position;
     };
 
     struct literal_number final
     {
         number num;
+        source_position position;
     };
 
     struct variable_reference final
     {
         std::string identifier;
+        source_position position;
     };
 
     struct function_call final
     {
         std::string identifier;
         int32_t arity;
+        source_position position;
     };
 
     using operation = std::variant<binary_operator, unary_operator, literal_number, variable_reference, function_call>;

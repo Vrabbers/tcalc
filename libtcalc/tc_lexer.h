@@ -14,12 +14,14 @@ namespace tcalc
     {
     public:
         explicit lexer(std::string&& input, bool comma_arg_separator) :
-            _sr{std::move(input)}, _comma_argument_separator{comma_arg_separator}
+            _sr{std::move(input)},
+            _comma_argument_separator{comma_arg_separator}
         {
         }
 
         explicit lexer(const std::string& input, bool comma_arg_separator) :
-            _sr{input}, _comma_argument_separator{comma_arg_separator}
+            _sr{input},
+            _comma_argument_separator{comma_arg_separator}
         {
         }
 

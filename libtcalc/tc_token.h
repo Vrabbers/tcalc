@@ -56,7 +56,9 @@ namespace tcalc
     {
     public:
         token(const token_kind kind, std::string&& str, const source_position pos) :
-            _source{std::move(str)}, _position{pos}, _kind{kind}
+            _source{std::move(str)},
+            _position{pos},
+            _kind{kind}
         {
         }
 

@@ -23,17 +23,22 @@ namespace tcalc
     {
     public:
         diagnostic(const source_position pos, const diagnostic_type type) :
-            _position{pos}, _type{type}
+            _position{pos},
+            _type{type}
         {
         }
 
         diagnostic(const source_position pos, const diagnostic_type type, std::vector<std::string>&& arguments) :
-            _position{pos}, _arguments{std::move(arguments)}, _type{type}
+            _position{pos},
+            _arguments{std::move(arguments)},
+            _type{type}
         {
         }
 
         diagnostic(const source_position pos, const diagnostic_type type, const std::string_view argument) :
-            _position{pos}, _arguments{std::string{argument}}, _type{type}
+            _position{pos},
+            _arguments{std::string{argument}},
+            _type{type}
         {
         }
 
