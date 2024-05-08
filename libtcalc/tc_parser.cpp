@@ -41,7 +41,7 @@ static bool is_right_associative(const token_kind kind)
     return kind == token_kind::exponentiate;
 }
 
-static bool ends_arith(const token_kind kind)
+static bool ends_expr(const token_kind kind)
 {
     switch (kind)
     {
@@ -85,6 +85,7 @@ static bool can_insert_implicit_multiply(const token_kind kind)
     {
         case token_kind::identifier:
         case token_kind::open_parenthesis:
+        case token_kind::numeric_literal:
             return true;
         default:
             return unary_precendence(kind) != -1;
@@ -164,15 +165,19 @@ expression parser::parse_boolean_expression(const size_t lhs_start_ix, const siz
 expression parser::parse_expression()
 {
     const size_t lhs_start_ix = _current.start_index();
+
     std::vector<operation> lhs_parse;
     parse_arithmetic(lhs_parse); // Parse full expression or left hand side of function call or assignment
     const size_t lhs_end_ix = _current.start_index();
-    const auto delimiter = forward();
-    switch (delimiter.kind())
+
+    if (lhs_parse.empty())
     {
-        case token_kind::expression_separator:
-        case token_kind::end_of_file:
-            return arithmetic_expression{std::move(lhs_parse), {lhs_start_ix, lhs_end_ix}};
+        expect_end();
+        return arithmetic_expression{{}, {lhs_start_ix, lhs_end_ix}};
+    }
+
+    switch (_current.kind())
+    {
         case token_kind::equal:
             // can be assignment, or function def, or boolean expr
             if (lhs_parse.size() == 1 && std::holds_alternative<variable_reference>(lhs_parse[0]))
@@ -185,10 +190,10 @@ expression parser::parse_expression()
         case token_kind::less_or_equal:
         case token_kind::greater_than:
         case token_kind::greater_or_equal:
-            return parse_boolean_expression(lhs_start_ix, lhs_end_ix, std::move(lhs_parse), delimiter.kind());
+            return parse_boolean_expression(lhs_start_ix, lhs_end_ix, std::move(lhs_parse), forward().kind());
         default:
-            unexpected_token(delimiter);
-            return arithmetic_expression{lhs_parse};
+            expect_end();
+            return arithmetic_expression{lhs_parse, {lhs_start_ix, lhs_end_ix}};
     }
 }
 
@@ -220,28 +225,36 @@ void parser::parse_arithmetic(std::vector<operation>& parsing, const int enclosi
         {
             op_kind = _current.kind();
             position = _current.position();
+
+            if (enclosing_right_assoc ? prec < enclosing_precedence : prec <= enclosing_precedence)
+                return;
+
             forward();
-        }
-        else if (can_insert_implicit_multiply(_current.kind()))
-        {
-            // insert implicit multiply
-            op_kind = token_kind::multiply;
-            prec = binary_precedence(token_kind::multiply);
-            position = {_current.position().start_index, _current.position().start_index};
-        }
-        else if (_current.kind() == token_kind::factorial)
-        {
-            // handle factorial operator
-            parsing.emplace_back(unary_operator{token_kind::factorial, forward().position()});
-            return;
         }
         else
         {
-            return; // if not a kind that starts a term, or binary operator, stop.
-        }
+            if (can_insert_implicit_multiply(_current.kind()))
+            {
+                // insert implicit multiply
+                op_kind = token_kind::multiply;
+                prec = binary_precedence(token_kind::multiply);
+                position = {_current.position().start_index, _current.position().start_index};
 
-        if (enclosing_right_assoc ? prec < enclosing_precedence : prec <= enclosing_precedence)
-            return;
+                if (enclosing_right_assoc ? prec < enclosing_precedence : prec <= enclosing_precedence)
+                    return;
+            }
+            else
+            {
+                if (_current.kind() == token_kind::factorial)
+                {
+                    // handle factorial operator
+                    parsing.emplace_back(unary_operator{token_kind::factorial, forward().position()});
+                    continue;
+                }
+
+                return; // if not a kind that starts a term, or binary operator, stop.
+            }
+        }
 
         // parse right-hand side, up to where the operator precedence will allow us
         parse_arithmetic(parsing, prec, is_right_associative(op_kind));
@@ -291,14 +304,14 @@ void parser::parse_primary_term(std::vector<operation>& parsing)
             return;
 
         default:
-            unexpected_token(forward());
+            unexpected_token(_current);
             return;
     }
 }
 
 void parser::expect_end()
 {
-    if (!ends_arith(_current.kind()))
+    if (!ends_expr(_current.kind()))
         unexpected_token(_current);
     forward();
 }
