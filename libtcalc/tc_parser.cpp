@@ -10,13 +10,26 @@ static int binary_precedence(const token_kind kind)
     switch (kind)
     {
         case token_kind::exponentiate:
-            return 4;
+            return 5;
+
+        case token_kind::right_shift:
+        case token_kind::left_shift:
+        case token_kind::binary_and:
+        case token_kind::binary_nand:
+        case token_kind::binary_or:
+        case token_kind::binary_nor:
+        case token_kind::binary_xor:
+        case token_kind::binary_xnor:
+            return 3;
+
         case token_kind::multiply:
         case token_kind::divide:
             return 2;
+
         case token_kind::minus:
         case token_kind::plus:
             return 1;
+
         default:
             return -1;
     }
@@ -30,7 +43,7 @@ static int unary_precendence(const token_kind kind)
         case token_kind::minus:
         case token_kind::plus:
         case token_kind::radical:
-            return 3;
+            return 4;
         default:
             return -1;
     }
@@ -90,6 +103,11 @@ static bool can_insert_implicit_multiply(const token_kind kind)
         default:
             return unary_precendence(kind) != -1;
     }
+}
+
+static bool is_postfix_operator(const token_kind kind)
+{
+    return kind == token_kind::percent || kind == token_kind::factorial;
 }
 
 std::vector<expression> parser::parse_all()
@@ -193,7 +211,7 @@ expression parser::parse_expression()
             return parse_boolean_expression(lhs_start_ix, lhs_end_ix, std::move(lhs_parse), forward().kind());
         default:
             expect_end();
-            return arithmetic_expression{lhs_parse, {lhs_start_ix, lhs_end_ix}};
+            return arithmetic_expression{std::move(lhs_parse), {lhs_start_ix, lhs_end_ix}};
     }
 }
 
@@ -231,29 +249,24 @@ void parser::parse_arithmetic(std::vector<operation>& parsing, const int enclosi
 
             forward();
         }
+        else if (can_insert_implicit_multiply(_current.kind()))
+        {
+            // insert implicit multiply
+            op_kind = token_kind::multiply;
+            prec = binary_precedence(token_kind::multiply);
+            position = {_current.position().start_index, _current.position().start_index};
+
+            if (enclosing_right_assoc ? prec < enclosing_precedence : prec <= enclosing_precedence)
+                return;
+        }
+        else if (is_postfix_operator(_current.kind()))
+        {
+            parsing.emplace_back(unary_operator{_current.kind(), forward().position()});
+            continue;
+        }
         else
         {
-            if (can_insert_implicit_multiply(_current.kind()))
-            {
-                // insert implicit multiply
-                op_kind = token_kind::multiply;
-                prec = binary_precedence(token_kind::multiply);
-                position = {_current.position().start_index, _current.position().start_index};
-
-                if (enclosing_right_assoc ? prec < enclosing_precedence : prec <= enclosing_precedence)
-                    return;
-            }
-            else
-            {
-                if (_current.kind() == token_kind::factorial)
-                {
-                    // handle factorial operator
-                    parsing.emplace_back(unary_operator{token_kind::factorial, forward().position()});
-                    continue;
-                }
-
-                return; // if not a kind that starts a term, or binary operator, stop.
-            }
+            return; // if not a kind that starts a term, or binary operator, stop.
         }
 
         // parse right-hand side, up to where the operator precedence will allow us
@@ -304,7 +317,7 @@ void parser::parse_primary_term(std::vector<operation>& parsing)
             return;
 
         default:
-            unexpected_token(_current);
+            unexpected_token(forward());
             return;
     }
 }
