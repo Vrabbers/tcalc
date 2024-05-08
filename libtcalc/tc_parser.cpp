@@ -209,10 +209,10 @@ void parser::parse_arithmetic(std::vector<operation>& parsing, const int enclosi
     else
     {
         // We have a unary operator
-        const auto unary_op = forward().kind();
+        const auto unary_op = forward();
         // read unary operand
         parse_arithmetic(parsing, unary_prec);
-        parsing.emplace_back(unary_operator{unary_op}); // And place the unary operator on the stack
+        parsing.emplace_back(unary_operator{unary_op.kind(), unary_op.position()}); // And place the unary operator on the stack
     }
 
     while (true)
