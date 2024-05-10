@@ -61,6 +61,10 @@ namespace tcalc
 
         void set_imaginary(std::string_view imaginary);
 
+        void set_binary(std::string_view bin);
+
+        void set_hexadecimal(std::string_view hex);
+
         [[nodiscard]]
         bool is_real() const
         {

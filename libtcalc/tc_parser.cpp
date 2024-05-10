@@ -308,6 +308,22 @@ void parser::parse_primary_term(std::vector<operation>& parsing)
                 parsing.emplace_back(literal_number{std::move(num), token.position()});
                 return;
             }
+        case token_kind::binary_literal:
+            {
+                auto num = number{_number_precision};
+                num.set_binary(_current.source());
+                parsing.emplace_back(literal_number{std::move(num), _current.position()});
+                forward();
+                return;
+            }
+        case token_kind::hex_literal:
+            {
+                auto num = number{_number_precision};
+                num.set_hexadecimal(_current.source());
+                parsing.emplace_back(literal_number{std::move(num), _current.position()});
+                forward();
+                return;
+            }
         case token_kind::open_parenthesis:
             forward();
             parse_arithmetic(parsing);
