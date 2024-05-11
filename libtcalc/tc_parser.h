@@ -49,6 +49,9 @@ namespace tcalc
         void unexpected_token(const token& err_token);
         void parse_primary_term(std::vector<operation> &parsing);
         void expect_end();
+        void parse_super_num(std::vector<operation>& parsing);
+        void parse_super_term(std::vector<operation>& parsing);
+        void parse_superscript(std::vector<operation>& parsing);
         expression parse_variable_assignment(size_t lhs_start_ix, std::vector<operation>&& lhs_parse);
         expression parse_function_definition(size_t lhs_start_ix, std::vector<operation>&& lhs_parse);
         expression parse_boolean_expression(size_t lhs_start_ix, size_t lhs_end_ix, std::vector<operation>&& lhs_parse,

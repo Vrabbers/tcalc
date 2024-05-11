@@ -2,7 +2,7 @@
 
 #include <optional>
 
-#include "utf8_utils.h"
+#include "utf8utils.h"
 
 using namespace tcalc;
 
@@ -11,7 +11,7 @@ std::pair<char32_t, size_t> string_reader::peek_with_length() const
     if (_end_ix >= _string.length())
         return {end_of_file, 0};
 
-    const auto [length, character] = utf8proc::iterate_one_from_index(_string, _end_ix);
+    const auto [length, character] = utf8utils::iterate_one_from_index(_string, _end_ix);
 
     if (length > 0)
         return {character, length};
@@ -39,7 +39,7 @@ std::u32string string_reader::peek_many(int32_t count) const
         if (index >= _string.length())
             return out;
 
-        const auto [length, character] = utf8proc::iterate_one_from_index(_string, index);
+        const auto [length, character] = utf8utils::iterate_one_from_index(_string, index);
 
         if (length > 0)
         {

@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include <optional>
 
-#include "utf8_utils.h"
+#include "utf8utils.h"
 
 using namespace tcalc;
 
@@ -12,14 +12,14 @@ static bool is_whitespace(const std::optional<char32_t> chr)
     if (!chr.has_value())
         return false;
     // tab is not in category ZS. conveniently, neither is LF.
-    return chr == U'\t' || utf8proc::category(*chr) == UTF8PROC_CATEGORY_ZS;
+    return chr == U'\t' || utf8utils::category(*chr) == UTF8PROC_CATEGORY_ZS;
 }
 
 static bool is_letter(const std::optional<char32_t> chr)
 {
     if (!chr.has_value())
         return false;
-    const auto c = utf8proc::category(*chr);
+    const auto c = utf8utils::category(*chr);
     return (c >= UTF8PROC_CATEGORY_LU && c <= UTF8PROC_CATEGORY_LO)
         || c == UTF8PROC_CATEGORY_PC
         || c == UTF8PROC_CATEGORY_NO;

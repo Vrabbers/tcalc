@@ -3,6 +3,8 @@
 #include <cassert>
 #include <stdexcept>
 
+#include "utf8utils.h"
+
 using namespace tcalc;
 
 static int binary_precedence(const token_kind kind)
@@ -108,6 +110,19 @@ static bool can_insert_implicit_multiply(const token_kind kind)
 static bool is_postfix_operator(const token_kind kind)
 {
     return kind == token_kind::percent || kind == token_kind::factorial;
+}
+
+static bool is_superscript(const token_kind kind)
+{
+    switch (kind)
+    {
+        case token_kind::superscript_literal:
+        case token_kind::superscript_minus:
+        case token_kind::superscript_plus:
+            return true;
+        default:
+            return false;
+    }
 }
 
 std::vector<expression> parser::parse_all()
@@ -259,6 +274,13 @@ void parser::parse_arithmetic(std::vector<operation>& parsing, const int enclosi
             if (enclosing_right_assoc ? prec < enclosing_precedence : prec <= enclosing_precedence)
                 return;
         }
+        else if (is_superscript(_current.kind()))
+        {
+            auto exp_pos = _current.position().start_index;
+            parse_superscript(parsing);
+            parsing.emplace_back(binary_operator{token_kind::exponentiate, {exp_pos, exp_pos}});
+            continue;
+        }
         else if (is_postfix_operator(_current.kind()))
         {
             parsing.emplace_back(unary_operator{_current.kind(), forward().position()});
@@ -343,6 +365,85 @@ void parser::expect_end()
     if (!ends_expr(_current.kind()))
         unexpected_token(_current);
     forward();
+}
+
+static std::optional<token_kind> from_superscript_op(const token_kind kind)
+{
+    switch (kind)
+    {
+        case token_kind::superscript_minus:
+            return token_kind::minus;
+        case token_kind::superscript_plus:
+            return token_kind::plus;
+        default:
+            return std::nullopt;
+    }
+}
+
+void parser::parse_super_num(std::vector<operation>& parsing)
+{
+    if (_current.kind() != token_kind::superscript_literal)
+    {
+        unexpected_token(_current);
+        return;
+    }
+
+    const auto num_str = utf8utils::to_inline_number(_current.source());
+    number num{_number_precision};
+    if (num_str.back() == 'i')
+    {
+        if (num_str.length() == 1)
+            num.set(0, 1); // string is "i", set to 0 + 1i
+        else
+            num.set_imaginary(num_str);
+    }
+    else
+    {
+        num.set_real(num_str);
+    }
+    parsing.emplace_back(literal_number{std::move(num), _current.position()});
+    forward();
+}
+
+void parser::parse_super_term(std::vector<operation>& parsing)
+{
+    if (_current.kind() != token_kind::superscript_literal)
+    {
+        const auto unary_op_token = forward();
+        if (const auto unary = from_superscript_op(unary_op_token.kind()))
+        {
+            parse_super_num(parsing);
+            parsing.emplace_back(unary_operator{*unary, unary_op_token.position()});
+        }
+        else
+        {
+            unexpected_token(unary_op_token);
+        }
+    }
+    else
+    {
+        parse_super_num(parsing);
+    }
+}
+
+void parser::parse_superscript(std::vector<operation>& parsing)
+{
+    parse_super_term(parsing);
+
+    while (true)
+    {
+        if (const auto binary_op = from_superscript_op(_current.kind()))
+        {
+            binary_operator bin_op{*binary_op, _current.position()};
+            forward();
+            parse_super_term(parsing);
+            parsing.emplace_back(bin_op);
+        }
+        else
+        {
+            break;
+        }
+    }
 }
 
 void parser::parse_function(std::vector<operation>& parsing)
