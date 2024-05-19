@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TC_STRING_READER_H
+#define TC_STRING_READER_H
 
 #include <cstdint>
 #include <memory>
@@ -66,3 +67,5 @@ namespace tcalc
         size_t _end_ix = 0;
     };
 }
+
+#endif // TC_STRING_READER_H

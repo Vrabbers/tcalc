@@ -452,7 +452,6 @@ void parser::parse_function(std::vector<operation>& parsing)
     const auto position = name_token.position();
     std::string fn_name{name_token.source()};
 
-    assert(_current.kind() == token_kind::open_parenthesis);
     forward(); // Consume open parens
 
     if (_current.kind() == token_kind::close_parenthesis)

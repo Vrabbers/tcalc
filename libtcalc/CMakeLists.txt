@@ -15,6 +15,7 @@ set(SOURCES
     tc_number.cpp
     tc_operation.cpp
     utf8utils.cpp
+    tc_evaluator.cpp
 )
 
 set(HEADERS

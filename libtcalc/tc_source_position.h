@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TC_SOURCE_POSITION_H
+#define TC_SOURCE_POSITION_H
 
 namespace tcalc
 {
@@ -8,3 +9,5 @@ namespace tcalc
         size_t end_index;
     };
 }
+
+#endif // TC_SOURCE_POSITION_H

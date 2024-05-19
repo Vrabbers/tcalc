@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TC_NUMBER_H
+#define TC_NUMBER_H
 
 #ifdef _MSC_VER
 #pragma warning(push, 0) // mpc header has warnings on MSVC /Wall
@@ -87,3 +88,5 @@ namespace tcalc
         bool _owns{true};
     };
 }
+
+#endif // TC_NUMBER_H

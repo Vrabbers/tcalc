@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TC_TOKEN_H
+#define TC_TOKEN_H
 
 #include <memory>
 #include <string>
@@ -100,3 +101,5 @@ namespace tcalc
         token_kind _kind;
     };
 }
+
+#endif // TC_TOKEN_H

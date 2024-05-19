@@ -90,7 +90,7 @@ token lexer::next()
 
 token lexer::flush_token(const token_kind kind)
 {
-    auto [pos, str_view] = _sr.flush();
+    const auto [pos, str_view] = _sr.flush();
     return {kind, std::string{str_view}, pos};
 }
 

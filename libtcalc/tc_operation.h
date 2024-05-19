@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TC_OPERATION_H
+#define TC_OPERATION_H
 
 #include <variant>
 #include <string>
@@ -43,3 +44,5 @@ namespace tcalc
 
     std::string op_to_string(const operation& op);
 }
+
+#endif // TC_OPERATION_H

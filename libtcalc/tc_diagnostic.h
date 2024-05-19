@@ -1,6 +1,6 @@
-#pragma once
+#ifndef TC_DIAGNOSTIC_H
+#define TC_DIAGNOSTIC_H
 
-#include <memory>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -78,3 +78,5 @@ namespace tcalc
         diagnostic_type _type;
     };
 }
+
+#endif // TC_DIAGNOSTIC_H

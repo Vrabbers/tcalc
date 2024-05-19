@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TC_LEXER_H
+#define TC_LEXER_H
 
 #include <string>
 #include <memory>
@@ -67,3 +68,5 @@ namespace tcalc
         bool _reached_end{false};
     };
 }
+
+#endif // TC_LEXER_H

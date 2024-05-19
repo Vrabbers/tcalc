@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TC_PARSER_H
+#define TC_PARSER_H
 
 #include "tc_expression.h"
 #include "tc_lexer.h"
@@ -63,3 +64,5 @@ namespace tcalc
         mpfr_prec_t _number_precision;
     };
 }
+
+#endif // TC_PARSER_H

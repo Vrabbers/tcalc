@@ -1,4 +1,6 @@
-#pragma once
+#ifndef TC_EXPRESSION_H
+#define TC_EXPRESSION_H
+
 #include <string>
 #include <variant>
 #include <vector>
@@ -39,3 +41,4 @@ namespace tcalc
 
     using expression = std::variant<arithmetic_expression, assignment_expression, func_def_expression, boolean_expression>;
 }
+#endif // TC_EXPRESSION_H
