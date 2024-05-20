@@ -85,3 +85,25 @@ std::string number::string() const
         return real_only_string(_handle);
     return both_string(_handle);
 }
+
+number number::pi(const mpfr_prec_t prec)
+{
+    number pi{prec};
+    mpfr_const_pi(mpc_realref(pi._handle), fr_round_mode);
+    return pi;
+}
+
+number number::tau(const mpfr_prec_t prec)
+{
+    number tau = pi(prec);
+    mpc_mul_i(tau._handle, tau._handle, 2, round_mode);
+    return tau;
+}
+
+number number::e(const mpfr_prec_t prec)
+{
+    number e{prec};
+    mpfr_const_euler(mpc_realref(e._handle), fr_round_mode);
+    return e;
+}
+

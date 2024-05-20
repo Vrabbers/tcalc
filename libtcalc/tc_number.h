@@ -11,6 +11,7 @@
 #pragma warning(pop)
 #endif
 
+#include <cassert>
 #include <string>
 
 namespace tcalc
@@ -46,16 +47,18 @@ namespace tcalc
                 mpc_clear(_handle);
         }
 
-        void square()
-        {
-            if (_owns)
-                mpc_pow_si(_handle, _handle, 2, round_mode);
-        }
-
         void set(const long real, const long imaginary = 0)
         {
+            assert(_owns);
             if (_owns)
                 mpc_set_si_si(_handle, real, imaginary, round_mode);
+        }
+
+        void set(const number& other)
+        {
+            assert(_owns);
+            if (_owns)
+                mpc_set(_handle, other._handle, round_mode);
         }
 
         void set_real(std::string_view real);
@@ -69,6 +72,7 @@ namespace tcalc
         [[nodiscard]]
         bool is_real() const
         {
+            assert(_owns);
             if (_owns)
                 return mpfr_zero_p(mpc_imagref(_handle));
             return false;
@@ -76,13 +80,45 @@ namespace tcalc
 
         void add(const number& a, const number& b)
         {
+            assert(_owns);
             if (_owns)
                 mpc_add(_handle, a._handle, b._handle, round_mode);
+        }
+
+        void sqrt(const number& a)
+        {
+            assert(_owns);
+            if (_owns)
+                mpc_sqrt(_handle, a._handle, round_mode);
+        }
+
+        void exp(const number& a)
+        {
+            assert(_owns);
+            if (_owns)
+                mpc_exp(_handle, a._handle, round_mode);
+        }
+
+        void log(const number& a)
+        {
+            assert(_owns);
+            if (_owns)
+                mpc_log10(_handle, a._handle, round_mode);
+        }
+
+        void ln(const number& a)
+        {
+            assert(_owns);
+            if (_owns)
+                mpc_log(_handle, a._handle, round_mode);
         }
 
         [[nodiscard]]
         std::string string() const;
 
+        static number pi(mpfr_prec_t prec);
+        static number tau(mpfr_prec_t prec);
+        static number e(mpfr_prec_t prec);
     private:
         mpc_t _handle{};
         bool _owns{true};

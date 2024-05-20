@@ -5,6 +5,7 @@
 #include <cstring>
 #include <iomanip>
 
+#include "tc_evaluator.h"
 #include "tc_expression.h"
 #include "tc_lexer.h"
 #include "tc_operation.h"
@@ -55,6 +56,15 @@ static void interactive()
                 std::cout << "arithmetic ";
                 show_arith(*arith);
                 std::cout << " @" << arith->position.start_index << '-' << arith->position.end_index;
+
+                std::cout << "\n\nevaluate: ";
+                tcalc::evaluator eval{64};
+                auto res = eval.evaluate_arithmetic(*arith);
+                if (res.is_error())
+                    std::cout << "error " << tcalc::eval_error_type_name(res.error().type)
+                        << " (" << res.error().position.start_index << ", " << res.error().position.end_index << ")";
+                else
+                    std::cout << res.value().string();
             }
             else if (const auto* asgn = std::get_if<tcalc::assignment_expression>(&expr))
             {
