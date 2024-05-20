@@ -9,7 +9,7 @@ namespace
     struct eval_stack
     {
         std::vector<number> _stack;
-        int _top = -1;
+        unsigned int _top = -1;
 
         [[nodiscard]]
         number& top()
@@ -18,7 +18,7 @@ namespace
         }
 
         [[nodiscard]]
-        bool has_at_least(const int amt) const
+        bool has_at_least(const unsigned int amt) const
         {
             return amt <= _top + 1;
         }

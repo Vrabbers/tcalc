@@ -1,6 +1,7 @@
 #ifndef TC_DIAGNOSTIC_H
 #define TC_DIAGNOSTIC_H
 
+#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
