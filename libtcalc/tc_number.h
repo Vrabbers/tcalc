@@ -141,6 +141,24 @@ namespace tcalc
             mpc_log(_handle, _handle, round_mode);
         }
 
+        void sin()
+        {
+            assert(_owns);
+            mpc_sin(_handle, _handle, round_mode);
+        }
+
+        void cos()
+        {
+            assert(_owns);
+            mpc_cos(_handle, _handle, round_mode);
+        }
+
+        void tan()
+        {
+            assert(_owns);
+            mpc_tan(_handle, _handle, round_mode);
+        }
+
         [[nodiscard]]
         std::string string() const;
 

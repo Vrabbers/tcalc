@@ -99,6 +99,27 @@ static const std::unordered_map<std::string_view, std::function<eval_error_type(
             stack.top().ln();
             return eval_error_type::none;
         }
+    },
+    {
+        "sin"sv, [](eval_stack& stack)
+        {
+            stack.top().sin();
+            return eval_error_type::none;
+        }
+    },
+    {
+        "cos"sv, [](eval_stack& stack)
+        {
+            stack.top().cos();
+            return eval_error_type::none;
+        }
+    },
+    {
+        "tan"sv, [](eval_stack& stack)
+        {
+            stack.top().tan();
+            return eval_error_type::none;
+        }
     }
 
 };
