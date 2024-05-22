@@ -33,10 +33,12 @@ namespace tcalc
         source_position position;
     };
 
+    using fn_arity_t = int32_t;
+
     struct function_call final
     {
         std::string identifier;
-        int32_t arity;
+        fn_arity_t arity;
         source_position position;
     };
 

@@ -26,6 +26,7 @@ static tcalc::parser parse(std::string&& str)
     return parser;
 }
 
+/*
 static void show_arith(const tcalc::arithmetic_expression& arith)
 {
     for (const auto& op : arith.tokens)
@@ -33,6 +34,7 @@ static void show_arith(const tcalc::arithmetic_expression& arith)
         std::cout << op_to_string(op) << ' ';
     }
 }
+*/
 
 static void interactive()
 {
@@ -47,52 +49,9 @@ static void interactive()
         if (input == "quit")
             return;
 
-        std::cout << "input: " << input;
-        std::cout << "\n\nparse:\n";
         auto p = parse(std::move(input));
+        std::vector<tcalc::expression> parse = p.parse_all();
         tcalc::evaluator eval{64};
-        for (const auto& expr : p.parse_all())
-        {
-            if (const auto* arith = std::get_if<tcalc::arithmetic_expression>(&expr))
-            {
-                std::cout << "arithmetic ";
-                show_arith(*arith);
-                std::cout << " @" << arith->position.start_index << '-' << arith->position.end_index;
-
-                std::cout << "\n\nevaluate: ";
-                auto before = std::chrono::steady_clock::now();
-                auto res = eval.evaluate_arithmetic(*arith);
-                std::chrono::duration<double, std::milli> time{std::chrono::steady_clock::now() - before};
-
-                if (res.is_error())
-                    std::cout << "error " << tcalc::eval_error_type_name(res.error().type)
-                        << " (" << res.error().position.start_index << ", " << res.error().position.end_index << ")";
-                else
-                    std::cout << res.value().string();
-                std::cout << " took " << time;
-            }
-            else if (const auto* asgn = std::get_if<tcalc::assignment_expression>(&expr))
-            {
-                std::cout << "assigning to " << asgn->variable << ": ";
-                show_arith(asgn->expression);
-                std::cout << " @" << asgn->position.start_index << '-' << asgn->position.end_index;
-            }
-            else if (const auto* blnexp = std::get_if<tcalc::boolean_expression>(&expr))
-            {
-                std::cout << "boolean " << std::quoted(tcalc::token_kind_name(blnexp->kind)) << " with ";
-                show_arith(blnexp->lhs);
-                std::cout << "and ";
-                show_arith(blnexp->rhs);
-                std::cout << " @" << blnexp->position.start_index << '-' << blnexp->position.end_index;
-            }
-            else if (const auto* fndef = std::get_if<tcalc::func_def_expression>(&expr))
-            {
-                std::cout << "defining function " << fndef->name << " as ";
-                show_arith(fndef->expression);
-                std::cout << " @" << fndef->position.start_index << '-' << fndef->position.end_index;
-            }
-            std::cout << '\n';
-        }
         if (!p.diagnostic_bag().empty())
         {
             std::cout << "\n\x1b[31mdiagnostics:\n";
@@ -104,9 +63,78 @@ static void interactive()
                 std::cout << '\n';
             }
             std::cout << "\x1b[0m";
+            continue;
+        }
+        else
+        {
+            for (const auto& expr : parse)
+            {
+                if (const auto* arith = std::get_if<tcalc::arithmetic_expression>(&expr))
+                {
+                    auto before = std::chrono::steady_clock::now();
+                    auto res = eval.evaluate_arithmetic(*arith);
+                    std::chrono::duration<double, std::milli> time{std::chrono::steady_clock::now() - before};
+
+                    if (res.is_error())
+                    {
+                        std::cout << "error " << tcalc::eval_error_type_name(res.error().type)
+                            << " (" << res.error().position.start_index << ", " << res.error().position.end_index << ")";
+                        break;
+                    }
+                    else
+                    {
+                        std::cout << res.value().string();
+                    }
+                    std::cout << " took " << time << '\n';
+                }
+                else if (const auto* asgn = std::get_if<tcalc::assignment_expression>(&expr))
+                {
+                    auto before = std::chrono::steady_clock::now();
+                    auto res = eval.evaluate_assignment(*asgn);
+                    std::chrono::duration<double, std::milli> time{std::chrono::steady_clock::now() - before};
+
+                    if (res.is_error())
+                    {
+                        std::cout << "error " << tcalc::eval_error_type_name(res.error().type)
+                            << " (" << res.error().position.start_index << ", " << res.error().position.end_index << ")";
+                        break;
+                    }
+                }
+                else if (const auto* blnexp = std::get_if<tcalc::boolean_expression>(&expr))
+                {
+                    auto before = std::chrono::steady_clock::now();
+                    auto res = eval.evaluate_boolean(*blnexp);
+                    std::chrono::duration<double, std::milli> time{std::chrono::steady_clock::now() - before};
+
+                    if (res.is_error())
+                    {
+                        std::cout << "error " << tcalc::eval_error_type_name(res.error().type)
+                            << " (" << res.error().position.start_index << ", " << res.error().position.end_index << ")";
+                    }
+                    else
+                    {
+                        std::cout << std::boolalpha << res.value();
+                    }
+                    std::cout << " took " << time << '\n';
+                }
+                else if (const auto* fndef = std::get_if<tcalc::func_def_expression>(&expr))
+                {
+                    auto before = std::chrono::steady_clock::now();
+                    auto res = eval.evaluate_fn_def(*fndef);
+                    std::chrono::duration<double, std::milli> time{std::chrono::steady_clock::now() - before};
+
+                    if (res.is_error())
+                    {
+                        std::cout << "error " << tcalc::eval_error_type_name(res.error().type)
+                            << " (" << res.error().position.start_index << ", " << res.error().position.end_index << ")";
+                            break;
+                    }
+                }
+            }
         }
         std::cout << '\n';
     }
+    
 }
 
 static void fuzz(const int times)

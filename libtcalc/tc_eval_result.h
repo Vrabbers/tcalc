@@ -15,7 +15,9 @@ namespace tcalc
         log_zero,
         undefined_variable,
         undefined_function,
+        log_base,
         bad_arity,
+        complex_inequality,
     };
 
     std::string_view eval_error_type_name(eval_error_type);
@@ -26,6 +28,8 @@ namespace tcalc
         source_position position;
     };
 
+    struct empty_result {};
+
     template<class SuccessType>
     class eval_result final
     {
@@ -34,6 +38,13 @@ namespace tcalc
         {
             eval_result res{};
             res._value = eval_error{error, where};
+            return res;
+        }
+
+        static eval_result from_error(eval_error error)
+        {
+            eval_result res{};
+            res._value = error;
             return res;
         }
 

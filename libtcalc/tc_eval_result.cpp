@@ -19,6 +19,10 @@ std::string_view tcalc::eval_error_type_name(eval_error_type t)
             return "undefined_function"sv;
         case eval_error_type::bad_arity:
             return "bad_arity"sv;
+        case eval_error_type::log_base:
+            return "log_base"sv;
+        case eval_error_type::complex_inequality:
+            return "complex_inequality"sv;
         default:
             return {};
     }

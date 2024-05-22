@@ -75,10 +75,33 @@ namespace tcalc
         }
 
         [[nodiscard]]
-        bool is_zero() const
+        bool operator==(long r) const
         {
             assert(_owns);
-            return mpc_cmp_si(_handle, 0) == 0;
+            return mpc_cmp_si_si(_handle, r, 0) == 0;
+        }
+
+        [[nodiscard]]
+        bool operator<(const number& b) const
+        {
+            assert(_owns);
+            int res = mpc_cmp(_handle, b._handle);
+            return MPC_INEX_RE(res) < 0;
+        }
+
+        [[nodiscard]]
+        bool operator>(const number& b) const
+        {
+            assert(_owns);
+            int res = mpc_cmp(_handle, b._handle);
+            return MPC_INEX_RE(res) > 0;
+        }
+
+        [[nodiscard]]
+        bool operator==(const number& b) const
+        {
+            assert(_owns);
+            return mpc_cmp(_handle, b._handle) == 0; 
         }
 
         void add(const number& rhs)
