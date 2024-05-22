@@ -14,6 +14,8 @@ namespace tcalc
         divide_by_zero,
         log_zero,
         undefined_variable,
+        undefined_function,
+        bad_arity,
     };
 
     std::string_view eval_error_type_name(eval_error_type);

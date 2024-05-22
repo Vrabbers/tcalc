@@ -71,33 +71,36 @@ static const std::unordered_map<std::string_view, std::function<eval_error_type(
     {
         "sqrt"sv, [](eval_stack& stack)
         {
-            stack.top().sqrt(stack.top());
+            stack.top().sqrt();
             return eval_error_type::none;
         }
     },
     {
         "exp"sv, [](eval_stack& stack)
         {
-            stack.top().exp(stack.top());
+            stack.top().exp();
             return eval_error_type::none;
         }
     },
     {
         "log"sv, [](eval_stack& stack)
         {
-            // TODO: check if zero
-            stack.top().log(stack.top());
+            if (stack.top().is_zero())
+                return eval_error_type::log_zero;
+            stack.top().log();
             return eval_error_type::none;
         }
     },
     {
         "ln"sv, [](eval_stack& stack)
         {
-            // TODO: check if zero
-            stack.top().ln(stack.top());
+            if (stack.top().is_zero())
+                return eval_error_type::log_zero;
+            stack.top().ln();
             return eval_error_type::none;
         }
     }
+
 };
 
 evaluator::evaluator(const mpfr_prec_t precision)
@@ -112,15 +115,25 @@ static eval_error_type evaluate_binop(const binary_operator* op, number& lhs, co
     switch (op->operation)
     {
         case token_kind::plus:
-            lhs.add(lhs, rhs);
+            lhs.add(rhs);
+            break;
+
+        case token_kind::minus:
+            lhs.sub(rhs);
             break;
 
         case token_kind::multiply:
-            lhs.mul(lhs, rhs);
+            lhs.mul(rhs);
+            break;
+
+        case token_kind::divide:
+            if (rhs.is_zero())
+                return eval_error_type::divide_by_zero;
+            lhs.div(rhs);
             break;
 
         case token_kind::exponentiate:
-            lhs.pow(lhs, rhs);
+            lhs.pow(rhs);
             break;
 
         default:
@@ -135,11 +148,11 @@ static eval_error_type evaluate_unop(const unary_operator* op, number& stack_top
     switch(op->operation)
     {
         case token_kind::radical:
-            stack_top.sqrt(stack_top);
+            stack_top.sqrt();
             break;
 
         case token_kind::minus:
-            stack_top.negate(stack_top);
+            stack_top.negate();
             break;
 
         default:
@@ -173,7 +186,7 @@ eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& 
                 return eval_result<number>::from_error(eval_error_type::invalid_program, binop->position);
 
             const number& rhs = stack.pop();
-            const eval_error_type err = evaluate_binop(binop, stack.top(), rhs);
+            const auto err = evaluate_binop(binop, stack.top(), rhs);
 
             if (err == eval_error_type::none)
                 continue;
@@ -185,12 +198,35 @@ eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& 
             if (!stack.has_at_least(1))
                 return eval_result<number>::from_error(eval_error_type::invalid_program, unop->position);
 
-            const eval_error_type err = evaluate_unop(unop, stack.top());
+            const auto err = evaluate_unop(unop, stack.top());
 
             if (err == eval_error_type::none)
                 continue;
 
             return eval_result<number>::from_error(err, unop->position);
+        }
+        else if (const auto* fncall = std::get_if<function_call>(&op))
+        {
+            const auto builtin_it = basic_builtins.find(fncall->identifier);
+            if (builtin_it != basic_builtins.end())
+            {
+                if (fncall->arity != 1)
+                    return eval_result<number>::from_error(eval_error_type::bad_arity, fncall->position);
+
+                if (!stack.has_at_least(1))
+                    return eval_result<number>::from_error(eval_error_type::invalid_program, fncall->position);
+
+                const auto err = builtin_it->second(stack);
+
+                if (err == eval_error_type::none)
+                    continue;
+
+                return eval_result<number>::from_error(err, fncall->position);
+            }
+            else
+            {
+                return eval_result<number>::from_error(eval_error_type::undefined_function, fncall->position);
+            }
         }
     }
 

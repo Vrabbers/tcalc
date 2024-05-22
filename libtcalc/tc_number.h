@@ -74,52 +74,71 @@ namespace tcalc
             return mpfr_zero_p(mpc_imagref(_handle));
         }
 
-        void add(const number& a, const number& b)
+        [[nodiscard]]
+        bool is_zero() const
         {
             assert(_owns);
-            mpc_add(_handle, a._handle, b._handle, round_mode);
+            return mpc_cmp_si(_handle, 0) == 0;
         }
 
-        void negate(const number& a)
+        void add(const number& rhs)
         {
             assert(_owns);
-            mpc_mul_si(_handle, a._handle, -1, round_mode);
+            mpc_add(_handle, _handle, rhs._handle, round_mode);
         }
 
-        void mul(const number& a, const number& b)
+        void sub(const number& rhs)
         {
             assert(_owns);
-            mpc_mul(_handle, a._handle, b._handle, round_mode);
+            mpc_sub(_handle, _handle, rhs._handle, round_mode);
         }
 
-        void pow(const number& a, const number& b)
+        void negate()
         {
             assert(_owns);
-            mpc_pow(_handle, a._handle, b._handle, round_mode);
+            mpc_mul_si(_handle, _handle, -1, round_mode);
         }
 
-        void sqrt(const number& a)
+        void mul(const number& rhs)
         {
             assert(_owns);
-            mpc_sqrt(_handle, a._handle, round_mode);
+            mpc_mul(_handle, _handle, rhs._handle, round_mode);
         }
 
-        void exp(const number& a)
+        void div(const number& rhs)
         {
             assert(_owns);
-            mpc_exp(_handle, a._handle, round_mode);
+            mpc_div(_handle, _handle, rhs._handle, round_mode);
         }
 
-        void log(const number& a)
+        void pow(const number& rhs)
         {
             assert(_owns);
-            mpc_log10(_handle, a._handle, round_mode);
+            mpc_pow(_handle, _handle, rhs._handle, round_mode);
         }
 
-        void ln(const number& a)
+        void sqrt()
         {
             assert(_owns);
-            mpc_log(_handle, a._handle, round_mode);
+            mpc_sqrt(_handle, _handle, round_mode);
+        }
+
+        void exp()
+        {
+            assert(_owns);
+            mpc_exp(_handle, _handle, round_mode);
+        }
+
+        void log()
+        {
+            assert(_owns);
+            mpc_log10(_handle, _handle, round_mode);
+        }
+
+        void ln()
+        {
+            assert(_owns);
+            mpc_log(_handle, _handle, round_mode);
         }
 
         [[nodiscard]]

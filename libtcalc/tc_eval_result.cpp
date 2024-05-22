@@ -15,6 +15,10 @@ std::string_view tcalc::eval_error_type_name(eval_error_type t)
             return "log_zero"sv;
         case eval_error_type::undefined_variable:
             return "undefined_variable"sv;
+        case eval_error_type::undefined_function:
+            return "undefined_function"sv;
+        case eval_error_type::bad_arity:
+            return "bad_arity"sv;
         default:
             return {};
     }

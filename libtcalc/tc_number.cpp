@@ -14,7 +14,7 @@ static std::string make_mpfr_format(const std::string_view from)
     {
         if (c == '\'' || c == 'i') // Ignore imaginary i and thousands separator
             continue;
-        if (c == ',' || c == '.') // Make either decimal point just a period, as MPFR will always accept it as dcimal
+        if (c == ',' || c == '.') // Make either decimal point just a period, as MPFR will always accept it as decimal
             str.push_back('.');
         else
             str.push_back(c); // Otherwise just add the character on

@@ -335,7 +335,7 @@ token lexer::lex_word()
 {
     auto peek = _sr.peek();
 
-    while (is_letter(peek) || is_decimal_digit(peek))
+    while ((is_letter(peek) || is_decimal_digit(peek)) && !is_superscript_digit(peek))
     {
         _sr.forward();
         peek = _sr.peek();
