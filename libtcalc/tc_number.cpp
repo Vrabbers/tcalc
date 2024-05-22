@@ -96,14 +96,17 @@ number number::pi(const mpfr_prec_t prec)
 number number::tau(const mpfr_prec_t prec)
 {
     number tau = pi(prec);
-    mpc_mul_i(tau._handle, tau._handle, 2, round_mode);
+    mpc_mul_si(tau._handle, tau._handle, 2, round_mode);
     return tau;
 }
 
 number number::e(const mpfr_prec_t prec)
 {
     number e{prec};
-    mpfr_const_euler(mpc_realref(e._handle), fr_round_mode);
+    mpfr_t fr_one;
+    mpfr_init_set_si(fr_one, 1, fr_round_mode);
+    mpfr_exp(mpc_realref(e._handle), fr_one, fr_round_mode);
+    mpfr_clear(fr_one);
     return e;
 }
 

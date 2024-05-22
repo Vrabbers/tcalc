@@ -20,7 +20,7 @@ namespace tcalc {
 
     private:
         mpfr_prec_t _precision;
-        std::unordered_map<std::string, const number> _constants;
+        std::unordered_map<std::string_view, const number> _constants;
         std::unordered_map<std::string, number> _variables;
     };
 

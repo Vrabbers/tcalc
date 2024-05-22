@@ -50,15 +50,13 @@ namespace tcalc
         void set(const long real, const long imaginary = 0)
         {
             assert(_owns);
-            if (_owns)
-                mpc_set_si_si(_handle, real, imaginary, round_mode);
+            mpc_set_si_si(_handle, real, imaginary, round_mode);
         }
 
         void set(const number& other)
         {
             assert(_owns);
-            if (_owns)
-                mpc_set(_handle, other._handle, round_mode);
+            mpc_set(_handle, other._handle, round_mode);
         }
 
         void set_real(std::string_view real);
@@ -73,44 +71,55 @@ namespace tcalc
         bool is_real() const
         {
             assert(_owns);
-            if (_owns)
-                return mpfr_zero_p(mpc_imagref(_handle));
-            return false;
+            return mpfr_zero_p(mpc_imagref(_handle));
         }
 
         void add(const number& a, const number& b)
         {
             assert(_owns);
-            if (_owns)
-                mpc_add(_handle, a._handle, b._handle, round_mode);
+            mpc_add(_handle, a._handle, b._handle, round_mode);
+        }
+
+        void negate(const number& a)
+        {
+            assert(_owns);
+            mpc_mul_si(_handle, a._handle, -1, round_mode);
+        }
+
+        void mul(const number& a, const number& b)
+        {
+            assert(_owns);
+            mpc_mul(_handle, a._handle, b._handle, round_mode);
+        }
+
+        void pow(const number& a, const number& b)
+        {
+            assert(_owns);
+            mpc_pow(_handle, a._handle, b._handle, round_mode);
         }
 
         void sqrt(const number& a)
         {
             assert(_owns);
-            if (_owns)
-                mpc_sqrt(_handle, a._handle, round_mode);
+            mpc_sqrt(_handle, a._handle, round_mode);
         }
 
         void exp(const number& a)
         {
             assert(_owns);
-            if (_owns)
-                mpc_exp(_handle, a._handle, round_mode);
+            mpc_exp(_handle, a._handle, round_mode);
         }
 
         void log(const number& a)
         {
             assert(_owns);
-            if (_owns)
-                mpc_log10(_handle, a._handle, round_mode);
+            mpc_log10(_handle, a._handle, round_mode);
         }
 
         void ln(const number& a)
         {
             assert(_owns);
-            if (_owns)
-                mpc_log(_handle, a._handle, round_mode);
+            mpc_log(_handle, a._handle, round_mode);
         }
 
         [[nodiscard]]

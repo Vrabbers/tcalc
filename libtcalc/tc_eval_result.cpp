@@ -13,6 +13,8 @@ std::string_view tcalc::eval_error_type_name(eval_error_type t)
             return "divide_by_zero"sv;
         case eval_error_type::log_zero:
             return "log_zero"sv;
+        case eval_error_type::undefined_variable:
+            return "undefined_variable"sv;
         default:
             return {};
     }

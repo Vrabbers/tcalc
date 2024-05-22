@@ -4,6 +4,7 @@
 #include <random>
 #include <cstring>
 #include <iomanip>
+#include <chrono>
 
 #include "tc_evaluator.h"
 #include "tc_expression.h"
@@ -49,6 +50,7 @@ static void interactive()
         std::cout << "input: " << input;
         std::cout << "\n\nparse:\n";
         auto p = parse(std::move(input));
+        tcalc::evaluator eval{64};
         for (const auto& expr : p.parse_all())
         {
             if (const auto* arith = std::get_if<tcalc::arithmetic_expression>(&expr))
@@ -58,13 +60,16 @@ static void interactive()
                 std::cout << " @" << arith->position.start_index << '-' << arith->position.end_index;
 
                 std::cout << "\n\nevaluate: ";
-                tcalc::evaluator eval{64};
+                auto before = std::chrono::steady_clock::now();
                 auto res = eval.evaluate_arithmetic(*arith);
+                std::chrono::duration<double, std::milli> time{std::chrono::steady_clock::now() - before};
+
                 if (res.is_error())
                     std::cout << "error " << tcalc::eval_error_type_name(res.error().type)
                         << " (" << res.error().position.start_index << ", " << res.error().position.end_index << ")";
                 else
                     std::cout << res.value().string();
+                std::cout << " took " << time;
             }
             else if (const auto* asgn = std::get_if<tcalc::assignment_expression>(&expr))
             {

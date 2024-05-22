@@ -12,7 +12,8 @@ namespace tcalc
         none = 0,
         invalid_program,
         divide_by_zero,
-        log_zero
+        log_zero,
+        undefined_variable,
     };
 
     std::string_view eval_error_type_name(eval_error_type);
