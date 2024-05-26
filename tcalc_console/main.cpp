@@ -30,6 +30,14 @@ static tcalc::parser parse(std::string&& str)
     return parser;
 }
 
+static void show_arith(const tcalc::arithmetic_expression& arith)
+{
+    for (const auto& op : arith.tokens)
+    {
+        std::cout << op_to_string(op) << ' ';
+    }
+}
+
 static void eval(std::string&& input, bool show)
 {
     auto p = parse(std::move(input));
@@ -131,16 +139,6 @@ static void eval(std::string&& input, bool show)
     }
 }
 
-/*
-static void show_arith(const tcalc::arithmetic_expression& arith)
-{
-    for (const auto& op : arith.tokens)
-    {
-        std::cout << op_to_string(op) << ' ';
-    }
-}
-*/
-
 static void interactive()
 {
     std::cout << "tcalc console\n";
@@ -179,7 +177,7 @@ static void fuzz(const int times)
 
 int main(int argc, char* argv[])
 {
-#ifdef _MSC_VER
+#ifdef _WIN32
     SetConsoleCP(CP_UTF8);
     SetConsoleOutputCP(CP_UTF8);
 #endif

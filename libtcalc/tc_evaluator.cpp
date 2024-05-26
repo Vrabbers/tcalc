@@ -31,7 +31,7 @@ namespace
 
         const number& pop()
         {
-            // We keep old entries to avoid creating and destroying perfectly good number entries.
+            // We keep old entries to avoid creating and destroying perfectly good number instances.
             const auto& num = _stack.at(_top);
             _top--;
             return num;
@@ -39,14 +39,14 @@ namespace
 
         void push(const number& num)
         {
-            if (static_cast<int>(_stack.size()) == size())
+            if (static_cast<int>(_stack.size()) == _top + 1)
             {
                 number num2{num};
                 _stack.push_back(std::move(num2));
             }
             else
             {
-                _stack.at(_top).set(num);
+                _stack.at(_top + 1).set(num);
             }
             _top++;
         }
