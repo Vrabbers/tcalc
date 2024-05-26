@@ -9,7 +9,7 @@ namespace
     struct eval_stack
     {
         std::vector<number> _stack;
-        unsigned int _top = -1;
+        int _top = -1;
 
         [[nodiscard]]
         number& top()
@@ -18,9 +18,9 @@ namespace
         }
 
         [[nodiscard]]
-        bool has_at_least(const unsigned int amt) const
+        bool has_at_least(const int amt) const
         {
-            return amt <= _top + 1;
+            return amt <= size();
         }
 
         [[nodiscard]]
@@ -39,8 +39,7 @@ namespace
 
         void push(const number& num)
         {
-            _top++;
-            if (_stack.size() == _top)
+            if (static_cast<int>(_stack.size()) == size())
             {
                 number num2{num};
                 _stack.push_back(std::move(num2));
@@ -49,6 +48,7 @@ namespace
             {
                 _stack.at(_top).set(num);
             }
+            _top++;
         }
     };
 
