@@ -6,22 +6,22 @@
 
 using namespace tcalc;
 
-std::pair<char32_t, size_t> string_reader::peek_with_length() const
+std::pair<int, char32_t> string_reader::peek_with_length() const
 {
     if (_end_ix >= _string.length())
-        return {end_of_file, 0};
+        return {0, end_of_file};
 
     const auto [length, character] = utf8utils::iterate_one_from_index(_string, _end_ix);
 
     if (length > 0)
-        return {character, length};
+        return {length, character};
 
     return {0, 0};
 }
 
 std::optional<char32_t> string_reader::peek() const
 {
-    const auto [character, size] = peek_with_length();
+    const auto [size, character] = peek_with_length();
 
     if (size == 0 && character != end_of_file)
         return std::nullopt;
@@ -29,7 +29,7 @@ std::optional<char32_t> string_reader::peek() const
     return character;
 }
 
-std::u32string string_reader::peek_many(int32_t count) const
+std::u32string string_reader::peek_many(const int32_t count) const
 {
     std::u32string out;
     auto index = _end_ix;
@@ -57,7 +57,7 @@ std::u32string string_reader::peek_many(int32_t count) const
 
 std::optional<char32_t> string_reader::forward()
 {
-    const auto [character, size] = peek_with_length();
+    const auto [size, character] = peek_with_length();
 
     if (size == 0 && character != end_of_file)
     {
