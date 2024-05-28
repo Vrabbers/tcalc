@@ -314,7 +314,7 @@ void parser::parse_primary_term(std::vector<operation>& parsing)
             return;
         case token_kind::numeric_literal:
             {
-                auto num = number{_number_precision};
+                number num{_number_precision};
                 if (_current.source().back() == 'i')
                 {
                     if (_current.source().length() == 1)

@@ -15,7 +15,12 @@ namespace tcalc {
     class evaluator final
     {
     public:
+        using result_type = std::variant<empty_result, number, bool>;
+
         explicit evaluator(mpfr_prec_t precision);
+        
+        [[nodiscard]]
+        eval_result<result_type> evaluate(const expression& expr);
         
         [[nodiscard]]
         eval_result<number> evaluate_arithmetic(const arithmetic_expression& expr) const;

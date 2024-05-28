@@ -63,79 +63,33 @@ static void eval(std::string&& input, bool show)
 
     for (const auto& expr : parse)
     {
-        if (const auto* arith = std::get_if<tcalc::arithmetic_expression>(&expr))
+        auto before = std::chrono::steady_clock::now();
+        auto res = eval.evaluate(expr);
+        std::chrono::duration<double, std::milli> time{ std::chrono::steady_clock::now() - before };
+
+        if (!show)
+            continue;
+
+        if (res.is_error())
         {
-            auto before = std::chrono::steady_clock::now();
-            auto res = eval.evaluate_arithmetic(*arith);
-            std::chrono::duration<double, std::milli> time{std::chrono::steady_clock::now() - before};
-
-            if (!show)
-                continue;
-
-            if (res.is_error())
-            {
-                std::cout << "error " << tcalc::eval_error_type_name(res.error().type)
-                    << " (" << res.error().position.start_index << ", " << res.error().position.end_index << ")";
-                break;
-            }
-            else
-            {
-                std::cout << res.value().string();
-            }
-            std::cout << " took " << time << '\n';
+            std::cout << "error " << tcalc::eval_error_type_name(res.error().type)
+                << " (" << res.error().position.start_index << ", " << res.error().position.end_index << ")";
+            break;
         }
-        else if (const auto* asgn = std::get_if<tcalc::assignment_expression>(&expr))
+
+        if (const auto* num = std::get_if<tcalc::number>(&res.value()))
         {
-            auto before = std::chrono::steady_clock::now();
-            auto res = eval.evaluate_assignment(*asgn);
-            std::chrono::duration<double, std::milli> time{std::chrono::steady_clock::now() - before};
-
-            if (!show)
-                continue;
-
-            if (res.is_error())
-            {
-                std::cout << "error " << tcalc::eval_error_type_name(res.error().type)
-                    << " (" << res.error().position.start_index << ", " << res.error().position.end_index << ")";
-                break;
-            }
+            std::cout << num->string();
         }
-        else if (const auto* blnexp = std::get_if<tcalc::boolean_expression>(&expr))
+        else if (const auto* boolean = std::get_if<bool>(&res.value()))
         {
-            auto before = std::chrono::steady_clock::now();
-            auto res = eval.evaluate_boolean(*blnexp);
-            std::chrono::duration<double, std::milli> time{std::chrono::steady_clock::now() - before};
-
-            if (!show)
-                continue;
-
-            if (res.is_error())
-            {
-                std::cout << "error " << tcalc::eval_error_type_name(res.error().type)
-                    << " (" << res.error().position.start_index << ", " << res.error().position.end_index << ")";
-            }
-            else
-            {
-                std::cout << std::boolalpha << res.value();
-            }
-            std::cout << " took " << time << '\n';
+            std::cout << std::boolalpha << *boolean;
         }
-        else if (const auto* fndef = std::get_if<tcalc::func_def_expression>(&expr))
+        else
         {
-            auto before = std::chrono::steady_clock::now();
-            auto res = eval.evaluate_fn_def(*fndef);
-            std::chrono::duration<double, std::milli> time{std::chrono::steady_clock::now() - before};
-
-            if (!show)
-                continue;
-
-            if (res.is_error())
-            {
-                std::cout << "error " << tcalc::eval_error_type_name(res.error().type)
-                    << " (" << res.error().position.start_index << ", " << res.error().position.end_index << ")";
-                    break;
-            }
+            std::cout << "expr had no result...";
         }
+        std::cout << " took " << time << '\n';
     }
 }
 

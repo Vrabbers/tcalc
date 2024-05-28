@@ -41,16 +41,12 @@ std::u32string string_reader::peek_many(const int32_t count) const
 
         const auto [length, character] = utf8utils::iterate_one_from_index(_string, index);
 
+        out += character;
+
         if (length > 0)
-        {
-            out += character;
             index += length;
-        }
         else
-        {
-            out += character;
             index += length + 1;
-        }
     }
     return out;
 }

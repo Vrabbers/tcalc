@@ -75,7 +75,7 @@ namespace tcalc
         }
 
         [[nodiscard]]
-        bool operator==(long r) const
+        bool operator==(const long r) const
         {
             assert(_owns);
             return mpc_cmp_si_si(_handle, r, 0) == 0;
@@ -104,82 +104,82 @@ namespace tcalc
             return mpc_cmp(_handle, b._handle) == 0; 
         }
 
-        void add(const number& rhs)
+        void add(const number& lhs, const number& rhs)
         {
             assert(_owns);
-            mpc_add(_handle, _handle, rhs._handle, round_mode);
+            mpc_add(_handle, lhs._handle, rhs._handle, round_mode);
         }
 
-        void sub(const number& rhs)
+        void sub(const number& lhs, const number& rhs)
         {
             assert(_owns);
-            mpc_sub(_handle, _handle, rhs._handle, round_mode);
+            mpc_sub(_handle, lhs._handle, rhs._handle, round_mode);
         }
 
-        void negate()
+        void negate(const number& x)
         {
             assert(_owns);
-            mpc_mul_si(_handle, _handle, -1, round_mode);
+            mpc_mul_si(_handle, x._handle, -1, round_mode);
         }
 
-        void mul(const number& rhs)
+        void mul(const number& lhs, const number& rhs)
         {
             assert(_owns);
-            mpc_mul(_handle, _handle, rhs._handle, round_mode);
+            mpc_mul(_handle, lhs._handle, rhs._handle, round_mode);
         }
 
-        void div(const number& rhs)
+        void div(const number& lhs, const number& rhs)
         {
             assert(_owns);
-            mpc_div(_handle, _handle, rhs._handle, round_mode);
+            mpc_div(_handle, lhs._handle, rhs._handle, round_mode);
         }
 
-        void pow(const number& rhs)
+        void pow(const number& lhs, const number& rhs)
         {
             assert(_owns);
-            mpc_pow(_handle, _handle, rhs._handle, round_mode);
+            mpc_pow(_handle, lhs._handle, rhs._handle, round_mode);
         }
 
-        void sqrt()
+        void sqrt(const number& x)
         {
             assert(_owns);
-            mpc_sqrt(_handle, _handle, round_mode);
+            mpc_sqrt(_handle, x._handle, round_mode);
         }
 
-        void exp()
+        void exp(const number& x)
         {
             assert(_owns);
-            mpc_exp(_handle, _handle, round_mode);
+            mpc_exp(_handle, x._handle, round_mode);
         }
 
-        void log()
+        void log(const number& x)
         {
             assert(_owns);
-            mpc_log10(_handle, _handle, round_mode);
+            mpc_log10(_handle, x._handle, round_mode);
         }
 
-        void ln()
+        void ln(const number& x)
         {
             assert(_owns);
-            mpc_log(_handle, _handle, round_mode);
+            mpc_log(_handle, x._handle, round_mode);
         }
 
-        void sin()
+        void sin(const number& x)
         {
             assert(_owns);
-            mpc_sin(_handle, _handle, round_mode);
+            mpc_sin(_handle, x._handle, round_mode);
         }
 
-        void cos()
+        void cos(const number& x)
         {
             assert(_owns);
-            mpc_cos(_handle, _handle, round_mode);
+            mpc_cos(_handle, x._handle, round_mode);
         }
 
-        void tan()
+        void tan(const number& x)
         {
             assert(_owns);
-            mpc_tan(_handle, _handle, round_mode);
+            mpc_tan(_handle, x._handle, round_mode);
         }
 
         [[nodiscard]]
