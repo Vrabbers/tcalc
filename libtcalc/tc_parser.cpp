@@ -137,6 +137,7 @@ std::vector<expression> parser::parse_all()
 
 expression parser::parse_variable_assignment(const size_t lhs_start_ix, std::vector<operation>&& lhs_parse)
 {
+    forward(); // consume equals token
     const size_t rhs_start_ix = _current.start_index();
     // this is a variable assignment expression 😁
     std::vector<operation> rhs_parse;
@@ -156,6 +157,7 @@ expression parser::parse_variable_assignment(const size_t lhs_start_ix, std::vec
 
 expression parser::parse_function_definition(const size_t lhs_start_ix, std::vector<operation>&& lhs_parse)
 {
+    forward(); // consume equals token
     const size_t rhs_start_ix = _current.start_index();
     std::vector<operation> def_parse;
     parse_arithmetic(def_parse);

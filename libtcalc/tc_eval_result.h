@@ -72,6 +72,11 @@ namespace tcalc
         {
             return std::get<SuccessType>(_value);
         }
+
+        SuccessType& mut_value()
+        {
+            return std::get<SuccessType>(_value);
+        }
     private:
         std::variant<eval_error, SuccessType> _value;
     };

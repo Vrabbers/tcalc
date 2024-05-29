@@ -6,8 +6,11 @@ using namespace tcalc;
 
 namespace
 {
-    template<class... Ts>
-    struct overloaded : Ts... { using Ts::operator()...; };
+    template <class... Ts>
+    struct overloaded : Ts...
+    {
+        using Ts::operator()...;
+    };
 
     using namespace std::string_literals;
     using namespace std::string_view_literals;
@@ -79,10 +82,11 @@ namespace
     const std::unordered_map<std::string_view, builtin_fn_vec> basic_builtins =
     {
         {
-            "sqrt"sv, 
+            "sqrt"sv,
             {
-                { 1, 
-                [](eval_stack& stack)
+                {
+                    1,
+                    [](eval_stack& stack)
                     {
                         stack.top().sqrt(stack.top());
                         return eval_error_type::none;
@@ -91,10 +95,11 @@ namespace
             }
         },
         {
-            "exp"sv, 
+            "exp"sv,
             {
-                { 1, 
-                [](eval_stack& stack)
+                {
+                    1,
+                    [](eval_stack& stack)
                     {
                         stack.top().exp(stack.top());
                         return eval_error_type::none;
@@ -103,10 +108,11 @@ namespace
             }
         },
         {
-            "log"sv, 
+            "log"sv,
             {
-                { 1, 
-                [](eval_stack& stack)
+                {
+                    1,
+                    [](eval_stack& stack)
                     {
                         if (stack.top() == 0)
                             return eval_error_type::log_zero;
@@ -114,10 +120,11 @@ namespace
                         return eval_error_type::none;
                     }
                 },
-                { 2,
-                [](eval_stack& stack)
+                {
+                    2,
+                    [](eval_stack& stack)
                     {
-                        if(stack.top() == 0 || stack.top() == 1)
+                        if (stack.top() == 0 || stack.top() == 1)
                             return eval_error_type::log_base;
                         auto& base = stack.top(); // Take mutable ref
                         stack.pop();
@@ -132,10 +139,11 @@ namespace
             }
         },
         {
-            "ln"sv, 
+            "ln"sv,
             {
-                { 1, 
-                [](eval_stack& stack)
+                {
+                    1,
+                    [](eval_stack& stack)
                     {
                         if (stack.top() == 0)
                             return eval_error_type::log_zero;
@@ -146,10 +154,11 @@ namespace
             }
         },
         {
-            "sin"sv, 
+            "sin"sv,
             {
-                { 1, 
-                [](eval_stack& stack)
+                {
+                    1,
+                    [](eval_stack& stack)
                     {
                         stack.top().sin(stack.top());
                         return eval_error_type::none;
@@ -158,10 +167,11 @@ namespace
             }
         },
         {
-            "cos"sv, 
+            "cos"sv,
             {
-                { 1, 
-                [](eval_stack& stack)
+                {
+                    1,
+                    [](eval_stack& stack)
                     {
                         stack.top().cos(stack.top());
                         return eval_error_type::none;
@@ -170,10 +180,11 @@ namespace
             }
         },
         {
-            "tan"sv, 
+            "tan"sv,
             {
-                { 1, 
-                [](eval_stack& stack)
+                {
+                    1,
+                    [](eval_stack& stack)
                     {
                         stack.top().tan(stack.top());
                         return eval_error_type::none;
@@ -204,7 +215,59 @@ namespace
         if (e.is_error())
             return eval_result<evaluator::result_type>::from_error(e.error());
         else
-            return eval_result<evaluator::result_type>{};
+            return eval_result<evaluator::result_type>{empty_result{}};
+    }
+
+    eval_error_type evaluate_binop(const binary_operator* op, number& lhs, const number& rhs)
+    {
+        switch (op->operation)
+        {
+            case token_kind::plus:
+                lhs.add(lhs, rhs);
+                break;
+
+            case token_kind::minus:
+                lhs.sub(lhs, rhs);
+                break;
+
+            case token_kind::multiply:
+                lhs.mul(lhs, rhs);
+                break;
+
+            case token_kind::divide:
+                if (rhs == 0)
+                    return eval_error_type::divide_by_zero;
+                lhs.div(lhs, rhs);
+                break;
+
+            case token_kind::exponentiate:
+                lhs.pow(lhs, rhs);
+                break;
+
+            default:
+                return eval_error_type::invalid_program;
+        }
+
+        return eval_error_type::none;
+    }
+
+    eval_error_type evaluate_unop(const unary_operator* op, number& stack_top)
+    {
+        switch (op->operation)
+        {
+            case token_kind::radical:
+                stack_top.sqrt(stack_top);
+                break;
+
+            case token_kind::minus:
+                stack_top.negate(stack_top);
+                break;
+
+            default:
+                return eval_error_type::invalid_program;
+        }
+
+        return eval_error_type::none;
     }
 }
 
@@ -222,80 +285,27 @@ eval_result<evaluator::result_type> evaluator::evaluate(const expression& expr)
         {
             [this](const arithmetic_expression& arith)
             {
-                auto r = evaluate_arithmetic(arith);
+                const auto r = evaluate_arithmetic(arith);
                 if (!r.is_error())
                     _variables.insert({"ans"s, r.value()});
                 return to_var_res(r);
             },
             [this](const boolean_expression& bool_exp)
             {
-                auto r = evaluate_boolean(bool_exp);
+                const auto r = evaluate_boolean(bool_exp);
                 return to_var_res(r);
             },
             [this](const assignment_expression& ass_exp)
             {
-                auto r = evaluate_assignment(ass_exp);
+                const auto r = evaluate_assignment(ass_exp);
                 return to_var_res(r);
             },
             [this](const func_def_expression& fn_exp)
             {
-                auto r = evaluate_fn_def(fn_exp);
+                const auto r = evaluate_fn_def(fn_exp);
                 return to_var_res(r);
             }
         }, expr);
-}
-
-
-static eval_error_type evaluate_binop(const binary_operator* op, number& lhs, const number& rhs)
-{
-    switch (op->operation)
-    {
-        case token_kind::plus:
-            lhs.add(lhs, rhs);
-            break;
-
-        case token_kind::minus:
-            lhs.sub(lhs, rhs);
-            break;
-
-        case token_kind::multiply:
-            lhs.mul(lhs, rhs);
-            break;
-
-        case token_kind::divide:
-            if (rhs == 0)
-                return eval_error_type::divide_by_zero;
-            lhs.div(lhs, rhs);
-            break;
-
-        case token_kind::exponentiate:
-            lhs.pow(lhs, rhs);
-            break;
-
-        default:
-            return eval_error_type::invalid_program;
-    }
-
-    return eval_error_type::none;
-}
-
-static eval_error_type evaluate_unop(const unary_operator* op, number& stack_top)
-{
-    switch(op->operation)
-    {
-        case token_kind::radical:
-            stack_top.sqrt(stack_top);
-            break;
-
-        case token_kind::minus:
-            stack_top.negate(stack_top);
-            break;
-
-        default:
-            return eval_error_type::invalid_program;
-    }
-
-    return eval_error_type::none;
 }
 
 eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& expr) const
@@ -376,7 +386,7 @@ eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& 
 
             if (err == eval_error_type::none)
                 continue;
-            
+
             return eval_result<number>::from_error(err, fncall->position);
         }
     }
@@ -389,7 +399,7 @@ eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& 
     return eval_result<number>::from_error(eval_error_type::invalid_program, expr.position);
 }
 
-eval_result<bool> evaluator::evaluate_boolean(const boolean_expression &expr) const
+eval_result<bool> evaluator::evaluate_boolean(const boolean_expression& expr) const
 {
     const eval_result left = evaluate_arithmetic(expr.lhs);
     if (left.is_error())
@@ -403,14 +413,14 @@ eval_result<bool> evaluator::evaluate_boolean(const boolean_expression &expr) co
         return eval_result{left.value() == right.value()};
     if (expr.kind == token_kind::not_equal)
         return eval_result{left.value() != right.value()};
-        
+
     if (!left.value().is_real())
         return eval_result<bool>::from_error(eval_error_type::complex_inequality, expr.lhs.position);
 
     if (!right.value().is_real())
         return eval_result<bool>::from_error(eval_error_type::complex_inequality, expr.rhs.position);
-    
-    switch(expr.kind)
+
+    switch (expr.kind)
     {
         case token_kind::greater_than:
             return eval_result{left.value() > right.value()};
@@ -425,12 +435,18 @@ eval_result<bool> evaluator::evaluate_boolean(const boolean_expression &expr) co
     }
 }
 
-eval_result<empty_result> tcalc::evaluator::evaluate_assignment(const assignment_expression &expr)
+eval_result<empty_result> evaluator::evaluate_assignment(const assignment_expression& expr)
 {
-    return eval_result<empty_result>();
+    eval_result res = evaluate_arithmetic(expr.expression);
+
+    if (res.is_error())
+        return eval_result<empty_result>::from_error(res.error());
+
+    _variables.insert_or_assign(expr.variable, std::move(res.mut_value()));
+    return eval_result{empty_result{}};
 }
 
-eval_result<empty_result> tcalc::evaluator::evaluate_fn_def(const func_def_expression &expr)
+eval_result<empty_result> evaluator::evaluate_fn_def(const func_def_expression& expr)
 {
-    return eval_result<empty_result>();
+    return eval_result{empty_result{}};
 }

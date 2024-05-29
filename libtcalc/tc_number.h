@@ -30,15 +30,24 @@ namespace tcalc
 
         number(const number& other)
         {
-            const auto prec = mpc_get_prec(other._handle);
-            mpc_init2(_handle, prec);
-            mpc_set(_handle, other._handle, round_mode);
+            copy(&other, this);
+        }
+
+        number& operator=(const number& other)
+        {
+            copy(&other, this);
+            return *this;
         }
 
         number(number&& other) noexcept
         {
-            mpc_swap(_handle, other._handle);
-            other._owns = false;
+            move(&other, this);
+        }
+
+        number& operator=(number&& other) noexcept
+        {
+            move(&other, this);
+            return *this;
         }
 
         ~number()
@@ -189,6 +198,19 @@ namespace tcalc
         static number tau(mpfr_prec_t prec);
         static number e(mpfr_prec_t prec);
     private:
+        static void copy(const number* from, number* to)
+        {
+            const auto prec = mpc_get_prec(from->_handle);
+            mpc_init2(to->_handle, prec);
+            mpc_set(to->_handle, from->_handle, round_mode);
+        }
+
+        static void move(number* from, number* to)
+        {
+            from->_owns = false;
+            mpc_swap(from->_handle, to->_handle);
+        }
+
         mpc_t _handle{};
         bool _owns{true};
     };

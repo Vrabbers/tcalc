@@ -38,7 +38,7 @@ static void show_arith(const tcalc::arithmetic_expression& arith)
     }
 }
 
-static void eval(std::string&& input, bool show)
+static void eval(tcalc::evaluator& eval, std::string&& input, bool show)
 {
     auto p = parse(std::move(input));
     std::vector<tcalc::expression> parse = p.parse_all();
@@ -59,7 +59,6 @@ static void eval(std::string&& input, bool show)
         return;
     }
 
-    tcalc::evaluator eval{64};
 
     for (const auto& expr : parse)
     {
@@ -87,7 +86,7 @@ static void eval(std::string&& input, bool show)
         }
         else
         {
-            std::cout << "expr had no result...";
+            std::cout << "empty result expression";
         }
         std::cout << " took " << time << '\n';
     }
@@ -96,6 +95,8 @@ static void eval(std::string&& input, bool show)
 static void interactive()
 {
     std::cout << "tcalc console\n";
+
+    tcalc::evaluator evaluator{64};
 
     while (true)
     {
@@ -106,7 +107,7 @@ static void interactive()
         if (input == "quit")
             return;
 
-        eval(std::move(input), true);
+        eval(evaluator, std::move(input), true);
 
         std::cout << '\n';
     }
@@ -119,13 +120,15 @@ static void fuzz(const int times)
     std::default_random_engine rand(rd());
     std::uniform_int_distribution rdist(0, 255);
     std::array<char, 512> buf{};
+    tcalc::evaluator evaluator{64};
+
     for (int i = 0; i < times; i++)
     {
         for (char& j : buf)
             j = static_cast<char>(rdist(rand));
         std::cout << "Fuzz #" << i + 1 << '\n';
         std::string a{buf.cbegin(), buf.cend()};
-        eval(std::move(a), false);
+        eval(evaluator, std::move(a), false);
     }
 }
 
