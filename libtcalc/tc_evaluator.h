@@ -1,17 +1,24 @@
-#ifndef TC_EVALUATOR_H
-#define TC_EVALUATOR_H
+#pragma once
 
 #include <functional>
 #include <string>
 #include <unordered_map>
 
 #include "tc_eval_result.h"
+#include "tc_eval_stack.h"
 #include "tc_expression.h"
 #include "tc_number.h"
 
 
 
-namespace tcalc {
+namespace tcalc
+{
+    struct native_fn
+    {
+        fn_arity_t arity;
+        std::function<eval_error_type(eval_stack&)> fn;
+    };
+
     class evaluator final
     {
     public:
@@ -36,11 +43,10 @@ namespace tcalc {
 
     private:
         mpfr_prec_t _precision;
-        std::unordered_map<std::string_view, const number> _constants;
+        std::unordered_map<std::string, const number> _constants;
         std::unordered_map<std::string, number> _variables;
+        std::unordered_map<std::string, std::vector<native_fn> > _native_fns;
         std::unordered_map<std::string, func_def_expression> _user_def_fns;
     };
 
 }
-
-#endif // TC_EVALUATOR_H

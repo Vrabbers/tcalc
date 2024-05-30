@@ -15,207 +15,153 @@ namespace
     using namespace std::string_literals;
     using namespace std::string_view_literals;
 
-    struct eval_stack
-    {
-        std::vector<number> _stack;
-        int _top = -1;
-
-        [[nodiscard]]
-        number& top()
-        {
-            return _stack.at(_top);
-        }
-
-        [[nodiscard]]
-        bool has_at_least(const int amt) const
-        {
-            return amt <= size();
-        }
-
-        [[nodiscard]]
-        int size() const
-        {
-            return _top + 1;
-        }
-
-        const number& pop()
-        {
-            // We keep old entries to avoid creating and destroying perfectly good number instances.
-            const auto& num = _stack.at(_top);
-            _top--;
-            return num;
-        }
-
-        void push(const number& num)
-        {
-            if (static_cast<int>(_stack.size()) == _top + 1)
-            {
-                number num2{num};
-                _stack.push_back(std::move(num2));
-            }
-            else
-            {
-                _stack.at(_top + 1).set(num);
-            }
-            _top++;
-        }
-    };
-
-    std::unordered_map<std::string_view, const number> initialize_constants(const mpfr_prec_t prec)
+    std::unordered_map<std::string, const number> initialize_constants(const mpfr_prec_t prec)
     {
         return {
-            {"pi"sv, number::pi(prec)},
-            {"π"sv, number::pi(prec)},
-            {"tau"sv, number::tau(prec)},
-            {"τ"sv, number::tau(prec)},
-            {"e"sv, number::e(prec)}
+            {"pi"s, number::pi(prec)},
+            {"π"s, number::pi(prec)},
+            {"tau"s, number::tau(prec)},
+            {"τ"s, number::tau(prec)},
+            {"e"s, number::e(prec)}
         };
     }
 
-    struct arity_fn_pair
+    std::unordered_map<std::string, std::vector<native_fn> > basic_builtins()
     {
-        fn_arity_t arity;
-        std::function<eval_error_type(eval_stack&)> fn;
-    };
-
-    using builtin_fn_vec = std::vector<arity_fn_pair>;
-    const std::unordered_map<std::string_view, builtin_fn_vec> basic_builtins =
-    {
+        return
         {
-            "sqrt"sv,
             {
+                "sqrt"s,
                 {
-                    1,
-                    [](eval_stack& stack)
                     {
-                        stack.top().sqrt(stack.top());
-                        return eval_error_type::none;
+                        1,
+                        [](eval_stack& stack)
+                        {
+                            stack.top().sqrt(stack.top());
+                            return eval_error_type::none;
+                        }
                     }
                 }
-            }
-        },
-        {
-            "exp"sv,
+            },
             {
+                "exp"s,
                 {
-                    1,
-                    [](eval_stack& stack)
                     {
-                        stack.top().exp(stack.top());
-                        return eval_error_type::none;
+                        1,
+                        [](eval_stack& stack)
+                        {
+                            stack.top().exp(stack.top());
+                            return eval_error_type::none;
+                        }
                     }
                 }
-            }
-        },
-        {
-            "log"sv,
+            },
             {
+                "log"s,
                 {
-                    1,
-                    [](eval_stack& stack)
                     {
-                        if (stack.top() == 0)
-                            return eval_error_type::log_zero;
-                        stack.top().log(stack.top());
-                        return eval_error_type::none;
-                    }
-                },
-                {
-                    2,
-                    [](eval_stack& stack)
+                        1,
+                        [](eval_stack& stack)
+                        {
+                            if (stack.top() == 0)
+                                return eval_error_type::log_zero;
+                            stack.top().log(stack.top());
+                            return eval_error_type::none;
+                        }
+                    },
                     {
-                        if (stack.top() == 0 || stack.top() == 1)
-                            return eval_error_type::log_base;
-                        auto& base = stack.top(); // Take mutable ref
-                        stack.pop();
-                        if (stack.top() == 0)
-                            return eval_error_type::log_zero;
-                        base.ln(base);
-                        stack.top().ln(stack.top());
-                        stack.top().div(stack.top(), base);
-                        return eval_error_type::none;
+                        2,
+                        [](eval_stack& stack)
+                        {
+                            if (stack.top() == 0 || stack.top() == 1)
+                                return eval_error_type::log_base;
+                            auto& base = stack.pop();
+                            if (stack.top() == 0)
+                                return eval_error_type::log_zero;
+                            base.ln(base);
+                            stack.top().ln(stack.top());
+                            stack.top().div(stack.top(), base);
+                            return eval_error_type::none;
+                        }
                     }
                 }
-            }
-        },
-        {
-            "ln"sv,
+            },
             {
+                "ln"s,
                 {
-                    1,
-                    [](eval_stack& stack)
                     {
-                        if (stack.top() == 0)
-                            return eval_error_type::log_zero;
-                        stack.top().ln(stack.top());
-                        return eval_error_type::none;
+                        1,
+                        [](eval_stack& stack)
+                        {
+                            if (stack.top() == 0)
+                                return eval_error_type::log_zero;
+                            stack.top().ln(stack.top());
+                            return eval_error_type::none;
+                        }
                     }
                 }
-            }
-        },
-        {
-            "sin"sv,
+            },
             {
+                "sin"s,
                 {
-                    1,
-                    [](eval_stack& stack)
                     {
-                        stack.top().sin(stack.top());
-                        return eval_error_type::none;
+                        1,
+                        [](eval_stack& stack)
+                        {
+                            stack.top().sin(stack.top());
+                            return eval_error_type::none;
+                        }
                     }
                 }
-            }
-        },
-        {
-            "cos"sv,
+            },
             {
+                "cos"s,
                 {
-                    1,
-                    [](eval_stack& stack)
                     {
-                        stack.top().cos(stack.top());
-                        return eval_error_type::none;
+                        1,
+                        [](eval_stack& stack)
+                        {
+                            stack.top().cos(stack.top());
+                            return eval_error_type::none;
+                        }
                     }
                 }
-            }
-        },
-        {
-            "tan"sv,
+            },
             {
+                "tan"s,
                 {
-                    1,
-                    [](eval_stack& stack)
                     {
-                        stack.top().tan(stack.top());
-                        return eval_error_type::none;
+                        1,
+                        [](eval_stack& stack)
+                        {
+                            stack.top().tan(stack.top());
+                            return eval_error_type::none;
+                        }
                     }
                 }
-            }
-        },
-    };
+            },
+        };
+    }
 
     eval_result<evaluator::result_type> to_var_res(const eval_result<number>& e)
     {
         if (e.is_error())
             return eval_result<evaluator::result_type>::from_error(e.error());
-        else
-            return eval_result<evaluator::result_type>{e.value()};
+        return eval_result<evaluator::result_type>{e.value()};
     }
 
     eval_result<evaluator::result_type> to_var_res(const eval_result<bool>& e)
     {
         if (e.is_error())
             return eval_result<evaluator::result_type>::from_error(e.error());
-        else
-            return eval_result<evaluator::result_type>{e.value()};
+        return eval_result<evaluator::result_type>{e.value()};
     }
 
     eval_result<evaluator::result_type> to_var_res(const eval_result<empty_result>& e)
     {
         if (e.is_error())
             return eval_result<evaluator::result_type>::from_error(e.error());
-        else
-            return eval_result<evaluator::result_type>{empty_result{}};
+        return eval_result<evaluator::result_type>{empty_result{}};
     }
 
     eval_error_type evaluate_binop(const binary_operator* op, number& lhs, const number& rhs)
@@ -275,8 +221,8 @@ evaluator::evaluator(const mpfr_prec_t precision)
 {
     _precision = precision;
     _constants = initialize_constants(precision);
+    _native_fns = basic_builtins();
 }
-
 
 eval_result<evaluator::result_type> evaluator::evaluate(const expression& expr)
 {
@@ -366,20 +312,20 @@ eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& 
             if (!stack.has_at_least(fncall->arity))
                 return eval_result<number>::from_error(eval_error_type::invalid_program, fncall->position);
 
-            const auto builtin_it = basic_builtins.find(fncall->identifier);
+            const auto native_it = _native_fns.find(fncall->identifier);
 
-            if (builtin_it == basic_builtins.end())
+            if (native_it == _native_fns.end())
                 return eval_result<number>::from_error(eval_error_type::undefined_function, fncall->position);
 
-            const auto fns_with_this_name = builtin_it->second;
+            const auto fns_with_this_name = native_it->second;
 
             auto err = eval_error_type::bad_arity;
 
-            for (const auto& fn_arity : fns_with_this_name)
+            for (const auto& [arity, fn] : fns_with_this_name)
             {
-                if (fn_arity.arity == fncall->arity)
+                if (arity == fncall->arity)
                 {
-                    err = fn_arity.fn(stack);
+                    err = fn(stack);
                     break;
                 }
             }

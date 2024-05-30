@@ -17,6 +17,7 @@ set(SOURCES
     utf8utils.cpp
     tc_evaluator.cpp
     tc_eval_result.cpp
+    tc_eval_stack.cpp
 )
 
 set(HEADERS
@@ -31,6 +32,7 @@ set(HEADERS
     tc_operation.h
     tc_evaluator.h
     tc_eval_result.h
+    tc_eval_stack.h
 )
 
 
