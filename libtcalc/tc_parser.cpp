@@ -68,32 +68,6 @@ static bool ends_expr(const token_kind kind)
     }
 }
 
-static bool is_valid_func_def(const std::vector<operation>& parse)
-{
-    if (!std::holds_alternative<function_call>(parse.back()))
-        return false;
-
-    if (std::get<function_call>(parse.back()).arity != static_cast<int32_t>(parse.size() - 1)) // 1 token for each ident + 1 for the fn call
-        return false;
-
-    for (int32_t i = 0; i < static_cast<int32_t>(parse.size() - 1); i++)
-    {
-        if (!std::holds_alternative<variable_reference>(parse[i]))
-            return false;
-    }
-    return true;
-}
-
-static std::vector<std::string> collect_arg_names(std::vector<operation>& parse)
-{
-    std::vector<std::string> idents;
-    for (int32_t i = 0; i < static_cast<int32_t>(parse.size() - 1); i++)
-    {
-        idents.emplace_back(std::move(std::get<variable_reference>(parse[i]).identifier));
-    }
-    return idents;
-}
-
 static bool can_insert_implicit_multiply(const token_kind kind)
 {
     switch (kind)
@@ -155,26 +129,6 @@ expression parser::parse_variable_assignment(const size_t lhs_start_ix, std::vec
     };
 }
 
-expression parser::parse_function_definition(const size_t lhs_start_ix, std::vector<operation>&& lhs_parse)
-{
-    forward(); // consume equals token
-    const size_t rhs_start_ix = _current.start_index();
-    std::vector<operation> def_parse;
-    parse_arithmetic(def_parse);
-    const size_t rhs_end_ix = _current.end_index();
-    expect_end();
-    auto fn_name = std::get<function_call>(lhs_parse.back()).identifier;
-    return func_def_expression{
-        .name = std::move(fn_name),
-        .parameters = collect_arg_names(lhs_parse),
-        .expression = arithmetic_expression{
-            .tokens = std::move(def_parse),
-            .position = {rhs_start_ix, rhs_end_ix}
-        },
-        .position = {lhs_start_ix, rhs_end_ix}
-    };
-}
-
 expression parser::parse_boolean_expression(const size_t lhs_start_ix, const size_t lhs_end_ix,
                                             std::vector<operation>&& lhs_parse, const token_kind delimiter)
 {
@@ -214,12 +168,10 @@ expression parser::parse_expression()
     switch (_current.kind())
     {
         case token_kind::equal:
-            // can be assignment, or function def, or boolean expr
+            // can be assignment or boolean expr
             if (lhs_parse.size() == 1 && std::holds_alternative<variable_reference>(lhs_parse[0]))
                 return parse_variable_assignment(lhs_start_ix, std::move(lhs_parse));
-            if (is_valid_func_def(lhs_parse))
-                return parse_function_definition(lhs_start_ix, std::move(lhs_parse));
-        [[fallthrough]]; // in the case that it is not assignment or function def, we try to parse as a boolean expression
+        [[fallthrough]]; // in the case that it is not assignment we try to parse as a boolean expression
         case token_kind::not_equal:
         case token_kind::less_than:
         case token_kind::less_or_equal:

@@ -23,14 +23,6 @@ namespace tcalc
         source_position position;
     };
 
-    struct func_def_expression final
-    {
-        std::string name;
-        std::vector<std::string> parameters;
-        arithmetic_expression expression;
-        source_position position;
-    };
-
     struct boolean_expression final
     {
         arithmetic_expression lhs;
@@ -39,6 +31,7 @@ namespace tcalc
         source_position position;
     };
 
-    using expression = std::variant<arithmetic_expression, assignment_expression, func_def_expression, boolean_expression>;
+    using expression = std::variant<arithmetic_expression, assignment_expression, boolean_expression>;
 }
+
 #endif // TC_EXPRESSION_H

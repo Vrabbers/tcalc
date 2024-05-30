@@ -54,7 +54,6 @@ namespace tcalc
         void parse_super_term(std::vector<operation>& parsing);
         void parse_superscript(std::vector<operation>& parsing);
         expression parse_variable_assignment(size_t lhs_start_ix, std::vector<operation>&& lhs_parse);
-        expression parse_function_definition(size_t lhs_start_ix, std::vector<operation>&& lhs_parse);
         expression parse_boolean_expression(size_t lhs_start_ix, size_t lhs_end_ix, std::vector<operation>&& lhs_parse,
                                             token_kind delimiter);
         token _current;

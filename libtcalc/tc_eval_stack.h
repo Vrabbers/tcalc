@@ -1,4 +1,6 @@
-#pragma once
+#ifndef TC_EVAL_STACK_H
+#define TC_EVAL_STACK_H
+
 #include <vector>
 
 #include "tc_number.h"
@@ -35,3 +37,4 @@ namespace tcalc
         int _top = -1;
     };
 }
+#endif // TC_EVAL_STACK_H

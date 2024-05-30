@@ -245,11 +245,6 @@ eval_result<evaluator::result_type> evaluator::evaluate(const expression& expr)
             {
                 const auto r = evaluate_assignment(ass_exp);
                 return to_var_res(r);
-            },
-            [this](const func_def_expression& fn_exp)
-            {
-                const auto r = evaluate_fn_def(fn_exp);
-                return to_var_res(r);
             }
         }, expr);
 }
@@ -389,10 +384,5 @@ eval_result<empty_result> evaluator::evaluate_assignment(const assignment_expres
         return eval_result<empty_result>::from_error(res.error());
 
     _variables.insert_or_assign(expr.variable, std::move(res.mut_value()));
-    return eval_result{empty_result{}};
-}
-
-eval_result<empty_result> evaluator::evaluate_fn_def(const func_def_expression& expr)
-{
     return eval_result{empty_result{}};
 }
