@@ -2,7 +2,7 @@
 #define TC_NUMBER_H
 
 #ifdef _MSC_VER
-#pragma warning(push, 0) // mpc header has warnings on MSVC /Wall
+#pragma warning(push, 0) // mpc header has warnings on MSVC /W4
 #endif
 
 #include <mpc.h>
@@ -94,7 +94,7 @@ namespace tcalc
         bool operator<(const number& b) const
         {
             assert(_owns);
-            int res = mpc_cmp(_handle, b._handle);
+            const int res = mpc_cmp(_handle, b._handle);
             return MPC_INEX_RE(res) < 0;
         }
 

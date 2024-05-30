@@ -1,7 +1,5 @@
 #include "tc_diagnostic.h"
 
-#include "tc_token.h"
-
 std::string_view tcalc::diagnostic_type_name(const diagnostic_type type)
 {
     using namespace std::literals;

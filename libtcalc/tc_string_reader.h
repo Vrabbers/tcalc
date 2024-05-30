@@ -2,7 +2,6 @@
 #define TC_STRING_READER_H
 
 #include <cstdint>
-#include <memory>
 #include <optional>
 #include <string>
 #include <utility>

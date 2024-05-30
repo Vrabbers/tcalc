@@ -1,5 +1,6 @@
 #ifndef TC_EVAL_RESULT_H
 #define TC_EVAL_RESULT_H
+
 #include <string_view>
 #include <variant>
 
@@ -7,6 +8,8 @@
 
 namespace tcalc
 {
+    class number;
+
     enum class eval_error_type
     {
         none = 0,
@@ -34,26 +37,25 @@ namespace tcalc
     class eval_result final
     {
     public:
-        static eval_result from_error(const eval_error_type error, const source_position where)
+        eval_result(const eval_error_type error, const source_position where)
         {
-            eval_result res{};
-            res._value = eval_error{error, where};
-            return res;
+            _value = eval_error{error, where};
         }
 
-        static eval_result from_error(eval_error error)
+        explicit eval_result(eval_error error)
         {
-            eval_result res{};
-            res._value = error;
-            return res;
+            _value = error;
+        }
+
+        explicit eval_result(const SuccessType& success)
+        {
+            _value = success;
         }
 
         explicit eval_result(SuccessType&& success)
         {
-            _value.template emplace<SuccessType>(std::move(success));
+            _value = std::move(success);
         }
-
-        eval_result() = default;
 
         [[nodiscard]]
         bool is_error() const
@@ -80,6 +82,11 @@ namespace tcalc
     private:
         std::variant<eval_error, SuccessType> _value;
     };
+
+    inline eval_result<empty_result> empty_success()
+    {
+        return eval_result{empty_result{}};
+    }
 }
 
 #endif

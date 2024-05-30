@@ -15,7 +15,7 @@ namespace
     using namespace std::string_literals;
     using namespace std::string_view_literals;
 
-    std::unordered_map<std::string, const number> initialize_constants(const mpfr_prec_t prec)
+    std::unordered_map<std::string, number> initialize_constants(const mpfr_prec_t prec)
     {
         return {
             {"pi"s, number::pi(prec)},
@@ -143,24 +143,24 @@ namespace
         };
     }
 
-    eval_result<evaluator::result_type> to_var_res(const eval_result<number>& e)
+    eval_result<evaluator::result_type> to_variant_result(const eval_result<number>& e)
     {
         if (e.is_error())
-            return eval_result<evaluator::result_type>::from_error(e.error());
+            return eval_result<evaluator::result_type>{e.error()};
         return eval_result<evaluator::result_type>{e.value()};
     }
 
-    eval_result<evaluator::result_type> to_var_res(const eval_result<bool>& e)
+    eval_result<evaluator::result_type> to_variant_result(const eval_result<bool>& e)
     {
         if (e.is_error())
-            return eval_result<evaluator::result_type>::from_error(e.error());
+            return eval_result<evaluator::result_type>{e.error()};
         return eval_result<evaluator::result_type>{e.value()};
     }
 
-    eval_result<evaluator::result_type> to_var_res(const eval_result<empty_result>& e)
+    eval_result<evaluator::result_type> to_variant_result(const eval_result<empty_result>& e)
     {
         if (e.is_error())
-            return eval_result<evaluator::result_type>::from_error(e.error());
+            return eval_result<evaluator::result_type>{e.error()};
         return eval_result<evaluator::result_type>{empty_result{}};
     }
 
@@ -215,7 +215,7 @@ namespace
 
         return eval_error_type::none;
     }
-}
+} // End anonymous namespace
 
 evaluator::evaluator(const mpfr_prec_t precision)
 {
@@ -233,18 +233,18 @@ eval_result<evaluator::result_type> evaluator::evaluate(const expression& expr)
             {
                 const auto r = evaluate_arithmetic(arith);
                 if (!r.is_error())
-                    _variables.insert({"ans"s, r.value()});
-                return to_var_res(r);
+                    _variables.insert({"Ans"s, r.value()});
+                return to_variant_result(r);
             },
             [this](const boolean_expression& bool_exp)
             {
                 const auto r = evaluate_boolean(bool_exp);
-                return to_var_res(r);
+                return to_variant_result(r);
             },
             [this](const assignment_expression& ass_exp)
             {
                 const auto r = evaluate_assignment(ass_exp);
-                return to_var_res(r);
+                return to_variant_result(r);
             }
         }, expr);
 }
@@ -275,42 +275,42 @@ eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& 
                 continue;
             }
 
-            return eval_result<number>::from_error(eval_error_type::undefined_variable, varref->position);
+            return eval_result<number>{eval_error_type::undefined_variable, varref->position};
         }
         else if (const auto* binop = std::get_if<binary_operator>(&op))
         {
             if (!stack.has_at_least(2))
-                return eval_result<number>::from_error(eval_error_type::invalid_program, binop->position);
+                return eval_result<number>{eval_error_type::invalid_program, binop->position};
 
             const number& rhs = stack.pop();
-            const auto err = evaluate_binop(binop, stack.top(), rhs);
+            const eval_error_type err = evaluate_binop(binop, stack.top(), rhs);
 
             if (err == eval_error_type::none)
                 continue;
 
-            return eval_result<number>::from_error(err, binop->position);
+            return eval_result<number>{err, binop->position};
         }
         else if (const auto* unop = std::get_if<unary_operator>(&op))
         {
             if (!stack.has_at_least(1))
-                return eval_result<number>::from_error(eval_error_type::invalid_program, unop->position);
+                return eval_result<number>{eval_error_type::invalid_program, unop->position};
 
             const auto err = evaluate_unop(unop, stack.top());
 
             if (err == eval_error_type::none)
                 continue;
 
-            return eval_result<number>::from_error(err, unop->position);
+            return eval_result<number>{err, unop->position};
         }
         else if (const auto* fncall = std::get_if<function_call>(&op))
         {
             if (!stack.has_at_least(fncall->arity))
-                return eval_result<number>::from_error(eval_error_type::invalid_program, fncall->position);
+                return eval_result<number>{eval_error_type::invalid_program, fncall->position};
 
             const auto native_it = _native_fns.find(fncall->identifier);
 
             if (native_it == _native_fns.end())
-                return eval_result<number>::from_error(eval_error_type::undefined_function, fncall->position);
+                return eval_result<number>{eval_error_type::undefined_function, fncall->position};
 
             const auto fns_with_this_name = native_it->second;
 
@@ -328,7 +328,7 @@ eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& 
             if (err == eval_error_type::none)
                 continue;
 
-            return eval_result<number>::from_error(err, fncall->position);
+            return eval_result<number>{err, fncall->position};
         }
     }
 
@@ -337,18 +337,18 @@ eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& 
         return eval_result{std::move(stack.top())};
     }
 
-    return eval_result<number>::from_error(eval_error_type::invalid_program, expr.position);
+    return eval_result<number>{eval_error_type::invalid_program, expr.position};
 }
 
 eval_result<bool> evaluator::evaluate_boolean(const boolean_expression& expr) const
 {
     const eval_result left = evaluate_arithmetic(expr.lhs);
     if (left.is_error())
-        return eval_result<bool>::from_error(left.error());
+        return eval_result<bool>{left.error()};
 
     const eval_result right = evaluate_arithmetic(expr.rhs);
     if (right.is_error())
-        return eval_result<bool>::from_error(right.error());
+        return eval_result<bool>{right.error()};
 
     if (expr.kind == token_kind::equal)
         return eval_result{left.value() == right.value()};
@@ -356,10 +356,10 @@ eval_result<bool> evaluator::evaluate_boolean(const boolean_expression& expr) co
         return eval_result{left.value() != right.value()};
 
     if (!left.value().is_real())
-        return eval_result<bool>::from_error(eval_error_type::complex_inequality, expr.lhs.position);
+        return eval_result<bool>{eval_error_type::complex_inequality, expr.lhs.position};
 
     if (!right.value().is_real())
-        return eval_result<bool>::from_error(eval_error_type::complex_inequality, expr.rhs.position);
+        return eval_result<bool>{eval_error_type::complex_inequality, expr.rhs.position};
 
     switch (expr.kind)
     {
@@ -372,7 +372,7 @@ eval_result<bool> evaluator::evaluate_boolean(const boolean_expression& expr) co
         case token_kind::less_or_equal:
             return eval_result{left.value() == right.value() || left.value() < right.value()};
         default:
-            return eval_result<bool>::from_error(eval_error_type::invalid_program, expr.position);
+            return eval_result<bool>{eval_error_type::invalid_program, expr.position};
     }
 }
 
@@ -381,8 +381,8 @@ eval_result<empty_result> evaluator::evaluate_assignment(const assignment_expres
     eval_result res = evaluate_arithmetic(expr.expression);
 
     if (res.is_error())
-        return eval_result<empty_result>::from_error(res.error());
+        return eval_result<empty_result>{res.error()};
 
     _variables.insert_or_assign(expr.variable, std::move(res.mut_value()));
-    return eval_result{empty_result{}};
+    return empty_success();
 }
