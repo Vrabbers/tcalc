@@ -7,55 +7,100 @@
 
 using namespace tcalc;
 
-static bool is_whitespace(const std::optional<char32_t> chr)
+namespace
 {
-    if (!chr.has_value())
-        return false;
-    // tab is not in category ZS. conveniently, neither is LF.
-    return chr == U'\t' || utf8utils::category(*chr) == UTF8PROC_CATEGORY_ZS;
-}
-
-static bool is_letter(const std::optional<char32_t> chr)
-{
-    if (!chr.has_value())
-        return false;
-    const auto c = utf8utils::category(*chr);
-    return (c >= UTF8PROC_CATEGORY_LU && c <= UTF8PROC_CATEGORY_LO)
-        || c == UTF8PROC_CATEGORY_PC
-        || c == UTF8PROC_CATEGORY_NO;
-}
-
-static bool is_decimal_digit(const std::optional<char32_t> chr)
-{
-    return chr >= U'0' && chr <= U'9';
-}
-
-static bool is_hex_digit(const std::optional<char32_t> chr)
-{
-    return is_decimal_digit(chr) || (chr >= U'a' && chr <= U'f') || (chr >= U'A' && chr <= U'F');
-}
-
-static bool is_superscript_digit(const std::optional<char32_t> chr)
-{
-    if (!chr.has_value())
-        return false;
-    switch (*chr)
+    bool is_whitespace(const std::optional<char32_t> chr)
     {
-        case U'²':
-        case U'³':
-        case U'¹':
-        case U'⁰':
-        case U'⁴':
-        case U'⁵':
-        case U'⁶':
-        case U'⁷':
-        case U'⁸':
-        case U'⁹':
-            return true;
-        default:
+        if (!chr.has_value())
             return false;
+        // tab is not in category ZS. conveniently, neither is LF.
+        return chr == U'\t' || utf8utils::category(*chr) == UTF8PROC_CATEGORY_ZS;
     }
-}
+
+    bool is_letter(const std::optional<char32_t> chr)
+    {
+        if (!chr.has_value())
+            return false;
+        const auto c = utf8utils::category(*chr);
+        return (c >= UTF8PROC_CATEGORY_LU && c <= UTF8PROC_CATEGORY_LO)
+            || c == UTF8PROC_CATEGORY_PC
+            || c == UTF8PROC_CATEGORY_NO;
+    }
+
+    bool is_decimal_digit(const std::optional<char32_t> chr)
+    {
+        return chr >= U'0' && chr <= U'9';
+    }
+
+    bool is_hex_digit(const std::optional<char32_t> chr)
+    {
+        return is_decimal_digit(chr) || (chr >= U'a' && chr <= U'f') || (chr >= U'A' && chr <= U'F');
+    }
+
+    bool is_superscript_digit(const std::optional<char32_t> chr)
+    {
+        if (!chr.has_value())
+            return false;
+        switch (*chr)
+        {
+            case U'²':
+            case U'³':
+            case U'¹':
+            case U'⁰':
+            case U'⁴':
+            case U'⁵':
+            case U'⁶':
+            case U'⁷':
+            case U'⁸':
+            case U'⁹':
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    consteval char32_t plus(bool is_superscript)
+    {
+        return is_superscript ? U'⁺' : U'+';
+    }
+
+    consteval char32_t minus(bool is_superscript)
+    {
+        return is_superscript ? U'⁻' : U'-';
+    }
+
+    template<bool Superscript>
+    bool is_digit(char32_t chr)
+    {
+        if constexpr (Superscript)
+            return is_superscript_digit(chr);
+        else
+            return is_decimal_digit(chr);
+    }
+
+    template<bool Superscript>
+    bool start_reading_exponent(string_reader& sr)
+    {
+        const auto next3 = sr.peek_many(3);
+        if (next3.length() >= 2) // Otherwise we don't have enough input to keep going
+        {
+            if (next3[1] == plus(Superscript) || next3[1] == minus(Superscript))
+            {
+                if (next3.length() == 3 && is_digit<Superscript>(next3[2])) // If it was a +/-, we need to consume a digit
+                {
+                    sr.forward_many(3);
+                    return true;
+                }
+            }
+            else if (is_digit<Superscript>(next3[1]))// If is already a digit, need to read them and then start reading exponent
+            {
+                sr.forward_many(2);
+                return true;
+            }
+        }
+        return false; // If not enough input, or if characters we didnt want were there
+    }
+} // End anonymous namespace
 
 token lexer::next()
 {
@@ -110,48 +155,6 @@ token lexer::lex_hex_number()
         _sr.forward();
 
     return flush_token(token_kind::hex_literal);
-}
-
-consteval static char32_t plus(bool is_superscript)
-{
-    return is_superscript ? U'⁺' : U'+';
-}
-
-consteval static char32_t minus(bool is_superscript)
-{
-    return is_superscript ? U'⁻' : U'-';
-}
-
-template<bool Superscript>
-static bool is_digit(char32_t chr)
-{
-    if constexpr (Superscript)
-        return is_superscript_digit(chr);
-    else
-        return is_decimal_digit(chr);
-}
-
-template<bool Superscript>
-static bool start_reading_exponent(string_reader& sr)
-{
-    const auto next3 = sr.peek_many(3);
-    if (next3.length() >= 2) // Otherwise we don't have enough input to keep going
-    {
-        if (next3[1] == plus(Superscript) || next3[1] == minus(Superscript))
-        {
-            if (next3.length() == 3 && is_digit<Superscript>(next3[2])) // If it was a +/-, we need to consume a digit
-            {
-                sr.forward_many(3);
-                return true;
-            }
-        }
-        else if (is_digit<Superscript>(next3[1]))// If is already a digit, need to read them and then start reading exponent
-        {
-            sr.forward_many(2);
-            return true;
-        }
-    }
-    return false; // If not enough input, or if characters we didnt want were there
 }
 
 token lexer::lex_decimal_number()
@@ -318,6 +321,11 @@ token lexer::lex_symbol()
         case U'≤':
             return flush_token(token_kind::less_or_equal);
         case U'=':
+            if (_sr.peek() == U'=')
+            {
+                _sr.forward();
+                return flush_token(token_kind::equality);
+            }
             return flush_token(token_kind::equal);
         case U'≠':
             return flush_token(token_kind::not_equal);

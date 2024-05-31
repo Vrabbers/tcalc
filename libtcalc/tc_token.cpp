@@ -38,6 +38,7 @@ std::string_view tcalc::token_kind_name(const token_kind kind)
         "less_than"sv,
         "less_or_equal"sv,
         "equal"sv,
+        "equality"sv,
         "not_equal"sv,
         "binary_nand"sv,
         "binary_nor"sv,

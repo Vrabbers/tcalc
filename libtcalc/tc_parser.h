@@ -21,6 +21,12 @@ namespace tcalc
         expression parse_expression();
 
         [[nodiscard]]
+        bool at_end() const
+        {
+            return _current.kind() == token_kind::end_of_file;
+        }
+
+        [[nodiscard]]
         const std::vector<diagnostic>& diagnostic_bag() const
         {
             return _diagnostic_bag;
@@ -62,6 +68,18 @@ namespace tcalc
         std::vector<diagnostic>& _diagnostic_bag;
         mpfr_prec_t _number_precision;
     };
+
+    template<class ExprT> requires std::convertible_to<ExprT, expression>
+    std::pair<parser, std::optional<ExprT> > parse_single(lexer&& lexer, const mpfr_prec_t number_precision)
+    {
+        parser p{std::move(lexer), number_precision};
+        const expression expr = p.parse_expression();
+
+        if (const ExprT* t_exp = std::get_if<ExprT>(&expr))
+            return {p, *t_exp};
+
+        return {p, std::nullopt};
+    }
 }
 
 #endif // TC_PARSER_H

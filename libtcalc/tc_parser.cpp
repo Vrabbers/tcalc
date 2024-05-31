@@ -1,103 +1,105 @@
 #include "tc_parser.h"
 
-#include <cassert>
 #include <stdexcept>
 
 #include "utf8utils.h"
 
 using namespace tcalc;
 
-static int binary_precedence(const token_kind kind)
+namespace
 {
-    switch (kind)
+    int binary_precedence(const token_kind kind)
     {
-        case token_kind::exponentiate:
-            return 5;
+        switch (kind)
+        {
+            case token_kind::exponentiate:
+                return 5;
 
-        case token_kind::right_shift:
-        case token_kind::left_shift:
-        case token_kind::binary_and:
-        case token_kind::binary_nand:
-        case token_kind::binary_or:
-        case token_kind::binary_nor:
-        case token_kind::binary_xor:
-        case token_kind::binary_xnor:
-            return 3;
+            case token_kind::right_shift:
+            case token_kind::left_shift:
+            case token_kind::binary_and:
+            case token_kind::binary_nand:
+            case token_kind::binary_or:
+            case token_kind::binary_nor:
+            case token_kind::binary_xor:
+            case token_kind::binary_xnor:
+                return 3;
 
-        case token_kind::multiply:
-        case token_kind::divide:
-            return 2;
+            case token_kind::multiply:
+            case token_kind::divide:
+                return 2;
 
-        case token_kind::minus:
-        case token_kind::plus:
-            return 1;
+            case token_kind::minus:
+            case token_kind::plus:
+                return 1;
 
-        default:
-            return -1;
+            default:
+                return -1;
+        }
     }
-}
 
-static int unary_precendence(const token_kind kind)
-{
-    switch (kind)
+    int unary_precendence(const token_kind kind)
     {
-        case token_kind::binary_not:
-        case token_kind::minus:
-        case token_kind::plus:
-        case token_kind::radical:
-            return 4;
-        default:
-            return -1;
+        switch (kind)
+        {
+            case token_kind::binary_not:
+            case token_kind::minus:
+            case token_kind::plus:
+            case token_kind::radical:
+                return 4;
+            default:
+                return -1;
+        }
     }
-}
 
-static bool is_right_associative(const token_kind kind)
-{
-    return kind == token_kind::exponentiate;
-}
-
-static bool ends_expr(const token_kind kind)
-{
-    switch (kind)
+    bool is_right_associative(const token_kind kind)
     {
-        case token_kind::expression_separator:
-        case token_kind::end_of_file:
-            return true;
-        default:
-            return false;
+        return kind == token_kind::exponentiate;
     }
-}
 
-static bool can_insert_implicit_multiply(const token_kind kind)
-{
-    switch (kind)
+    bool ends_expr(const token_kind kind)
     {
-        case token_kind::identifier:
-        case token_kind::open_parenthesis:
-        case token_kind::numeric_literal:
-            return true;
-        default:
-            return unary_precendence(kind) != -1;
+        switch (kind)
+        {
+            case token_kind::expression_separator:
+            case token_kind::end_of_file:
+                return true;
+            default:
+                return false;
+        }
     }
-}
 
-static bool is_postfix_operator(const token_kind kind)
-{
-    return kind == token_kind::percent || kind == token_kind::factorial;
-}
-
-static bool is_superscript(const token_kind kind)
-{
-    switch (kind)
+    bool can_insert_implicit_multiply(const token_kind kind)
     {
-        case token_kind::superscript_literal:
-        case token_kind::superscript_minus:
-        case token_kind::superscript_plus:
-            return true;
-        default:
-            return false;
+        switch (kind)
+        {
+            case token_kind::identifier:
+            case token_kind::open_parenthesis:
+            case token_kind::numeric_literal:
+                return true;
+            default:
+                return unary_precendence(kind) != -1;
+        }
     }
-}
+
+    bool is_postfix_operator(const token_kind kind)
+    {
+        return kind == token_kind::percent || kind == token_kind::factorial;
+    }
+
+    bool is_superscript(const token_kind kind)
+    {
+        switch (kind)
+        {
+            case token_kind::superscript_literal:
+            case token_kind::superscript_minus:
+            case token_kind::superscript_plus:
+                return true;
+            default:
+                return false;
+        }
+    }
+} // End anonymous namespace
 
 std::vector<expression> parser::parse_all()
 {
@@ -105,7 +107,7 @@ std::vector<expression> parser::parse_all()
     do
     {
         exprs.push_back(parse_expression());
-    } while(_current.kind() != token_kind::end_of_file);
+    } while(!at_end());
     return exprs;
 }
 
@@ -146,7 +148,7 @@ expression parser::parse_boolean_expression(const size_t lhs_start_ix, const siz
             .tokens = std::move(rhs_parse),
             .position = {rhs_start_ix, rhs_end_ix}
         },
-        .kind = delimiter,
+        .kind = delimiter == token_kind::equal ? token_kind::equality : delimiter,
         .position = {lhs_start_ix, rhs_end_ix}
     };
 }
@@ -172,6 +174,7 @@ expression parser::parse_expression()
             if (lhs_parse.size() == 1 && std::holds_alternative<variable_reference>(lhs_parse[0]))
                 return parse_variable_assignment(lhs_start_ix, std::move(lhs_parse));
         [[fallthrough]]; // in the case that it is not assignment we try to parse as a boolean expression
+        case token_kind::equality:
         case token_kind::not_equal:
         case token_kind::less_than:
         case token_kind::less_or_equal:

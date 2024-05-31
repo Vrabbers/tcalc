@@ -350,7 +350,7 @@ eval_result<bool> evaluator::evaluate_boolean(const boolean_expression& expr) co
     if (right.is_error())
         return eval_result<bool>{right.error()};
 
-    if (expr.kind == token_kind::equal)
+    if (expr.kind == token_kind::equality)
         return eval_result{left.value() == right.value()};
     if (expr.kind == token_kind::not_equal)
         return eval_result{left.value() != right.value()};

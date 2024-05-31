@@ -38,6 +38,7 @@ namespace tcalc
         less_than,
         less_or_equal,
         equal,
+        equality,
         not_equal,
         binary_nand,
         binary_nor,
