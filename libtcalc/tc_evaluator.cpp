@@ -12,6 +12,9 @@ namespace
         using Ts::operator()...;
     };
 
+    template<class... Ts>
+    overloaded(Ts...) -> overloaded<Ts...>;
+
     using namespace std::string_literals;
     using namespace std::string_view_literals;
 
