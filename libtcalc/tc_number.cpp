@@ -59,25 +59,28 @@ number::number(const long precision) : d{std::make_unique<number_pimpl>()}
     set(0, 0);
 }
 
-number::number(const number& other) : d{std::make_unique<number_pimpl>()}
+number::number(const number& other)
 {
-    copy(&other, this);
+    *this = other;
 }
 
 number& number::operator=(const number& other)
 {
-    copy(&other, this);
+    const auto prec = mpc_get_prec(other.d->handle);
+    d = std::make_unique<number_pimpl>();
+    mpc_init2(d->handle, prec);
+    mpc_set(d->handle, other.d->handle, round_mode);
     return *this;
 }
 
 number::number(number&& other) noexcept
 {
-    move(&other, this);
+    *this = std::move(other);
 }
 
 number& number::operator=(number&& other) noexcept
 {
-    move(&other, this);
+    d = std::move(other.d);
     return *this;
 }
 
@@ -133,25 +136,25 @@ bool number::is_real() const
 
 static std::string real_only_string(const mpc_t handle)
 {
-    const auto size = mpfr_snprintf(nullptr, 0, "%.18Rg", mpc_realref(handle)) + 1;
+    const auto size = mpfr_snprintf(nullptr, 0, "%.18Rg", mpc_realref(handle));
     std::string str(static_cast<size_t>(size), '\0');
-    mpfr_snprintf(str.data(), size, "%.18Rg", mpc_realref(handle));
+    mpfr_snprintf(str.data(), size + 1, "%.18Rg", mpc_realref(handle));
     return str;
 }
 
 static std::string both_string_positive_imaginary(const mpc_t handle)
 {
-    const auto size = mpfr_snprintf(nullptr, 0, "%.18Rg+%.18Rgi", mpc_realref(handle), mpc_imagref(handle)) + 1;
+    const auto size = mpfr_snprintf(nullptr, 0, "%.18Rg+%.18Rgi", mpc_realref(handle), mpc_imagref(handle));
     std::string str(static_cast<size_t>(size), '\0');
-    mpfr_snprintf(str.data(), size, "%.18Rg+%.18Rgi", mpc_realref(handle), mpc_imagref(handle));
+    mpfr_snprintf(str.data(), size + 1, "%.18Rg+%.18Rgi", mpc_realref(handle), mpc_imagref(handle));
     return str;
 }
 
 static std::string both_string_negative_imaginary(const mpc_t handle)
 {
-    const auto size = mpfr_snprintf(nullptr, 0, "%.18Rg%.18Rgi", mpc_realref(handle), mpc_imagref(handle)) + 1;
+    const auto size = mpfr_snprintf(nullptr, 0, "%.18Rg%.18Rgi", mpc_realref(handle), mpc_imagref(handle));
     std::string str(static_cast<size_t>(size), '\0');
-    mpfr_snprintf(str.data(), size, "%.18Rg%.18Rgi", mpc_realref(handle), mpc_imagref(handle));
+    mpfr_snprintf(str.data(), size + 1, "%.18Rg%.18Rgi", mpc_realref(handle), mpc_imagref(handle));
     return str;
 }
 
@@ -300,16 +303,4 @@ number number::e(const long prec)
 bool number::owns() const
 {
     return d != nullptr;
-}
-
-void number::copy(const number* from, number* to)
-{
-    const auto prec = mpc_get_prec(from->d->handle);
-    mpc_init2(to->d->handle, prec);
-    mpc_set(to->d->handle, from->d->handle, round_mode);
-}
-
-void number::move(number* from, number* to)
-{
-    to->d = std::move(from->d);
 }
