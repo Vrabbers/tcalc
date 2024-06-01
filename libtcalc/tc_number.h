@@ -86,13 +86,8 @@ namespace tcalc
         static number e(long prec);
 
     private:
-        [[nodiscard]]
-        bool owns() const;
-
         std::unique_ptr<number_pimpl> d;
     };
-
-    void teardown();
 }
 
 #endif // TC_NUMBER_H

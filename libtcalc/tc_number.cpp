@@ -16,6 +16,11 @@
 
 using namespace tcalc;
 
+inline bool owns(const std::unique_ptr<number_pimpl>& p)
+{
+    return p != nullptr;
+}
+
 struct memory_stuff final
 {
     ~memory_stuff()
@@ -86,19 +91,19 @@ number& number::operator=(number&& other) noexcept
 
 number::~number()
 {
-    if (owns())
+    if (owns(d))
         mpc_clear(d->handle);
 }
 
 void number::set(const long real, const long imaginary)
 {
-    assert(owns());
+    assert(owns(d));
     mpc_set_si_si(d->handle, real, imaginary, round_mode);
 }
 
 void number::set(const number& other)
 {
-    assert(owns());
+    assert(owns(d));
     mpc_set(d->handle, other.d->handle, round_mode);
 }
 
@@ -130,7 +135,7 @@ void number::set_hexadecimal(const std::string_view hex)
 
 bool number::is_real() const
 {
-    assert(owns());
+    assert(owns(d));
     return mpfr_zero_p(mpc_imagref(d->handle));
 }
 
@@ -167,57 +172,57 @@ static std::string both_string(const mpc_t handle)
 
 bool number::operator==(const long r) const
 {
-    assert(owns());
+    assert(owns(d));
     return mpc_cmp_si_si(d->handle, r, 0) == 0;
 }
 
 bool number::operator<(const number& b) const
 {
-    assert(owns());
+    assert(owns(d));
     const int res = mpc_cmp(d->handle, b.d->handle);
     return MPC_INEX_RE(res) < 0;
 }
 
 bool number::operator>(const number& b) const
 {
-    assert(owns());
+    assert(owns(d));
     int res = mpc_cmp(d->handle, b.d->handle);
     return MPC_INEX_RE(res) > 0;
 }
 
 bool number::operator==(const number& b) const
 {
-    assert(owns());
+    assert(owns(d));
     return mpc_cmp(d->handle, b.d->handle) == 0;
 }
 
 void number::add(const number& lhs, const number& rhs)
 {
-    assert(owns());
+    assert(owns(d));
     mpc_add(d->handle, lhs.d->handle, rhs.d->handle, round_mode);
 }
 
 void number::sub(const number& lhs, const number& rhs)
 {
-    assert(owns());
+    assert(owns(d));
     mpc_sub(d->handle, lhs.d->handle, rhs.d->handle, round_mode);
 }
 
 void number::negate(const number& x)
 {
-    assert(owns());
+    assert(owns(d));
     mpc_mul_si(d->handle, x.d->handle, -1, round_mode);
 }
 
 void number::mul(const number& lhs, const number& rhs)
 {
-    assert(owns());
+    assert(owns(d));
     mpc_mul(d->handle, lhs.d->handle, rhs.d->handle, round_mode);
 }
 
 void number::div(const number& lhs, const number& rhs)
 {
-    assert(owns());
+    assert(owns(d));
     mpc_div(d->handle, lhs.d->handle, rhs.d->handle, round_mode);
 }
 
@@ -228,49 +233,49 @@ void tcalc::number::div(const number &lhs, unsigned long rhs)
 
 void number::pow(const number& lhs, const number& rhs)
 {
-    assert(owns());
+    assert(owns(d));
     mpc_pow(d->handle, lhs.d->handle, rhs.d->handle, round_mode);
 }
 
 void number::sqrt(const number& x)
 {
-    assert(owns());
+    assert(owns(d));
     mpc_sqrt(d->handle, x.d->handle, round_mode);
 }
 
 void number::exp(const number& x)
 {
-    assert(owns());
+    assert(owns(d));
     mpc_exp(d->handle, x.d->handle, round_mode);
 }
 
 void number::log(const number& x)
 {
-    assert(owns());
+    assert(owns(d));
     mpc_log10(d->handle, x.d->handle, round_mode);
 }
 
 void number::ln(const number& x)
 {
-    assert(owns());
+    assert(owns(d));
     mpc_log(d->handle, x.d->handle, round_mode);
 }
 
 void number::sin(const number& x)
 {
-    assert(owns());
+    assert(owns(d));
     mpc_sin(d->handle, x.d->handle, round_mode);
 }
 
 void number::cos(const number& x)
 {
-    assert(owns());
+    assert(owns(d));
     mpc_cos(d->handle, x.d->handle, round_mode);
 }
 
 void number::tan(const number& x)
 {
-    assert(owns());
+    assert(owns(d));
     mpc_tan(d->handle, x.d->handle, round_mode);
 }
 
@@ -303,9 +308,4 @@ number number::e(const long prec)
     mpfr_exp(mpc_realref(e.d->handle), fr_one, fr_round_mode);
     mpfr_clear(fr_one);
     return e;
-}
-
-bool number::owns() const
-{
-    return d != nullptr;
 }
