@@ -222,6 +222,10 @@ namespace
                 stack_top.negate(stack_top);
                 break;
 
+            case token_kind::percent:
+                stack_top.div(stack_top, 100);
+                break;
+
             default:
                 return eval_error_type::invalid_program;
         }

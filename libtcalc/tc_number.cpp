@@ -221,6 +221,11 @@ void number::div(const number& lhs, const number& rhs)
     mpc_div(d->handle, lhs.d->handle, rhs.d->handle, round_mode);
 }
 
+void tcalc::number::div(const number &lhs, unsigned long rhs)
+{
+    mpc_div_ui(d->handle, lhs.d->handle, rhs, round_mode);
+}
+
 void number::pow(const number& lhs, const number& rhs)
 {
     assert(owns());

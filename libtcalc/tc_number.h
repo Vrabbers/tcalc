@@ -60,6 +60,8 @@ namespace tcalc
 
         void div(const number& lhs, const number& rhs);
 
+        void div(const number& lhs, unsigned long rhs);
+
         void pow(const number& lhs, const number& rhs);
 
         void sqrt(const number& x);
@@ -86,10 +88,6 @@ namespace tcalc
     private:
         [[nodiscard]]
         bool owns() const;
-
-        static void copy(const number* from, number* to);
-
-        static void move(number* from, number* to);
 
         std::unique_ptr<number_pimpl> d;
     };
