@@ -1,72 +1,31 @@
 #ifndef TC_NUMBER_H
 #define TC_NUMBER_H
 
-#ifdef _MSC_VER
-#pragma warning(push, 0) // mpc header has warnings on MSVC /W4
-#endif
-
-#include <mpc.h>
-
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
-
-#include <cassert>
+#include <memory>
 #include <string>
 
 namespace tcalc
 {
+    struct number_pimpl;
+
     class number final
     {
     public:
-        static constexpr mpc_rnd_t round_mode = MPC_RNDNN;
-        static constexpr mpfr_rnd_t fr_round_mode = MPFR_RNDN;
+        explicit number(long precision);
 
-        explicit number(const mpfr_prec_t precision)
-        {
-            mpc_init2(_handle, precision);
-            set(0, 0);
-        }
+        number(const number& other);
 
-        number(const number& other)
-        {
-            copy(&other, this);
-        }
+        number& operator=(const number& other);
 
-        number& operator=(const number& other)
-        {
-            copy(&other, this);
-            return *this;
-        }
+        number(number&& other) noexcept;
 
-        number(number&& other) noexcept
-        {
-            move(&other, this);
-        }
+        number& operator=(number&& other) noexcept;
 
-        number& operator=(number&& other) noexcept
-        {
-            move(&other, this);
-            return *this;
-        }
+        ~number();
 
-        ~number()
-        {
-            if (_owns)
-                mpc_clear(_handle);
-        }
+        void set(long real, long imaginary = 0);
 
-        void set(const long real, const long imaginary = 0)
-        {
-            assert(_owns);
-            mpc_set_si_si(_handle, real, imaginary, round_mode);
-        }
-
-        void set(const number& other)
-        {
-            assert(_owns);
-            mpc_set(_handle, other._handle, round_mode);
-        }
+        void set(const number& other);
 
         void set_real(std::string_view real);
 
@@ -77,143 +36,65 @@ namespace tcalc
         void set_hexadecimal(std::string_view hex);
 
         [[nodiscard]]
-        bool is_real() const
-        {
-            assert(_owns);
-            return mpfr_zero_p(mpc_imagref(_handle));
-        }
+        bool is_real() const;
 
         [[nodiscard]]
-        bool operator==(const long r) const
-        {
-            assert(_owns);
-            return mpc_cmp_si_si(_handle, r, 0) == 0;
-        }
+        bool operator==(long r) const;
 
         [[nodiscard]]
-        bool operator<(const number& b) const
-        {
-            assert(_owns);
-            const int res = mpc_cmp(_handle, b._handle);
-            return MPC_INEX_RE(res) < 0;
-        }
+        bool operator<(const number& b) const;
 
         [[nodiscard]]
-        bool operator>(const number& b) const
-        {
-            assert(_owns);
-            int res = mpc_cmp(_handle, b._handle);
-            return MPC_INEX_RE(res) > 0;
-        }
+        bool operator>(const number& b) const;
 
         [[nodiscard]]
-        bool operator==(const number& b) const
-        {
-            assert(_owns);
-            return mpc_cmp(_handle, b._handle) == 0; 
-        }
+        bool operator==(const number& b) const;
 
-        void add(const number& lhs, const number& rhs)
-        {
-            assert(_owns);
-            mpc_add(_handle, lhs._handle, rhs._handle, round_mode);
-        }
+        void add(const number& lhs, const number& rhs);
 
-        void sub(const number& lhs, const number& rhs)
-        {
-            assert(_owns);
-            mpc_sub(_handle, lhs._handle, rhs._handle, round_mode);
-        }
+        void sub(const number& lhs, const number& rhs);
 
-        void negate(const number& x)
-        {
-            assert(_owns);
-            mpc_mul_si(_handle, x._handle, -1, round_mode);
-        }
+        void negate(const number& x);
 
-        void mul(const number& lhs, const number& rhs)
-        {
-            assert(_owns);
-            mpc_mul(_handle, lhs._handle, rhs._handle, round_mode);
-        }
+        void mul(const number& lhs, const number& rhs);
 
-        void div(const number& lhs, const number& rhs)
-        {
-            assert(_owns);
-            mpc_div(_handle, lhs._handle, rhs._handle, round_mode);
-        }
+        void div(const number& lhs, const number& rhs);
 
-        void pow(const number& lhs, const number& rhs)
-        {
-            assert(_owns);
-            mpc_pow(_handle, lhs._handle, rhs._handle, round_mode);
-        }
+        void pow(const number& lhs, const number& rhs);
 
-        void sqrt(const number& x)
-        {
-            assert(_owns);
-            mpc_sqrt(_handle, x._handle, round_mode);
-        }
+        void sqrt(const number& x);
 
-        void exp(const number& x)
-        {
-            assert(_owns);
-            mpc_exp(_handle, x._handle, round_mode);
-        }
+        void exp(const number& x);
 
-        void log(const number& x)
-        {
-            assert(_owns);
-            mpc_log10(_handle, x._handle, round_mode);
-        }
+        void log(const number& x);
 
-        void ln(const number& x)
-        {
-            assert(_owns);
-            mpc_log(_handle, x._handle, round_mode);
-        }
+        void ln(const number& x);
 
-        void sin(const number& x)
-        {
-            assert(_owns);
-            mpc_sin(_handle, x._handle, round_mode);
-        }
+        void sin(const number& x);
 
-        void cos(const number& x)
-        {
-            assert(_owns);
-            mpc_cos(_handle, x._handle, round_mode);
-        }
+        void cos(const number& x);
 
-        void tan(const number& x)
-        {
-            assert(_owns);
-            mpc_tan(_handle, x._handle, round_mode);
-        }
+        void tan(const number& x);
 
         [[nodiscard]]
         std::string string() const;
 
-        static number pi(mpfr_prec_t prec);
-        static number tau(mpfr_prec_t prec);
-        static number e(mpfr_prec_t prec);
+        static number pi(long prec);
+        static number tau(long prec);
+        static number e(long prec);
+
     private:
-        static void copy(const number* from, number* to)
-        {
-            const auto prec = mpc_get_prec(from->_handle);
-            mpc_init2(to->_handle, prec);
-            mpc_set(to->_handle, from->_handle, round_mode);
-        }
+        [[nodiscard]]
+        bool owns() const;
 
-        static void move(number* from, number* to)
-        {
-            from->_owns = false;
-            mpc_swap(from->_handle, to->_handle);
-        }
+        static void copy(const number* from, number* to);
 
-        mpc_t _handle{};
-        bool _owns{true};
+        static void move(number* from, number* to);
+
+        std::unique_ptr<number_pimpl> d;
     };
+
+    void teardown();
 }
 
 #endif // TC_NUMBER_H

@@ -9,7 +9,7 @@ namespace tcalc
     class parser final
     {
     public:
-        explicit parser(lexer&& lexer, const mpfr_prec_t number_precision) :
+        explicit parser(lexer&& lexer, const long number_precision) :
             _current{lexer.next()},
             _lexer{std::move(lexer)},
             _diagnostic_bag{_lexer.diagnostic_bag()},
@@ -66,11 +66,11 @@ namespace tcalc
         std::optional<token> _peek;
         lexer _lexer;
         std::vector<diagnostic>& _diagnostic_bag;
-        mpfr_prec_t _number_precision;
+        long _number_precision;
     };
 
     template<class ExprT> requires std::convertible_to<ExprT, expression>
-    std::pair<parser, std::optional<ExprT> > parse_single(lexer&& lexer, const mpfr_prec_t number_precision)
+    std::pair<parser, std::optional<ExprT> > parse_single(lexer&& lexer, const long number_precision)
     {
         parser p{std::move(lexer), number_precision};
         const expression expr = p.parse_expression();

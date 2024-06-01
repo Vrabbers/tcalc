@@ -23,7 +23,7 @@ namespace tcalc
     public:
         using result_type = std::variant<empty_result, number, bool>;
 
-        explicit evaluator(mpfr_prec_t precision);
+        explicit evaluator(long precision);
         
         [[nodiscard]]
         eval_result<result_type> evaluate(const expression& expr);
@@ -38,7 +38,7 @@ namespace tcalc
         eval_result<empty_result> evaluate_assignment(const assignment_expression& expr);
 
     private:
-        mpfr_prec_t _precision;
+        long _precision;
         std::unordered_map<std::string, number> _constants;
         std::unordered_map<std::string, number> _variables;
         std::unordered_map<std::string, std::vector<native_fn> > _native_fns;

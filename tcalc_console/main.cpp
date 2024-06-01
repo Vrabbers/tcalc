@@ -142,6 +142,4 @@ int main(int argc, char* argv[])
         fuzz(std::stoi(argv[2]));
     else
         interactive();
-
-    mpfr_mp_memory_cleanup();
 }

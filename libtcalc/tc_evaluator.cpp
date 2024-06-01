@@ -1,5 +1,15 @@
 #include "tc_evaluator.h"
 
+#ifdef _MSC_VER
+#pragma warning(push, 0) // mpc header has warnings on MSVC /W4
+#endif
+
+#include <mpc.h>
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+
 #include "tc_eval_result.h"
 
 using namespace tcalc;
@@ -220,7 +230,7 @@ namespace
     }
 } // End anonymous namespace
 
-evaluator::evaluator(const mpfr_prec_t precision)
+evaluator::evaluator(const long precision)
 {
     _precision = precision;
     _constants = initialize_constants(precision);
