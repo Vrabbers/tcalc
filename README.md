@@ -1,4 +1,2 @@
 # tcalc
-i do calculate
-
-Requires `utf8proc`
+Calculation library based on GNU MPC.
