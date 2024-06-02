@@ -1,2 +1,2 @@
 # tcalc
-Calculation library based on GNU MPC.
+Arithmetic expression evaluation library based on GNU MPC.
