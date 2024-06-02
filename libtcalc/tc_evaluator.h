@@ -21,12 +21,14 @@ namespace tcalc
     class evaluator final
     {
     public:
-        using result_type = std::variant<empty_result, number, bool>;
+        using result_type = std::variant<assign_result, number, bool>;
 
         explicit evaluator(long precision);
-        
+
         [[nodiscard]]
-        eval_result<result_type> evaluate(const expression& expr);
+        eval_result<result_type> evaluate(const expression& expr) const;
+
+        void commit_result(const result_type& result);
         
         [[nodiscard]]
         eval_result<number> evaluate_arithmetic(const arithmetic_expression& expr) const;
@@ -35,7 +37,7 @@ namespace tcalc
         eval_result<bool> evaluate_boolean(const boolean_expression& expr) const;
 
         [[nodiscard]]
-        eval_result<empty_result> evaluate_assignment(const assignment_expression& expr);
+        eval_result<assign_result> evaluate_assignment(const assignment_expression& expr) const;
 
     private:
         long _precision;

@@ -39,6 +39,9 @@ namespace tcalc
         bool is_real() const;
 
         [[nodiscard]]
+        bool is_integer() const;
+
+        [[nodiscard]]
         bool operator==(long r) const;
 
         [[nodiscard]]
@@ -49,6 +52,9 @@ namespace tcalc
 
         [[nodiscard]]
         bool operator==(const number& b) const;
+
+        [[nodiscard]]
+        long precision() const;
 
         void add(const number& lhs, const number& rhs);
 

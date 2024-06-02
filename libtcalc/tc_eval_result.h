@@ -5,11 +5,10 @@
 #include <variant>
 
 #include "tc_source_position.h"
+#include "tc_number.h"
 
 namespace tcalc
 {
-    class number;
-
     enum class eval_error_type
     {
         none = 0,
@@ -31,7 +30,11 @@ namespace tcalc
         source_position position;
     };
 
-    struct empty_result {};
+    struct assign_result final
+    {
+        std::string variable;
+        number value;
+    };
 
     template<class SuccessType>
     class eval_result final
@@ -82,11 +85,6 @@ namespace tcalc
     private:
         std::variant<eval_error, SuccessType> _value;
     };
-
-    inline eval_result<empty_result> empty_success()
-    {
-        return eval_result{empty_result{}};
-    }
 }
 
 #endif

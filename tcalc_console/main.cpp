@@ -21,11 +21,12 @@
 #pragma execution_character_set("utf-8")
 #endif
 
+constexpr long prec = 64;
 
 static tcalc::parser parse(std::string&& str)
 {
     tcalc::lexer lexer{std::move(str), true};
-    tcalc::parser parser{std::move(lexer), 64};
+    tcalc::parser parser{std::move(lexer), prec};
 
     return parser;
 }
@@ -96,7 +97,7 @@ static void interactive()
 {
     std::cout << "tcalc console\n";
 
-    tcalc::evaluator evaluator{64};
+    tcalc::evaluator evaluator{prec};
 
     while (true)
     {
@@ -120,7 +121,7 @@ static void fuzz(const int times)
     std::default_random_engine rand(rd());
     std::uniform_int_distribution rdist(0, 255);
     std::array<char, 512> buf{};
-    tcalc::evaluator evaluator{64};
+    tcalc::evaluator evaluator{prec};
 
     for (int i = 0; i < times; i++)
     {

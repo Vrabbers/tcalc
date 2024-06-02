@@ -71,7 +71,7 @@ number::number(const number& other)
 
 number& number::operator=(const number& other)
 {
-    const auto prec = mpc_get_prec(other.d->handle);
+    const auto prec = other.precision();
     d = std::make_unique<number_pimpl>();
     mpc_init2(d->handle, prec);
     mpc_set(d->handle, other.d->handle, round_mode);
@@ -139,6 +139,13 @@ bool number::is_real() const
     return mpfr_zero_p(mpc_imagref(d->handle));
 }
 
+bool tcalc::number::is_integer() const
+{
+    if (!is_real())
+        return false;
+    return mpfr_integer_p(mpc_realref(d->handle));
+}
+
 static std::string real_only_string(const mpc_t handle)
 {
     const auto size = mpfr_snprintf(nullptr, 0, "%.18Rg", mpc_realref(handle));
@@ -196,6 +203,11 @@ bool number::operator==(const number& b) const
     return mpc_cmp(d->handle, b.d->handle) == 0;
 }
 
+long tcalc::number::precision() const
+{
+    return mpc_get_prec(d->handle);
+}
+
 void number::add(const number& lhs, const number& rhs)
 {
     assert(owns(d));
@@ -211,7 +223,8 @@ void number::sub(const number& lhs, const number& rhs)
 void number::negate(const number& x)
 {
     assert(owns(d));
-    mpc_mul_si(d->handle, x.d->handle, -1, round_mode);
+    if (*this != 0)
+        mpc_mul_si(d->handle, x.d->handle, -1, round_mode);
 }
 
 void number::mul(const number& lhs, const number& rhs)
@@ -264,19 +277,38 @@ void number::ln(const number& x)
 void number::sin(const number& x)
 {
     assert(owns(d));
-    mpc_sin(d->handle, x.d->handle, round_mode);
+    number pi = number::pi(x.precision());
+    number k{x.precision()};
+    k.div(x, pi);
+    if (k.is_integer())
+        set(0);
+    else
+        mpc_sin(d->handle, x.d->handle, round_mode);
 }
 
 void number::cos(const number& x)
 {
     assert(owns(d));
-    mpc_cos(d->handle, x.d->handle, round_mode);
+    number pi = number::pi(x.precision());
+    number k{x.precision()};
+    k.div(x, pi);
+    mpfr_sub_d(mpc_realref(k.d->handle), mpc_realref(k.d->handle), 0.5, fr_round_mode);
+    if (k.is_integer())
+        set(0);
+    else
+        mpc_cos(d->handle, x.d->handle, round_mode);
 }
 
 void number::tan(const number& x)
 {
     assert(owns(d));
-    mpc_tan(d->handle, x.d->handle, round_mode);
+    number pi = number::pi(x.precision());
+    number k{x.precision()};
+    k.div(x, pi);
+    if (k.is_integer())
+        set(0);
+    else
+        mpc_tan(d->handle, x.d->handle, round_mode);
 }
 
 std::string number::string() const

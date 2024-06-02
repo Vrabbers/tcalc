@@ -16,15 +16,6 @@ using namespace tcalc;
 
 namespace
 {
-    template <class... Ts>
-    struct overloaded : Ts...
-    {
-        using Ts::operator()...;
-    };
-
-    template<class... Ts>
-    overloaded(Ts...) -> overloaded<Ts...>;
-
     using namespace std::string_literals;
     using namespace std::string_view_literals;
 
@@ -156,11 +147,11 @@ namespace
         };
     }
 
-    eval_result<evaluator::result_type> to_variant_result(const eval_result<number>& e)
+    eval_result<evaluator::result_type> to_variant_result(eval_result<number>&& e)
     {
         if (e.is_error())
             return eval_result<evaluator::result_type>{e.error()};
-        return eval_result<evaluator::result_type>{e.value()};
+        return eval_result<evaluator::result_type>{std::move(e.mut_value())};
     }
 
     eval_result<evaluator::result_type> to_variant_result(const eval_result<bool>& e)
@@ -170,11 +161,12 @@ namespace
         return eval_result<evaluator::result_type>{e.value()};
     }
 
-    eval_result<evaluator::result_type> to_variant_result(const eval_result<empty_result>& e)
+
+    eval_result<evaluator::result_type> to_variant_result(eval_result<assign_result>&& e)
     {
         if (e.is_error())
             return eval_result<evaluator::result_type>{e.error()};
-        return eval_result<evaluator::result_type>{empty_result{}};
+        return eval_result<evaluator::result_type>{std::move(e.mut_value())};
     }
 
     eval_error_type evaluate_binop(const binary_operator* op, number& lhs, const number& rhs)
@@ -241,29 +233,24 @@ evaluator::evaluator(const long precision)
     _native_fns = basic_builtins();
 }
 
-eval_result<evaluator::result_type> evaluator::evaluate(const expression& expr)
+eval_result<evaluator::result_type> evaluator::evaluate(const expression& expr) const
 {
-    return std::visit(
-        overloaded
-        {
-            [this](const arithmetic_expression& arith)
-            {
-                const auto r = evaluate_arithmetic(arith);
-                if (!r.is_error())
-                    _variables.insert({"Ans"s, r.value()});
-                return to_variant_result(r);
-            },
-            [this](const boolean_expression& bool_exp)
-            {
-                const auto r = evaluate_boolean(bool_exp);
-                return to_variant_result(r);
-            },
-            [this](const assignment_expression& ass_exp)
-            {
-                const auto r = evaluate_assignment(ass_exp);
-                return to_variant_result(r);
-            }
-        }, expr);
+    if (const auto* arith = std::get_if<arithmetic_expression>(&expr))
+        return to_variant_result(evaluate_arithmetic(*arith));
+    if (const auto* bool_exp = std::get_if<boolean_expression>(&expr))
+        return to_variant_result(evaluate_boolean(*bool_exp));
+    if (const auto* asgn_exp = std::get_if<assignment_expression>(&expr))
+        return to_variant_result(evaluate_assignment(*asgn_exp));
+
+    throw 0; // Unreachable
+}
+
+void tcalc::evaluator::commit_result(const result_type& result)
+{
+    if (const auto* num = std::get_if<number>(&result))
+        _variables.insert_or_assign("Ans", *num);
+    else if (const auto* asgn = std::get_if<assign_result>(&result))
+        _variables.insert_or_assign(asgn->variable, asgn->value);
 }
 
 eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& expr) const
@@ -393,13 +380,12 @@ eval_result<bool> evaluator::evaluate_boolean(const boolean_expression& expr) co
     }
 }
 
-eval_result<empty_result> evaluator::evaluate_assignment(const assignment_expression& expr)
+eval_result<assign_result> evaluator::evaluate_assignment(const assignment_expression& expr) const
 {
     eval_result res = evaluate_arithmetic(expr.expression);
 
     if (res.is_error())
-        return eval_result<empty_result>{res.error()};
+        return eval_result<assign_result>{res.error()};
 
-    _variables.insert_or_assign(expr.variable, std::move(res.mut_value()));
-    return empty_success();
+    return eval_result<assign_result>{{expr.variable, std::move(res.mut_value())}};
 }
