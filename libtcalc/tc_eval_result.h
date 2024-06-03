@@ -20,6 +20,7 @@ namespace tcalc
         log_base,
         bad_arity,
         complex_inequality,
+        out_of_tan_domain,
     };
 
     std::string_view eval_error_type_name(eval_error_type);

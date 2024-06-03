@@ -233,13 +233,19 @@ void number::mul(const number& lhs, const number& rhs)
     mpc_mul(d->handle, lhs.d->handle, rhs.d->handle, round_mode);
 }
 
+void number::mul(const number& lhs, const long rhs)
+{
+    assert(owns(d));
+    mpc_mul_si(d->handle, lhs.d->handle, rhs, round_mode);
+}
+
 void number::div(const number& lhs, const number& rhs)
 {
     assert(owns(d));
     mpc_div(d->handle, lhs.d->handle, rhs.d->handle, round_mode);
 }
 
-void tcalc::number::div(const number &lhs, unsigned long rhs)
+void number::div(const number &lhs, unsigned long rhs)
 {
     mpc_div_ui(d->handle, lhs.d->handle, rhs, round_mode);
 }

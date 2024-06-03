@@ -90,6 +90,7 @@ static void eval(tcalc::evaluator& eval, std::string&& input, bool show)
             std::cout << "empty result expression";
         }
         std::cout << " took " << time << '\n';
+        eval.commit_result(res.value());
     }
 }
 

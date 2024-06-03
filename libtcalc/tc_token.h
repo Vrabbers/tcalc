@@ -47,6 +47,9 @@ namespace tcalc
         binary_or,
         binary_xor,
         binary_not,
+        deg,
+        rad,
+        grad,
 
         argument_separator,
         expression_separator,

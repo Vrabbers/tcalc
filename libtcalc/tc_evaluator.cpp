@@ -19,6 +19,43 @@ namespace
     using namespace std::string_literals;
     using namespace std::string_view_literals;
 
+    void convert_angle(number& number, const angle_unit from, const angle_unit to)
+    {
+        if (from == to)
+            return;
+
+        if (from == angle_unit::degrees && to == angle_unit::radians)
+        {
+            number.div(number, 180);
+            number.mul(number, number::pi(number.precision()));
+        }
+        else if (from == angle_unit::degrees && to == angle_unit::gradians)
+        {
+            number.mul(number, 10);
+            number.div(number, 9);
+        }
+        else if (from == angle_unit::radians && to == angle_unit::degrees)
+        {
+            number.div(number, number::pi(number.precision()));
+            number.mul(number, 180);
+        }
+        else if (from == angle_unit::radians && to == angle_unit::gradians)
+        {
+            number.div(number, 200);
+            number.mul(number, number::pi(number.precision()));
+        }
+        else if (from == angle_unit::gradians && to == angle_unit::degrees)
+        {
+            number.mul(number, 9);
+            number.div(number, 10);
+        }
+        else if (from == angle_unit::gradians && to == angle_unit::radians)
+        {
+            number.div(number, 200);
+            number.mul(number, number::pi(number.precision()));
+        }
+    }
+
     std::unordered_map<std::string, number> initialize_constants(const mpfr_prec_t prec)
     {
         return {
@@ -30,7 +67,7 @@ namespace
         };
     }
 
-    std::unordered_map<std::string, std::vector<native_fn> > basic_builtins()
+    std::unordered_map<std::string, std::vector<evaluator::native_fn> > basic_builtins()
     {
         return
         {
@@ -39,7 +76,7 @@ namespace
                 {
                     {
                         1,
-                        [](eval_stack& stack)
+                        [](eval_stack& stack, const evaluator&)
                         {
                             stack.top().sqrt(stack.top());
                             return eval_error_type::none;
@@ -52,7 +89,7 @@ namespace
                 {
                     {
                         1,
-                        [](eval_stack& stack)
+                        [](eval_stack& stack, const evaluator&)
                         {
                             stack.top().exp(stack.top());
                             return eval_error_type::none;
@@ -65,7 +102,7 @@ namespace
                 {
                     {
                         1,
-                        [](eval_stack& stack)
+                        [](eval_stack& stack, const evaluator&)
                         {
                             if (stack.top() == 0)
                                 return eval_error_type::log_zero;
@@ -75,7 +112,7 @@ namespace
                     },
                     {
                         2,
-                        [](eval_stack& stack)
+                        [](eval_stack& stack, const evaluator&)
                         {
                             if (stack.top() == 0 || stack.top() == 1)
                                 return eval_error_type::log_base;
@@ -95,7 +132,7 @@ namespace
                 {
                     {
                         1,
-                        [](eval_stack& stack)
+                        [](eval_stack& stack, const evaluator&)
                         {
                             if (stack.top() == 0)
                                 return eval_error_type::log_zero;
@@ -110,8 +147,9 @@ namespace
                 {
                     {
                         1,
-                        [](eval_stack& stack)
+                        [](eval_stack& stack, const evaluator& eval)
                         {
+                            convert_angle(stack.top(), eval.trig_unit(), angle_unit::radians);
                             stack.top().sin(stack.top());
                             return eval_error_type::none;
                         }
@@ -123,8 +161,9 @@ namespace
                 {
                     {
                         1,
-                        [](eval_stack& stack)
+                        [](eval_stack& stack, const evaluator& eval)
                         {
+                            convert_angle(stack.top(), eval.trig_unit(), angle_unit::radians);
                             stack.top().cos(stack.top());
                             return eval_error_type::none;
                         }
@@ -136,8 +175,13 @@ namespace
                 {
                     {
                         1,
-                        [](eval_stack& stack)
+                        [](eval_stack& stack, const evaluator& eval)
                         {
+                            convert_angle(stack.top(), eval.trig_unit(), angle_unit::radians);
+                            number test{eval.precision()};
+                            test.cos(stack.top());
+                            if (test == 0)
+                                return eval_error_type::out_of_tan_domain;
                             stack.top().tan(stack.top());
                             return eval_error_type::none;
                         }
@@ -161,68 +205,11 @@ namespace
         return eval_result<evaluator::result_type>{e.value()};
     }
 
-
     eval_result<evaluator::result_type> to_variant_result(eval_result<assign_result>&& e)
     {
         if (e.is_error())
             return eval_result<evaluator::result_type>{e.error()};
         return eval_result<evaluator::result_type>{std::move(e.mut_value())};
-    }
-
-    eval_error_type evaluate_binop(const binary_operator* op, number& lhs, const number& rhs)
-    {
-        switch (op->operation)
-        {
-            case token_kind::plus:
-                lhs.add(lhs, rhs);
-                break;
-
-            case token_kind::minus:
-                lhs.sub(lhs, rhs);
-                break;
-
-            case token_kind::multiply:
-                lhs.mul(lhs, rhs);
-                break;
-
-            case token_kind::divide:
-                if (rhs == 0)
-                    return eval_error_type::divide_by_zero;
-                lhs.div(lhs, rhs);
-                break;
-
-            case token_kind::exponentiate:
-                lhs.pow(lhs, rhs);
-                break;
-
-            default:
-                return eval_error_type::invalid_program;
-        }
-
-        return eval_error_type::none;
-    }
-
-    eval_error_type evaluate_unop(const unary_operator* op, number& stack_top)
-    {
-        switch (op->operation)
-        {
-            case token_kind::radical:
-                stack_top.sqrt(stack_top);
-                break;
-
-            case token_kind::minus:
-                stack_top.negate(stack_top);
-                break;
-
-            case token_kind::percent:
-                stack_top.div(stack_top, 100);
-                break;
-
-            default:
-                return eval_error_type::invalid_program;
-        }
-
-        return eval_error_type::none;
     }
 } // End anonymous namespace
 
@@ -242,10 +229,10 @@ eval_result<evaluator::result_type> evaluator::evaluate(const expression& expr) 
     if (const auto* asgn_exp = std::get_if<assignment_expression>(&expr))
         return to_variant_result(evaluate_assignment(*asgn_exp));
 
-    throw 0; // Unreachable
+    throw std::exception{"unreachable"};
 }
 
-void tcalc::evaluator::commit_result(const result_type& result)
+void evaluator::commit_result(const result_type& result)
 {
     if (const auto* num = std::get_if<number>(&result))
         _variables.insert_or_assign("Ans", *num);
@@ -287,7 +274,7 @@ eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& 
                 return eval_result<number>{eval_error_type::invalid_program, binop->position};
 
             const number& rhs = stack.pop();
-            const eval_error_type err = evaluate_binop(binop, stack.top(), rhs);
+            const eval_error_type err = evaluate_binary_operator(binop, stack.top(), rhs);
 
             if (err == eval_error_type::none)
                 continue;
@@ -299,7 +286,7 @@ eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& 
             if (!stack.has_at_least(1))
                 return eval_result<number>{eval_error_type::invalid_program, unop->position};
 
-            const auto err = evaluate_unop(unop, stack.top());
+            const auto err = evaluate_unary_operation(unop, stack.top());
 
             if (err == eval_error_type::none)
                 continue;
@@ -324,7 +311,7 @@ eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& 
             {
                 if (arity == fncall->arity)
                 {
-                    err = fn(stack);
+                    err = fn(stack, *this);
                     break;
                 }
             }
@@ -388,4 +375,72 @@ eval_result<assign_result> evaluator::evaluate_assignment(const assignment_expre
         return eval_result<assign_result>{res.error()};
 
     return eval_result<assign_result>{{expr.variable, std::move(res.mut_value())}};
+}
+
+eval_error_type evaluator::evaluate_unary_operation(const unary_operator* op, number& stack_top) const
+{
+    switch (op->operation)
+    {
+        case token_kind::radical:
+            stack_top.sqrt(stack_top);
+            break;
+
+        case token_kind::minus:
+            stack_top.negate(stack_top);
+            break;
+
+        case token_kind::percent:
+            stack_top.div(stack_top, 100);
+            break;
+
+        case token_kind::deg:
+            convert_angle(stack_top, _trig_unit, angle_unit::degrees);
+            break;
+
+        case token_kind::rad:
+            convert_angle(stack_top, _trig_unit, angle_unit::radians);
+            break;
+
+        case token_kind::grad:
+            convert_angle(stack_top, _trig_unit, angle_unit::gradians);
+            break;
+                
+        default:
+            return eval_error_type::invalid_program;
+    }
+
+    return eval_error_type::none;
+}
+
+eval_error_type evaluator::evaluate_binary_operator(const binary_operator* op, number& lhs, const number& rhs)
+{
+    switch (op->operation)
+    {
+        case token_kind::plus:
+            lhs.add(lhs, rhs);
+            break;
+
+        case token_kind::minus:
+            lhs.sub(lhs, rhs);
+            break;
+
+        case token_kind::multiply:
+            lhs.mul(lhs, rhs);
+            break;
+
+        case token_kind::divide:
+            if (rhs == 0)
+                return eval_error_type::divide_by_zero;
+            lhs.div(lhs, rhs);
+            break;
+
+        case token_kind::exponentiate:
+            lhs.pow(lhs, rhs);
+            break;
+
+        default:
+            return eval_error_type::invalid_program;
+    }
+
+    return eval_error_type::none;
 }

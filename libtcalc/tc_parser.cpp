@@ -1,5 +1,6 @@
 #include "tc_parser.h"
 
+#include <ostream>
 #include <stdexcept>
 
 #include "utf8utils.h"
@@ -84,7 +85,17 @@ namespace
 
     bool is_postfix_operator(const token_kind kind)
     {
-        return kind == token_kind::percent || kind == token_kind::factorial;
+        switch (kind)
+        {
+            case token_kind::rad:
+            case token_kind::deg:
+            case token_kind::grad:
+            case token_kind::percent:
+            case token_kind::factorial:
+                return true;
+            default:
+                return false;
+        }
     }
 
     bool is_superscript(const token_kind kind)

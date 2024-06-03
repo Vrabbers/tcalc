@@ -332,6 +332,8 @@ token lexer::lex_symbol()
         case U'\n':
         case U':':
             return flush_token(token_kind::expression_separator);
+        case U'°':
+            return flush_token(token_kind::deg);
         default:
             auto token = flush_token(token_kind::bad);
             _diagnostic_bag.emplace_back(token.position(), diagnostic_type::invalid_symbol);
@@ -362,6 +364,9 @@ token lexer::lex_word()
         {"NOT", token_kind::binary_not},
         {"i", token_kind::numeric_literal},
         {"ⁱ", token_kind::superscript_literal},
+        {"deg", token_kind::deg},
+        {"rad", token_kind::rad},
+        {"grad", token_kind::grad},
     };
 
     const auto type_iter = keywords.find(str_view);

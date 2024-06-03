@@ -23,6 +23,8 @@ std::string_view tcalc::eval_error_type_name(eval_error_type t)
             return "log_base"sv;
         case eval_error_type::complex_inequality:
             return "complex_inequality"sv;
+        case eval_error_type::out_of_tan_domain:
+            return "out_of_tan_domanin"sv;
         default:
             return {};
     }

@@ -63,6 +63,7 @@ namespace tcalc
         void negate(const number& x);
 
         void mul(const number& lhs, const number& rhs);
+        void mul(const number& lhs, long rhs);
 
         void div(const number& lhs, const number& rhs);
 

@@ -47,6 +47,9 @@ std::string_view tcalc::token_kind_name(const token_kind kind)
         "binary_or"sv,
         "binary_xor"sv,
         "binary_not"sv,
+        "deg"sv,
+        "rad"sv,
+        "grad"sv,
 
         "argument_separator"sv,
         "expression_separator"sv,
