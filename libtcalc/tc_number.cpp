@@ -16,9 +16,9 @@
 
 using namespace tcalc;
 
-inline bool owns(const std::unique_ptr<number_pimpl>& p)
+inline void assert_owns(const std::unique_ptr<number_pimpl>& p)
 {
-    return p != nullptr;
+    assert(p != nullptr, "trying to operate on number whose ownership has been transferred!");
 }
 
 struct memory_stuff final
@@ -91,19 +91,19 @@ number& number::operator=(number&& other) noexcept
 
 number::~number()
 {
-    if (owns(d))
+    if (d != nullptr)
         mpc_clear(d->handle);
 }
 
 void number::set(const long real, const long imaginary)
 {
-    assert(owns(d));
+    assert_owns(d);
     mpc_set_si_si(d->handle, real, imaginary, round_mode);
 }
 
 void number::set(const number& other)
 {
-    assert(owns(d));
+    assert_owns(d);
     mpc_set(d->handle, other.d->handle, round_mode);
 }
 
@@ -117,6 +117,11 @@ void number::set_imaginary(const std::string_view imaginary)
 {
     const auto string = make_mpfr_format(imaginary);
     mpfr_set_str(mpc_imagref(d->handle), string.c_str(), 10, fr_round_mode);
+}
+
+void number::set_imaginary(const long im)
+{
+    mpfr_set_si(mpc_imagref(d->handle), im, fr_round_mode);
 }
 
 void number::set_binary(const std::string_view bin)
@@ -135,7 +140,7 @@ void number::set_hexadecimal(const std::string_view hex)
 
 bool number::is_real() const
 {
-    assert(owns(d));
+    assert_owns(d);
     return mpfr_zero_p(mpc_imagref(d->handle));
 }
 
@@ -179,27 +184,27 @@ static std::string both_string(const mpc_t handle)
 
 bool number::operator==(const long r) const
 {
-    assert(owns(d));
+    assert_owns(d);
     return mpc_cmp_si_si(d->handle, r, 0) == 0;
 }
 
 bool number::operator<(const number& b) const
 {
-    assert(owns(d));
+    assert_owns(d);
     const int res = mpc_cmp(d->handle, b.d->handle);
     return MPC_INEX_RE(res) < 0;
 }
 
 bool number::operator>(const number& b) const
 {
-    assert(owns(d));
+    assert_owns(d);
     int res = mpc_cmp(d->handle, b.d->handle);
     return MPC_INEX_RE(res) > 0;
 }
 
 bool number::operator==(const number& b) const
 {
-    assert(owns(d));
+    assert_owns(d);
     return mpc_cmp(d->handle, b.d->handle) == 0;
 }
 
@@ -210,38 +215,38 @@ long tcalc::number::precision() const
 
 void number::add(const number& lhs, const number& rhs)
 {
-    assert(owns(d));
+    assert_owns(d);
     mpc_add(d->handle, lhs.d->handle, rhs.d->handle, round_mode);
 }
 
 void number::sub(const number& lhs, const number& rhs)
 {
-    assert(owns(d));
+    assert_owns(d);
     mpc_sub(d->handle, lhs.d->handle, rhs.d->handle, round_mode);
 }
 
 void number::negate(const number& x)
 {
-    assert(owns(d));
+    assert_owns(d);
     if (*this != 0)
         mpc_mul_si(d->handle, x.d->handle, -1, round_mode);
 }
 
 void number::mul(const number& lhs, const number& rhs)
 {
-    assert(owns(d));
+    assert_owns(d);
     mpc_mul(d->handle, lhs.d->handle, rhs.d->handle, round_mode);
 }
 
 void number::mul(const number& lhs, const long rhs)
 {
-    assert(owns(d));
+    assert_owns(d);
     mpc_mul_si(d->handle, lhs.d->handle, rhs, round_mode);
 }
 
 void number::div(const number& lhs, const number& rhs)
 {
-    assert(owns(d));
+    assert_owns(d);
     mpc_div(d->handle, lhs.d->handle, rhs.d->handle, round_mode);
 }
 
@@ -252,37 +257,37 @@ void number::div(const number &lhs, unsigned long rhs)
 
 void number::pow(const number& lhs, const number& rhs)
 {
-    assert(owns(d));
+    assert_owns(d);
     mpc_pow(d->handle, lhs.d->handle, rhs.d->handle, round_mode);
 }
 
 void number::sqrt(const number& x)
 {
-    assert(owns(d));
+    assert_owns(d);
     mpc_sqrt(d->handle, x.d->handle, round_mode);
 }
 
 void number::exp(const number& x)
 {
-    assert(owns(d));
+    assert_owns(d);
     mpc_exp(d->handle, x.d->handle, round_mode);
 }
 
 void number::log(const number& x)
 {
-    assert(owns(d));
+    assert_owns(d);
     mpc_log10(d->handle, x.d->handle, round_mode);
 }
 
 void number::ln(const number& x)
 {
-    assert(owns(d));
+    assert_owns(d);
     mpc_log(d->handle, x.d->handle, round_mode);
 }
 
 void number::sin(const number& x)
 {
-    assert(owns(d));
+    assert_owns(d);
     number pi = number::pi(x.precision());
     number k{x.precision()};
     k.div(x, pi);
@@ -294,7 +299,7 @@ void number::sin(const number& x)
 
 void number::cos(const number& x)
 {
-    assert(owns(d));
+    assert_owns(d);
     number pi = number::pi(x.precision());
     number k{x.precision()};
     k.div(x, pi);
@@ -307,7 +312,7 @@ void number::cos(const number& x)
 
 void number::tan(const number& x)
 {
-    assert(owns(d));
+    assert_owns(d);
     number pi = number::pi(x.precision());
     number k{x.precision()};
     k.div(x, pi);
@@ -317,11 +322,26 @@ void number::tan(const number& x)
         mpc_tan(d->handle, x.d->handle, round_mode);
 }
 
+void number::abs(const number& x)
+{
+    assert_owns(d);
+    mpc_abs(mpc_realref(d->handle), x.d->handle, fr_round_mode);
+    set_imaginary(0);
+}
+
 std::string number::string() const
 {
     if (is_real())
         return real_only_string(d->handle);
     return both_string(d->handle);
+}
+
+std::string number::dbg_string() const
+{
+    char* a = mpc_get_str(10, 0, d->handle, fr_round_mode);
+    std::string str{a};
+    mpc_free_str(a);
+    return str;
 }
 
 number number::pi(const long prec)

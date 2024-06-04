@@ -31,6 +31,8 @@ namespace tcalc
 
         void set_imaginary(std::string_view imaginary);
 
+        void set_imaginary(long im);
+
         void set_binary(std::string_view bin);
 
         void set_hexadecimal(std::string_view hex);
@@ -63,6 +65,7 @@ namespace tcalc
         void negate(const number& x);
 
         void mul(const number& lhs, const number& rhs);
+
         void mul(const number& lhs, long rhs);
 
         void div(const number& lhs, const number& rhs);
@@ -85,8 +88,13 @@ namespace tcalc
 
         void tan(const number& x);
 
+        void abs(const number& x);
+
         [[nodiscard]]
         std::string string() const;
+
+        [[nodiscard]]
+        std::string dbg_string() const;
 
         static number pi(long prec);
         static number tau(long prec);

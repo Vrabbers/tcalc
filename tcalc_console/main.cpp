@@ -79,7 +79,7 @@ static void eval(tcalc::evaluator& eval, std::string&& input, bool show)
 
         if (const auto* num = std::get_if<tcalc::number>(&res.value()))
         {
-            std::cout << num->string();
+            std::cout << num->string() << ' ' << num->dbg_string();
         }
         else if (const auto* boolean = std::get_if<bool>(&res.value()))
         {

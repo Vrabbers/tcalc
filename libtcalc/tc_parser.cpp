@@ -1,8 +1,5 @@
 #include "tc_parser.h"
 
-#include <ostream>
-#include <stdexcept>
-
 #include "utf8utils.h"
 
 using namespace tcalc;
@@ -321,7 +318,6 @@ void parser::parse_primary_term(std::vector<operation>& parsing)
             if (_current.kind() == token_kind::close_parenthesis)
                 forward();
             return;
-
         default:
             unexpected_token(forward());
             return;

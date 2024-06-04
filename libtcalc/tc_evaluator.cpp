@@ -74,6 +74,12 @@ namespace
         return eval_error_type::none;
     }
 
+    eval_error_type builtin_abs(eval_stack& stack, const evaluator&)
+    {
+        stack.top().abs(stack.top());
+        return eval_error_type::none;
+    }
+
     eval_error_type builtin_log1(eval_stack& stack, const evaluator&)
     {
         if (stack.top() == 0)
@@ -132,19 +138,20 @@ namespace
     {
         return
         {
-            { "sqrt"s, { { 1, &builtin_sqrt } } },
-            { "exp"s, { { 1, &builtin_exp } } },
+            {"sqrt"s, {{1, &builtin_sqrt}}},
+            {"exp"s, {{1, &builtin_exp}}},
             {
                 "log"s,
                 {
-                    { 1, &builtin_log1 },
-                    { 2, &builtin_log2 }
+                    {1, &builtin_log1},
+                    {2, &builtin_log2}
                 }
             },
-            { "ln"s, { { 1, &builtin_ln } } },
-            { "sin"s, { { 1, &builtin_sin } } },
-            { "cos"s, { { 1, &builtin_cos } } },
-            { "tan"s , { { 1, &builtin_tan } } }
+            {"ln"s, {{1, &builtin_ln}}},
+            {"sin"s, {{1, &builtin_sin}}},
+            {"cos"s, {{1, &builtin_cos}}},
+            {"tan"s, {{1, &builtin_tan}}},
+            {"abs"s, {{1, &builtin_abs}}},
         };
     }
 
@@ -186,7 +193,7 @@ eval_result<evaluator::result_type> evaluator::evaluate(const expression& expr) 
     if (const auto* asgn_exp = std::get_if<assignment_expression>(&expr))
         return to_variant_result(evaluate_assignment(*asgn_exp));
 
-    throw std::logic_error{ "unreachable" };
+    throw std::logic_error{"unreachable"};
 }
 
 void evaluator::commit_result(const result_type& result)
