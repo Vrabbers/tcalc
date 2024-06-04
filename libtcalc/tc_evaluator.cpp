@@ -23,36 +23,29 @@ namespace
     {
         if (from == to)
             return;
-
-        if (from == angle_unit::degrees && to == angle_unit::radians)
+        switch (from)
         {
-            number.div(number, 180);
-            number.mul(number, number::pi(number.precision()));
-        }
-        else if (from == angle_unit::degrees && to == angle_unit::gradians)
-        {
-            number.mul(number, 10);
-            number.div(number, 9);
-        }
-        else if (from == angle_unit::radians && to == angle_unit::degrees)
-        {
-            number.div(number, number::pi(number.precision()));
-            number.mul(number, 180);
-        }
-        else if (from == angle_unit::radians && to == angle_unit::gradians)
-        {
-            number.div(number, 200);
-            number.mul(number, number::pi(number.precision()));
-        }
-        else if (from == angle_unit::gradians && to == angle_unit::degrees)
-        {
-            number.mul(number, 9);
-            number.div(number, 10);
-        }
-        else if (from == angle_unit::gradians && to == angle_unit::radians)
-        {
-            number.div(number, 200);
-            number.mul(number, number::pi(number.precision()));
+            case angle_unit::degrees:
+                number.div(number, 180);
+                if (to == angle_unit::radians)
+                    number.mul(number, number::pi(number.precision()));
+                else // to == gradians
+                    number.mul(number, 200);
+                break;
+            case angle_unit::radians:
+                number.div(number, number::pi(number.precision()));
+                if (to == angle_unit::degrees)
+                    number.mul(number, 180);
+                else // to == gradians
+                    number.mul(number, 200);
+                break;
+            case angle_unit::gradians:
+                number.div(number, 200);
+                if (to == angle_unit::radians)
+                    number.mul(number, number::pi(number.precision()));
+                else // to == degrees
+                    number.mul(number, 180);
+                break;
         }
     }
 
@@ -67,7 +60,7 @@ namespace
         };
     }
 
-    std::unordered_map<std::string, std::vector<evaluator::native_fn> > basic_builtins()
+    std::unordered_map<std::string, std::vector<evaluator::native_fn>> basic_builtins()
     {
         return
         {
@@ -394,15 +387,15 @@ eval_error_type evaluator::evaluate_unary_operation(const unary_operator* op, nu
             break;
 
         case token_kind::deg:
-            convert_angle(stack_top, _trig_unit, angle_unit::degrees);
+            convert_angle(stack_top, angle_unit::degrees, _trig_unit);
             break;
 
         case token_kind::rad:
-            convert_angle(stack_top, _trig_unit, angle_unit::radians);
+            convert_angle(stack_top, angle_unit::radians, _trig_unit);
             break;
 
         case token_kind::grad:
-            convert_angle(stack_top, _trig_unit, angle_unit::gradians);
+            convert_angle(stack_top, angle_unit::gradians, _trig_unit);
             break;
                 
         default:
