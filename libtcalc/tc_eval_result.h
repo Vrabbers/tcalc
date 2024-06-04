@@ -21,6 +21,7 @@ namespace tcalc
         bad_arity,
         complex_inequality,
         out_of_tan_domain,
+        zero_pow_zero,
     };
 
     std::string_view eval_error_type_name(eval_error_type);

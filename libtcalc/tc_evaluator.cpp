@@ -12,6 +12,8 @@
 
 #include "tc_eval_result.h"
 
+#include <stdexcept>
+
 using namespace tcalc;
 
 namespace
@@ -60,127 +62,89 @@ namespace
         };
     }
 
+    eval_error_type builtin_sqrt(eval_stack& stack, const evaluator&)
+    {
+        stack.top().sqrt(stack.top());
+        return eval_error_type::none;
+    }
+
+    eval_error_type builtin_exp(eval_stack& stack, const evaluator&)
+    {
+        stack.top().exp(stack.top());
+        return eval_error_type::none;
+    }
+
+    eval_error_type builtin_log1(eval_stack& stack, const evaluator&)
+    {
+        if (stack.top() == 0)
+            return eval_error_type::log_zero;
+        stack.top().log(stack.top());
+        return eval_error_type::none;
+    }
+
+    eval_error_type builtin_ln(eval_stack& stack, const evaluator&)
+    {
+        if (stack.top() == 0)
+            return eval_error_type::log_zero;
+        stack.top().ln(stack.top());
+        return eval_error_type::none;
+    }
+
+    eval_error_type builtin_log2(eval_stack& stack, const evaluator&)
+    {
+        if (stack.top() == 0 || stack.top() == 1)
+            return eval_error_type::log_base;
+        auto& base = stack.pop();
+        if (stack.top() == 0)
+            return eval_error_type::log_zero;
+        base.ln(base);
+        stack.top().ln(stack.top());
+        stack.top().div(stack.top(), base);
+        return eval_error_type::none;
+    }
+
+    eval_error_type builtin_sin(eval_stack& stack, const evaluator& eval)
+    {
+        convert_angle(stack.top(), eval.trig_unit(), angle_unit::radians);
+        stack.top().sin(stack.top());
+        return eval_error_type::none;
+    }
+
+    eval_error_type builtin_cos(eval_stack& stack, const evaluator& eval)
+    {
+        convert_angle(stack.top(), eval.trig_unit(), angle_unit::radians);
+        stack.top().cos(stack.top());
+        return eval_error_type::none;
+    }
+
+    eval_error_type builtin_tan(eval_stack& stack, const evaluator& eval)
+    {
+        convert_angle(stack.top(), eval.trig_unit(), angle_unit::radians);
+        number test{ eval.precision() };
+        test.cos(stack.top());
+        if (test == 0)
+            return eval_error_type::out_of_tan_domain;
+        stack.top().tan(stack.top());
+        return eval_error_type::none;
+    }
+
     std::unordered_map<std::string, std::vector<evaluator::native_fn>> basic_builtins()
     {
         return
         {
-            {
-                "sqrt"s,
-                {
-                    {
-                        1,
-                        [](eval_stack& stack, const evaluator&)
-                        {
-                            stack.top().sqrt(stack.top());
-                            return eval_error_type::none;
-                        }
-                    }
-                }
-            },
-            {
-                "exp"s,
-                {
-                    {
-                        1,
-                        [](eval_stack& stack, const evaluator&)
-                        {
-                            stack.top().exp(stack.top());
-                            return eval_error_type::none;
-                        }
-                    }
-                }
-            },
+            { "sqrt"s, { { 1, &builtin_sqrt } } },
+            { "exp"s, { { 1, &builtin_exp } } },
             {
                 "log"s,
                 {
-                    {
-                        1,
-                        [](eval_stack& stack, const evaluator&)
-                        {
-                            if (stack.top() == 0)
-                                return eval_error_type::log_zero;
-                            stack.top().log(stack.top());
-                            return eval_error_type::none;
-                        }
-                    },
-                    {
-                        2,
-                        [](eval_stack& stack, const evaluator&)
-                        {
-                            if (stack.top() == 0 || stack.top() == 1)
-                                return eval_error_type::log_base;
-                            auto& base = stack.pop();
-                            if (stack.top() == 0)
-                                return eval_error_type::log_zero;
-                            base.ln(base);
-                            stack.top().ln(stack.top());
-                            stack.top().div(stack.top(), base);
-                            return eval_error_type::none;
-                        }
-                    }
+                    { 1, &builtin_log1 },
+                    { 2, &builtin_log2 }
                 }
             },
-            {
-                "ln"s,
-                {
-                    {
-                        1,
-                        [](eval_stack& stack, const evaluator&)
-                        {
-                            if (stack.top() == 0)
-                                return eval_error_type::log_zero;
-                            stack.top().ln(stack.top());
-                            return eval_error_type::none;
-                        }
-                    }
-                }
-            },
-            {
-                "sin"s,
-                {
-                    {
-                        1,
-                        [](eval_stack& stack, const evaluator& eval)
-                        {
-                            convert_angle(stack.top(), eval.trig_unit(), angle_unit::radians);
-                            stack.top().sin(stack.top());
-                            return eval_error_type::none;
-                        }
-                    }
-                }
-            },
-            {
-                "cos"s,
-                {
-                    {
-                        1,
-                        [](eval_stack& stack, const evaluator& eval)
-                        {
-                            convert_angle(stack.top(), eval.trig_unit(), angle_unit::radians);
-                            stack.top().cos(stack.top());
-                            return eval_error_type::none;
-                        }
-                    }
-                }
-            },
-            {
-                "tan"s,
-                {
-                    {
-                        1,
-                        [](eval_stack& stack, const evaluator& eval)
-                        {
-                            convert_angle(stack.top(), eval.trig_unit(), angle_unit::radians);
-                            number test{eval.precision()};
-                            test.cos(stack.top());
-                            if (test == 0)
-                                return eval_error_type::out_of_tan_domain;
-                            stack.top().tan(stack.top());
-                            return eval_error_type::none;
-                        }
-                    }
-                }
-            },
+            { "ln"s, { { 1, &builtin_ln } } },
+            { "sin"s, { { 1, &builtin_sin } } },
+            { "cos"s, { { 1, &builtin_cos } } },
+            { "tan"s , { { 1, &builtin_tan } } }
         };
     }
 
@@ -222,7 +186,7 @@ eval_result<evaluator::result_type> evaluator::evaluate(const expression& expr) 
     if (const auto* asgn_exp = std::get_if<assignment_expression>(&expr))
         return to_variant_result(evaluate_assignment(*asgn_exp));
 
-    throw std::exception{"unreachable"};
+    throw std::logic_error{ "unreachable" };
 }
 
 void evaluator::commit_result(const result_type& result)
@@ -296,7 +260,7 @@ eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& 
             if (native_it == _native_fns.end())
                 return eval_result<number>{eval_error_type::undefined_function, fncall->position};
 
-            const auto fns_with_this_name = native_it->second;
+            const auto& fns_with_this_name = native_it->second;
 
             auto err = eval_error_type::bad_arity;
 
@@ -428,6 +392,8 @@ eval_error_type evaluator::evaluate_binary_operator(const binary_operator* op, n
             break;
 
         case token_kind::exponentiate:
+            if (lhs == 0 && rhs == 0)
+                return eval_error_type::zero_pow_zero;
             lhs.pow(lhs, rhs);
             break;
 

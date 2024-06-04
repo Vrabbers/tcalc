@@ -70,7 +70,7 @@ namespace tcalc
     };
 
     template<class ExprT> requires std::convertible_to<ExprT, expression>
-    std::pair<parser, std::optional<ExprT> > parse_single(lexer&& lexer, const long number_precision)
+    std::pair<parser, std::optional<ExprT>> parse_single(lexer&& lexer, const long number_precision)
     {
         parser p{std::move(lexer), number_precision};
         const expression expr = p.parse_expression();

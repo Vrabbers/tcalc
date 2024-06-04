@@ -25,6 +25,8 @@ std::string_view tcalc::eval_error_type_name(eval_error_type t)
             return "complex_inequality"sv;
         case eval_error_type::out_of_tan_domain:
             return "out_of_tan_domanin"sv;
+        case eval_error_type::zero_pow_zero:
+            return "zero_pow_zero"sv;
         default:
             return {};
     }

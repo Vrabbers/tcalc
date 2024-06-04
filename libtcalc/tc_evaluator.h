@@ -71,7 +71,7 @@ namespace tcalc
         angle_unit _trig_unit = angle_unit::degrees;
         std::unordered_map<std::string, number> _constants;
         std::unordered_map<std::string, number> _variables;
-        std::unordered_map<std::string, std::vector<native_fn> > _native_fns;
+        std::unordered_map<std::string, std::vector<native_fn>> _native_fns;
     };
 }
 
