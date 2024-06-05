@@ -118,7 +118,7 @@ namespace
     {
         if (stack.back() == 0 || stack.back() == 1)
             return eval_error_type::log_base;
-        auto& base = stack.back();
+        auto base = std::move(stack.back());
         stack.pop_back();
         if (stack.back() == 0)
             return eval_error_type::log_zero;
