@@ -6,13 +6,13 @@
 
 #define PRECISION 64
 
-class SimpleOperations : public ::testing::TestWithParam<std::pair<std::string, std::string>>
+class ExpressionEvaluation : public ::testing::TestWithParam<std::pair<std::string, std::string>>
 {
 public:
     tcalc::evaluator evaluator{PRECISION};
 };
 
-TEST_P(SimpleOperations, Evaluate) {
+TEST_P(ExpressionEvaluation, Evaluate) {
     auto [inputExpression, expectedExpression] = GetParam();
 
     tcalc::lexer lexer(inputExpression, true);
@@ -30,21 +30,21 @@ TEST_P(SimpleOperations, Evaluate) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    AdditionOperations, SimpleOperations,
+    AdditionOperations, ExpressionEvaluation,
     testing::Values(
         std::pair{"2+2", "4"},
         std::pair{"-2+2", "0"},
         std::pair{"2+-2", "0"}
     ));
 INSTANTIATE_TEST_SUITE_P(
-    SubtractionOperations, SimpleOperations,
+    SubtractionOperations, ExpressionEvaluation,
     testing::Values(
         std::pair{"2-2", "0"},
         std::pair{"-2-2", "-4"},
         std::pair{"2--2", "4"}
     ));
 INSTANTIATE_TEST_SUITE_P(
-    MultiplicationOperations, SimpleOperations,
+    MultiplicationOperations, ExpressionEvaluation,
     testing::Values(
         std::pair{"2*2", "4"},
         std::pair{"2*-2", "-4"},
@@ -52,10 +52,15 @@ INSTANTIATE_TEST_SUITE_P(
         std::pair{"-2*-2", "4"}
     ));
 INSTANTIATE_TEST_SUITE_P(
-    DivisonOperations, SimpleOperations,
+    DivisonOperations, ExpressionEvaluation,
     testing::Values(
         std::pair{"2/2", "1"},
         std::pair{"1/2", "0.5"},
         std::pair{"-2/4", "-0.5"},
         std::pair{"2/-4", "-0.5"}
+    ));
+INSTANTIATE_TEST_SUITE_P(
+    OrderOfOperations, ExpressionEvaluation,
+    testing::Values(
+        std::pair{"2+3^2*4", "38"}
     ));
