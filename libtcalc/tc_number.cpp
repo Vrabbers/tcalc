@@ -18,7 +18,7 @@ using namespace tcalc;
 
 inline void assert_owns(const std::unique_ptr<number_pimpl>& p)
 {
-    assert(p != nullptr, "trying to operate on number whose ownership has been transferred!");
+    assert(p != nullptr);
 }
 
 struct memory_stuff final

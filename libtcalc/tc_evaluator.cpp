@@ -262,7 +262,7 @@ eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& 
             stack.pop_back();
             const eval_error_type err = evaluate_binary_operator(binop, stack.back(), rhs);
 
-            if (err == eval_error_type::none)
+            if (err == eval_error_type::none) 
                 continue;
 
             return eval_result<number>{err, binop->position};
@@ -282,7 +282,7 @@ eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& 
         }
         else if (const auto* fncall = std::get_if<function_call>(&op))
         {
-            if (stack.size() < fncall->arity)
+            if (static_cast<fn_arity_t>(stack.size()) < fncall->arity)
                 return eval_result<number>{eval_error_type::invalid_program, fncall->position};
 
             const auto native_it = _native_fns.find(fncall->identifier);
