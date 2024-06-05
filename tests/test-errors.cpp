@@ -56,3 +56,73 @@ INSTANTIATE_TEST_SUITE_P(
         std::pair{"funky(3)", tcalc::eval_error_type::undefined_function},
         std::pair{"funky(3,5)", tcalc::eval_error_type::undefined_function}
     ));
+
+INSTANTIATE_TEST_SUITE_P(
+    LogBase, Errors,
+    testing::Values(
+        std::pair{"log(1,0)", tcalc::eval_error_type::log_base},
+        std::pair{"log(1,1)", tcalc::eval_error_type::log_base},
+        std::pair{"log(4,1)", tcalc::eval_error_type::log_base}
+    ));
+
+INSTANTIATE_TEST_SUITE_P(
+    BadArity, Errors,
+    testing::Values(
+        std::pair{"sin(1,0)", tcalc::eval_error_type::bad_arity},
+        std::pair{"cos()", tcalc::eval_error_type::bad_arity},
+        std::pair{"log(4,1,4)", tcalc::eval_error_type::bad_arity}
+    ));
+
+INSTANTIATE_TEST_SUITE_P(
+    ComplexInequality, Errors,
+    testing::Values(
+        std::pair{"3i<5", tcalc::eval_error_type::complex_inequality},
+        std::pair{"2+3i<5", tcalc::eval_error_type::complex_inequality},
+        std::pair{"3i<5i", tcalc::eval_error_type::complex_inequality},
+        std::pair{"3i<3+5i", tcalc::eval_error_type::complex_inequality},
+        std::pair{"2+3i<3+5i", tcalc::eval_error_type::complex_inequality},
+        std::pair{"3i>5", tcalc::eval_error_type::complex_inequality},
+        std::pair{"2+3i>5", tcalc::eval_error_type::complex_inequality},
+        std::pair{"3i>5i", tcalc::eval_error_type::complex_inequality},
+        std::pair{"3i>3+5i", tcalc::eval_error_type::complex_inequality},
+        std::pair{"2+3i>3+5i", tcalc::eval_error_type::complex_inequality},
+        std::pair{"3i<=5", tcalc::eval_error_type::complex_inequality},
+        std::pair{"2+3i<=5", tcalc::eval_error_type::complex_inequality},
+        std::pair{"3i<=5i", tcalc::eval_error_type::complex_inequality},
+        std::pair{"3i<=3+5i", tcalc::eval_error_type::complex_inequality},
+        std::pair{"2+3i<=3+5i", tcalc::eval_error_type::complex_inequality},
+        std::pair{"3i>=5", tcalc::eval_error_type::complex_inequality},
+        std::pair{"2+3i>=5", tcalc::eval_error_type::complex_inequality},
+        std::pair{"3i>=5i", tcalc::eval_error_type::complex_inequality},
+        std::pair{"3i>=3+5i", tcalc::eval_error_type::complex_inequality},
+        std::pair{"2+3i>=3+5i", tcalc::eval_error_type::complex_inequality}
+    ));
+
+INSTANTIATE_TEST_SUITE_P(
+    OutOfTanDomain, Errors,
+    testing::Values(
+        std::pair{"tan(90deg)", tcalc::eval_error_type::out_of_tan_domain},
+        std::pair{"tan((pi/2)rad)", tcalc::eval_error_type::out_of_tan_domain},
+        std::pair{"tan(100grad)", tcalc::eval_error_type::out_of_tan_domain},
+        std::pair{"tan(270deg)", tcalc::eval_error_type::out_of_tan_domain},
+        std::pair{"tan(-90deg)", tcalc::eval_error_type::out_of_tan_domain},
+        std::pair{"tan((23 pi/2)rad)", tcalc::eval_error_type::out_of_tan_domain}
+    ));
+
+INSTANTIATE_TEST_SUITE_P(
+    ZeroPowZero, Errors,
+    testing::Values(
+        std::pair{"0^0", tcalc::eval_error_type::zero_pow_zero}
+    ));
+
+INSTANTIATE_TEST_SUITE_P(
+    AssignToConstant, Errors,
+    testing::Values(
+        std::pair{"e=2", tcalc::eval_error_type::assign_to_constant}
+    ));
+
+INSTANTIATE_TEST_SUITE_P(
+    ZeroRoot, Errors,
+    testing::Values(
+        std::pair{"root(5, 0)", tcalc::eval_error_type::zero_root}
+    ));
