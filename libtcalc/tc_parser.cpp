@@ -78,6 +78,8 @@ namespace
             case token_kind::open_parenthesis:
             case token_kind::numeric_literal:
                 return true;
+            case token_kind::superscript_literal:
+                return false;
             default:
                 return unary_precendence(kind) != -1;
         }
