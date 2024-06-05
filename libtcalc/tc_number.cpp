@@ -46,7 +46,7 @@ static std::string make_mpfr_format(const std::string_view from)
     std::string str{};
     str.reserve(from.length()); // Most of the time, it will be just as long, and it won't ever be any longer
 
-    for (auto c : from)
+    for (const auto c : from)
     {
         if (c == '\'' || c == 'i') // Ignore imaginary i and thousands separator
             continue;
@@ -55,6 +55,7 @@ static std::string make_mpfr_format(const std::string_view from)
         else
             str.push_back(c); // Otherwise just add the character on
     }
+
     return str;
 }
 
@@ -144,7 +145,7 @@ bool number::is_real() const
     return mpfr_zero_p(mpc_imagref(d->handle));
 }
 
-bool tcalc::number::is_integer() const
+bool number::is_integer() const
 {
     if (!is_real())
         return false;
@@ -208,7 +209,7 @@ bool number::operator==(const number& b) const
     return mpc_cmp(d->handle, b.d->handle) == 0;
 }
 
-long tcalc::number::precision() const
+long number::precision() const
 {
     return mpc_get_prec(d->handle);
 }
@@ -267,6 +268,39 @@ void number::sqrt(const number& x)
     mpc_sqrt(d->handle, x.d->handle, round_mode);
 }
 
+void number::reciprocal(const number& x)
+{
+    assert_owns(d);
+    mpc_pow_si(d->handle, x.d->handle, -1, round_mode);
+}
+
+void number::reciprocal(const long x)
+{
+    assert_owns(d);
+    set(x);
+    reciprocal(*this);
+}
+
+void number::nth_root(const number& x, const number& root)
+{
+    assert_owns(d);
+    number recip{precision()};
+    recip.reciprocal(root);
+    mpc_pow(d->handle, x.d->handle, recip.d->handle, round_mode);
+}
+
+void number::nth_root(const number& x, const long root)
+{
+    if (root % 2 == 1)
+    {
+        set(x);
+    }
+    assert_owns(d);
+    number recip{precision()};
+    recip.reciprocal(root);
+    mpc_pow(d->handle, d->handle, recip.d->handle, round_mode);
+}
+
 void number::exp(const number& x)
 {
     assert_owns(d);
@@ -288,7 +322,7 @@ void number::ln(const number& x)
 void number::sin(const number& x)
 {
     assert_owns(d);
-    number pi = number::pi(x.precision());
+    const number pi = number::pi(x.precision());
     number k{x.precision()};
     k.div(x, pi);
     if (k.is_integer())
@@ -300,7 +334,7 @@ void number::sin(const number& x)
 void number::cos(const number& x)
 {
     assert_owns(d);
-    number pi = number::pi(x.precision());
+    const number pi = number::pi(x.precision());
     number k{x.precision()};
     k.div(x, pi);
     mpfr_sub_d(mpc_realref(k.d->handle), mpc_realref(k.d->handle), 0.5, fr_round_mode);
@@ -313,7 +347,7 @@ void number::cos(const number& x)
 void number::tan(const number& x)
 {
     assert_owns(d);
-    number pi = number::pi(x.precision());
+    const number pi = number::pi(x.precision());
     number k{x.precision()};
     k.div(x, pi);
     if (k.is_integer())

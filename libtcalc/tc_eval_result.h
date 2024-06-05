@@ -22,6 +22,8 @@ namespace tcalc
         complex_inequality,
         out_of_tan_domain,
         zero_pow_zero,
+        assign_to_constant,
+        zero_root
     };
 
     std::string_view eval_error_type_name(eval_error_type);

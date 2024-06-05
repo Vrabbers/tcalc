@@ -44,6 +44,9 @@ namespace
             case token_kind::minus:
             case token_kind::plus:
             case token_kind::radical:
+            case token_kind::cube_root:
+            case token_kind::fourth_root:
+            case token_kind::superscript_literal: // For radicals with numbers
                 return 4;
             default:
                 return -1;
@@ -208,9 +211,36 @@ void parser::parse_arithmetic(std::vector<operation>& parsing, const int enclosi
     {
         // We have a unary operator
         const auto unary_op = forward();
-        // read unary operand
-        parse_arithmetic(parsing, unary_prec);
-        parsing.emplace_back(unary_operator{unary_op.kind(), unary_op.position()}); // And place the unary operator on the stack
+        if (unary_op.kind() == token_kind::superscript_literal)
+        {
+            // Expect to read nth root expression of form ⁿ√x
+            if (_current.kind() != token_kind::radical)
+            {
+                unexpected_token(unary_op);
+                return;
+            }
+
+            const auto radical = forward();
+            const auto num_str = utf8utils::to_inline_number(unary_op.source());
+            if (num_str.find('i') != std::string::npos)
+            {
+                _diagnostic_bag.emplace_back(unary_op.position(), diagnostic_type::invalid_number_literal);
+                return;
+            }
+            number num{_number_precision};
+            num.set_real(num_str);
+            parsing.emplace_back(literal_number{std::move(num), unary_op.position()});
+            // actually "binary" operator
+            parse_arithmetic(parsing, unary_prec);
+            const source_position pos{unary_op.start_index(), radical.end_index()};
+            parsing.emplace_back(binary_operator{token_kind::radical, pos});
+        }
+        else
+        {
+            // read unary operand
+            parse_arithmetic(parsing, unary_prec);
+            parsing.emplace_back(unary_operator{unary_op.kind(), unary_op.position()}); // And place the unary operator on the stack
+        }
     }
 
     while (true)
@@ -241,7 +271,7 @@ void parser::parse_arithmetic(std::vector<operation>& parsing, const int enclosi
         }
         else if (is_superscript(_current.kind()))
         {
-            auto exp_pos = _current.position().start_index;
+            const auto exp_pos = _current.position().start_index;
             parse_superscript(parsing);
             parsing.emplace_back(binary_operator{token_kind::exponentiate, {exp_pos, exp_pos}});
             continue;
@@ -444,5 +474,6 @@ void parser::parse_function(std::vector<operation>& parsing)
 
 void parser::unexpected_token(const token& err_token)
 {
-    _diagnostic_bag.emplace_back(err_token.position(), diagnostic_type::unexpected_token, token_kind_name(err_token.kind()));
+    _diagnostic_bag.emplace_back(err_token.position(), diagnostic_type::unexpected_token,
+                                 token_kind_name(err_token.kind()));
 }

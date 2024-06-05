@@ -29,6 +29,8 @@ namespace tcalc
         open_parenthesis,
         close_parenthesis,
         radical,
+        cube_root,
+        fourth_root,
         percent,
         factorial,
         left_shift,

@@ -16,6 +16,8 @@
 
 using namespace tcalc;
 
+// TODO: Make sure root implementations are correct & match for all cases.
+
 namespace
 {
     using namespace std::string_literals;
@@ -62,75 +64,92 @@ namespace
         };
     }
 
-    eval_error_type builtin_sqrt(eval_stack& stack, const evaluator&)
+    eval_error_type builtin_sqrt(evaluator::stack& stack, const evaluator&)
     {
-        stack.top().sqrt(stack.top());
+        stack.back().sqrt(stack.back());
         return eval_error_type::none;
     }
 
-    eval_error_type builtin_exp(eval_stack& stack, const evaluator&)
+    eval_error_type builtin_cbrt(evaluator::stack& stack, const evaluator&)
     {
-        stack.top().exp(stack.top());
+        stack.back().nth_root(stack.back(), 3);
         return eval_error_type::none;
     }
 
-    eval_error_type builtin_abs(eval_stack& stack, const evaluator&)
+    eval_error_type builtin_root(evaluator::stack& stack, const evaluator&)
     {
-        stack.top().abs(stack.top());
+        if (stack.back() == 0)
+            return eval_error_type::zero_root;
+        const auto n = std::move(stack.back());
+        stack.pop_back();
+        stack.back().nth_root(stack.back(), n);
         return eval_error_type::none;
     }
 
-    eval_error_type builtin_log1(eval_stack& stack, const evaluator&)
+    eval_error_type builtin_exp(evaluator::stack& stack, const evaluator&)
     {
-        if (stack.top() == 0)
+        stack.back().exp(stack.back());
+        return eval_error_type::none;
+    }
+
+    eval_error_type builtin_abs(evaluator::stack& stack, const evaluator&)
+    {
+        stack.back().abs(stack.back());
+        return eval_error_type::none;
+    }
+
+    eval_error_type builtin_log1(evaluator::stack& stack, const evaluator&)
+    {
+        if (stack.back() == 0)
             return eval_error_type::log_zero;
-        stack.top().log(stack.top());
+        stack.back().log(stack.back());
         return eval_error_type::none;
     }
 
-    eval_error_type builtin_ln(eval_stack& stack, const evaluator&)
+    eval_error_type builtin_ln(evaluator::stack& stack, const evaluator&)
     {
-        if (stack.top() == 0)
+        if (stack.back() == 0)
             return eval_error_type::log_zero;
-        stack.top().ln(stack.top());
+        stack.back().ln(stack.back());
         return eval_error_type::none;
     }
 
-    eval_error_type builtin_log2(eval_stack& stack, const evaluator&)
+    eval_error_type builtin_log2(evaluator::stack& stack, const evaluator&)
     {
-        if (stack.top() == 0 || stack.top() == 1)
+        if (stack.back() == 0 || stack.back() == 1)
             return eval_error_type::log_base;
-        auto& base = stack.pop();
-        if (stack.top() == 0)
+        auto& base = stack.back();
+        stack.pop_back();
+        if (stack.back() == 0)
             return eval_error_type::log_zero;
         base.ln(base);
-        stack.top().ln(stack.top());
-        stack.top().div(stack.top(), base);
+        stack.back().ln(stack.back());
+        stack.back().div(stack.back(), base);
         return eval_error_type::none;
     }
 
-    eval_error_type builtin_sin(eval_stack& stack, const evaluator& eval)
+    eval_error_type builtin_sin(evaluator::stack& stack, const evaluator& eval)
     {
-        convert_angle(stack.top(), eval.trig_unit(), angle_unit::radians);
-        stack.top().sin(stack.top());
+        convert_angle(stack.back(), eval.trig_unit(), angle_unit::radians);
+        stack.back().sin(stack.back());
         return eval_error_type::none;
     }
 
-    eval_error_type builtin_cos(eval_stack& stack, const evaluator& eval)
+    eval_error_type builtin_cos(evaluator::stack& stack, const evaluator& eval)
     {
-        convert_angle(stack.top(), eval.trig_unit(), angle_unit::radians);
-        stack.top().cos(stack.top());
+        convert_angle(stack.back(), eval.trig_unit(), angle_unit::radians);
+        stack.back().cos(stack.back());
         return eval_error_type::none;
     }
 
-    eval_error_type builtin_tan(eval_stack& stack, const evaluator& eval)
+    eval_error_type builtin_tan(evaluator::stack& stack, const evaluator& eval)
     {
-        convert_angle(stack.top(), eval.trig_unit(), angle_unit::radians);
+        convert_angle(stack.back(), eval.trig_unit(), angle_unit::radians);
         number test{ eval.precision() };
-        test.cos(stack.top());
+        test.cos(stack.back());
         if (test == 0)
             return eval_error_type::out_of_tan_domain;
-        stack.top().tan(stack.top());
+        stack.back().tan(stack.back());
         return eval_error_type::none;
     }
 
@@ -139,6 +158,8 @@ namespace
         return
         {
             {"sqrt"s, {{1, &builtin_sqrt}}},
+            {"cbrt"s, {{1, &builtin_cbrt}}},
+            {"root"s, {{2, &builtin_root}}},
             {"exp"s, {{1, &builtin_exp}}},
             {
                 "log"s,
@@ -206,27 +227,27 @@ void evaluator::commit_result(const result_type& result)
 
 eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& expr) const
 {
-    eval_stack stack;
+    stack stack;
 
     for (auto& op : expr.tokens)
     {
         if (const auto* numop = std::get_if<literal_number>(&op))
         {
-            stack.push(numop->num);
+            stack.push_back(numop->num);
         }
         else if (const auto* varref = std::get_if<variable_reference>(&op))
         {
             const auto const_it = _constants.find(varref->identifier);
             if (const_it != _constants.end())
             {
-                stack.push(const_it->second);
+                stack.push_back(const_it->second);
                 continue;
             }
 
             const auto var_it = _variables.find(varref->identifier);
             if (var_it != _variables.end())
             {
-                stack.push(var_it->second);
+                stack.push_back(var_it->second);
                 continue;
             }
 
@@ -234,11 +255,12 @@ eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& 
         }
         else if (const auto* binop = std::get_if<binary_operator>(&op))
         {
-            if (!stack.has_at_least(2))
+            if (stack.size() < 2)
                 return eval_result<number>{eval_error_type::invalid_program, binop->position};
 
-            const number& rhs = stack.pop();
-            const eval_error_type err = evaluate_binary_operator(binop, stack.top(), rhs);
+            number rhs = std::move(stack.back());
+            stack.pop_back();
+            const eval_error_type err = evaluate_binary_operator(binop, stack.back(), rhs);
 
             if (err == eval_error_type::none)
                 continue;
@@ -247,10 +269,11 @@ eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& 
         }
         else if (const auto* unop = std::get_if<unary_operator>(&op))
         {
-            if (!stack.has_at_least(1))
+            if (stack.empty())
                 return eval_result<number>{eval_error_type::invalid_program, unop->position};
 
-            const auto err = evaluate_unary_operation(unop, stack.top());
+            number& operand = stack.back();
+            const auto err = evaluate_unary_operation(unop, operand);
 
             if (err == eval_error_type::none)
                 continue;
@@ -259,7 +282,7 @@ eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& 
         }
         else if (const auto* fncall = std::get_if<function_call>(&op))
         {
-            if (!stack.has_at_least(fncall->arity))
+            if (stack.size() < fncall->arity)
                 return eval_result<number>{eval_error_type::invalid_program, fncall->position};
 
             const auto native_it = _native_fns.find(fncall->identifier);
@@ -288,9 +311,7 @@ eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& 
     }
 
     if (stack.size() == 1)
-    {
-        return eval_result{std::move(stack.top())};
-    }
+        return eval_result{std::move(stack.back())};
 
     return eval_result<number>{eval_error_type::invalid_program, expr.position};
 }
@@ -333,6 +354,9 @@ eval_result<bool> evaluator::evaluate_boolean(const boolean_expression& expr) co
 
 eval_result<assign_result> evaluator::evaluate_assignment(const assignment_expression& expr) const
 {
+    if (_constants.contains(expr.variable))
+        return eval_result<assign_result>{eval_error_type::assign_to_constant, expr.position};
+
     eval_result res = evaluate_arithmetic(expr.expression);
 
     if (res.is_error())
@@ -341,32 +365,40 @@ eval_result<assign_result> evaluator::evaluate_assignment(const assignment_expre
     return eval_result<assign_result>{{expr.variable, std::move(res.mut_value())}};
 }
 
-eval_error_type evaluator::evaluate_unary_operation(const unary_operator* op, number& stack_top) const
+eval_error_type evaluator::evaluate_unary_operation(const unary_operator* op, number& stack_back) const
 {
     switch (op->operation)
     {
         case token_kind::radical:
-            stack_top.sqrt(stack_top);
+            stack_back.sqrt(stack_back);
+            break;
+
+        case token_kind::cube_root:
+            stack_back.nth_root(stack_back, 3);
+            break;
+
+        case token_kind::fourth_root:
+            stack_back.nth_root(stack_back, 4);
             break;
 
         case token_kind::minus:
-            stack_top.negate(stack_top);
+            stack_back.negate(stack_back);
             break;
 
         case token_kind::percent:
-            stack_top.div(stack_top, 100);
+            stack_back.div(stack_back, 100);
             break;
 
         case token_kind::deg:
-            convert_angle(stack_top, angle_unit::degrees, _trig_unit);
+            convert_angle(stack_back, angle_unit::degrees, _trig_unit);
             break;
 
         case token_kind::rad:
-            convert_angle(stack_top, angle_unit::radians, _trig_unit);
+            convert_angle(stack_back, angle_unit::radians, _trig_unit);
             break;
 
         case token_kind::grad:
-            convert_angle(stack_top, angle_unit::gradians, _trig_unit);
+            convert_angle(stack_back, angle_unit::gradians, _trig_unit);
             break;
                 
         default:
@@ -402,6 +434,12 @@ eval_error_type evaluator::evaluate_binary_operator(const binary_operator* op, n
             if (lhs == 0 && rhs == 0)
                 return eval_error_type::zero_pow_zero;
             lhs.pow(lhs, rhs);
+            break;
+
+        case token_kind::radical:
+            if (lhs == 0)
+                return eval_error_type::zero_root;
+            lhs.nth_root(rhs, lhs);
             break;
 
         default:

@@ -281,6 +281,10 @@ token lexer::lex_symbol()
             return flush_token(token_kind::close_parenthesis);
         case U'√':
             return flush_token(token_kind::radical);
+        case U'∛':
+            return flush_token(token_kind::cube_root);
+        case U'∜':
+            return flush_token(token_kind::fourth_root);
         case U'%':
             return flush_token(token_kind::percent);
         case U'!':

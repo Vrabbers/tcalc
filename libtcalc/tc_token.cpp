@@ -29,6 +29,8 @@ std::string_view tcalc::token_kind_name(const token_kind kind)
         "open_parenthesis"sv,
         "close_parenthesis"sv,
         "radical"sv,
+        "cube_root"sv,
+        "fourth_root"sv,
         "percent"sv,
         "factorial"sv,
         "left_shift"sv,

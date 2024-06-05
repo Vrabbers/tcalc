@@ -76,6 +76,12 @@ namespace tcalc
 
         void sqrt(const number& x);
 
+        void reciprocal(const number& x);
+        void reciprocal(long x);
+
+        void nth_root(const number& x, const number& root);
+        void nth_root(const number& x, long root);
+
         void exp(const number& x);
 
         void log(const number& x);

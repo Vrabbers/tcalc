@@ -6,7 +6,6 @@
 #include <unordered_map>
 
 #include "tc_eval_result.h"
-#include "tc_eval_stack.h"
 #include "tc_expression.h"
 #include "tc_number.h"
 
@@ -22,13 +21,15 @@ namespace tcalc
     class evaluator final
     {
     public:
+        using result_type = std::variant<assign_result, number, bool>;
+
+        using stack = std::vector<number>;
+
         struct native_fn
         {
             fn_arity_t arity;
-            std::function<eval_error_type(eval_stack&, const evaluator&)> fn;
+            std::function<eval_error_type(stack&, const evaluator&)> fn;
         };
-
-        using result_type = std::variant<assign_result, number, bool>;
 
         explicit evaluator(long precision);
 
