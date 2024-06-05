@@ -15,7 +15,7 @@ public:
 TEST_P(SimpleOperations, Evaluate) {
     auto [inputExpression, expectedExpression] = GetParam();
 
-    tcalc::lexer lexer(inputExpression, false);
+    tcalc::lexer lexer(inputExpression, true);
     tcalc::parser parser(std::move(lexer), PRECISION);
 
     auto expr = parser.parse_expression();

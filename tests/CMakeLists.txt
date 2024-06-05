@@ -11,6 +11,7 @@ enable_testing()
 
 add_executable(tcalc_tests
     test-simple-operations.cpp
+    test-errors.cpp
 )
 target_link_libraries(tcalc_tests
     libtcalc
