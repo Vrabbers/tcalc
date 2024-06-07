@@ -4,12 +4,12 @@
 #include <tc_parser.h>
 #include <tc_evaluator.h>
 
-#define PRECISION 64
+constexpr long precision =  64;
 
 class Errors : public ::testing::TestWithParam<std::pair<std::string, tcalc::eval_error_type>>
 {
 public:
-  tcalc::evaluator evaluator{PRECISION};
+  tcalc::evaluator evaluator{precision};
 };
 
 
@@ -17,7 +17,7 @@ TEST_P(Errors, Evaluate) {
   auto [inputExpression, expectedError] = GetParam();
 
   tcalc::lexer lexer(inputExpression, true);
-  tcalc::parser parser(std::move(lexer), PRECISION);
+  tcalc::parser parser(std::move(lexer), precision);
 
   auto expr = parser.parse_expression();
   ASSERT_TRUE(parser.diagnostic_bag().empty());
