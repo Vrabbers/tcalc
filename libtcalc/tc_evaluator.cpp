@@ -78,13 +78,25 @@ namespace
             return eval_result<evaluator::result_type>{e.error()};
         return eval_result<evaluator::result_type>{std::move(e.mut_value())};
     }
+
+    eval_error_type check_finite(const number& num, const bool complex_mode)
+    {
+        if (!complex_mode && !num.is_real())
+            return eval_error_type::real_mode_complex_result;
+        if (num.is_infinity())
+            return eval_error_type::overflow;
+        if (num.is_nan())
+            return eval_error_type::nan_error;
+        return eval_error_type::none;
+    }
+
 } // End anonymous namespace
 
-evaluator::evaluator(const long precision)
+evaluator::evaluator(const long precision) :
+    _precision{precision},
+    _constants{initialize_constants(_precision)},
+    _native_fns{basic_builtins()}
 {
-    _precision = precision;
-    _constants = initialize_constants(precision);
-    _native_fns = basic_builtins();
 }
 
 eval_result<evaluator::result_type> evaluator::evaluate(const expression& expr) const
@@ -116,6 +128,9 @@ eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& 
         if (const auto* numop = std::get_if<literal_number>(&op))
         {
             stack.push_back(numop->num);
+            const eval_error_type err = check_finite(stack.back(), _complex_mode);
+            if (err != eval_error_type::none)
+                return eval_result<number>{err, numop->position};
         }
         else if (const auto* varref = std::get_if<variable_reference>(&op))
         {
@@ -140,10 +155,13 @@ eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& 
             if (stack.size() < 2)
                 return eval_result<number>{eval_error_type::invalid_program, binop->position};
 
-            const eval_error_type err = evaluate_binary_operator(binop, stack);
-
-            if (err == eval_error_type::none) 
-                continue;
+            eval_error_type err = evaluate_binary_operator(binop, stack);
+            if (err == eval_error_type::none)
+            {
+                err = check_finite(stack.back(), _complex_mode);
+                if (err == eval_error_type::none)
+                    continue;
+            }
 
             return eval_result<number>{err, binop->position};
         }
@@ -152,10 +170,14 @@ eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& 
             if (stack.empty())
                 return eval_result<number>{eval_error_type::invalid_program, unop->position};
 
-            const auto err = evaluate_unary_operation(unop, stack);
+            eval_error_type err = evaluate_unary_operation(unop, stack);
 
             if (err == eval_error_type::none)
-                continue;
+            {
+                err = check_finite(stack.back(), _complex_mode);
+                if (err == eval_error_type::none)
+                    continue;
+            }
 
             return eval_result<number>{err, unop->position};
         }
@@ -171,7 +193,7 @@ eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& 
 
             const auto& fns_with_this_name = native_it->second;
 
-            auto err = eval_error_type::bad_arity;
+            eval_error_type err = eval_error_type::bad_arity;
 
             for (const auto& [arity, fn] : fns_with_this_name)
             {
@@ -183,7 +205,11 @@ eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& 
             }
 
             if (err == eval_error_type::none)
-                continue;
+            {
+                err = check_finite(stack.back(), _complex_mode);
+                if (err == eval_error_type::none)
+                    continue;
+            }
 
             return eval_result<number>{err, fncall->position};
         }

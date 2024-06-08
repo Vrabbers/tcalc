@@ -65,7 +65,7 @@ static void eval(tcalc::evaluator& eval, std::string&& input, bool show)
     {
         auto before = std::chrono::steady_clock::now();
         auto res = eval.evaluate(expr);
-        std::chrono::duration<double, std::milli> time{ std::chrono::steady_clock::now() - before };
+        std::chrono::duration<double, std::milli> time{std::chrono::steady_clock::now() - before};
 
         if (!show)
             continue;
@@ -99,6 +99,7 @@ static void interactive()
     std::cout << "tcalc console\n";
 
     tcalc::evaluator evaluator{prec};
+    evaluator.complex_mode(false);
 
     while (true)
     {

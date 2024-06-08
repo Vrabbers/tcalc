@@ -23,7 +23,10 @@ namespace tcalc
         out_of_tan_domain,
         zero_pow_zero,
         assign_to_constant,
-        zero_root
+        zero_root,
+        real_mode_complex_result,
+        overflow,
+        nan_error,
     };
 
     std::string_view eval_error_type_name(eval_error_type);

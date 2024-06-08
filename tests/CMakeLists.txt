@@ -12,6 +12,7 @@ enable_testing()
 add_executable(tcalc_tests
         test-expression-evaluation.cpp
     test-errors.cpp
+    test-real-mode-errors.cpp
 )
 target_link_libraries(tcalc_tests
     libtcalc

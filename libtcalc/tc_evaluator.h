@@ -46,6 +46,17 @@ namespace tcalc
         }
 
         [[nodiscard]]
+        bool complex_mode() const
+        {
+            return _complex_mode;
+        }
+
+        void complex_mode(const bool mode)
+        {
+            _complex_mode = mode;
+        }
+
+        [[nodiscard]]
         long precision() const
         {
             return _precision;
@@ -70,6 +81,7 @@ namespace tcalc
         eval_error_type evaluate_binary_operator(const binary_operator* op, stack& stack) const;
 
         long _precision;
+        bool _complex_mode = true;
         angle_unit _trig_unit = angle_unit::degrees;
         std::map<std::string, number> _constants;
         std::map<std::string, number> _variables;

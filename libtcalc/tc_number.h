@@ -41,6 +41,12 @@ namespace tcalc
         bool is_real() const;
 
         [[nodiscard]]
+        bool is_infinity() const;
+
+        [[nodiscard]]
+        bool is_nan() const;
+
+        [[nodiscard]]
         bool is_integer() const;
 
         [[nodiscard]]
@@ -77,9 +83,11 @@ namespace tcalc
         void sqrt(const number& x);
 
         void reciprocal(const number& x);
+
         void reciprocal(long x);
 
         void nth_root(const number& x, const number& root);
+
         void nth_root(const number& x, long root);
 
         void exp(const number& x);

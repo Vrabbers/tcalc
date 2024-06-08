@@ -127,3 +127,9 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(
         std::pair{"root(5, 0)", tcalc::eval_error_type::zero_root}
     ));
+
+INSTANTIATE_TEST_SUITE_P(
+    Overflow, Errors,
+    testing::Values(
+        std::pair{"10^1000^1000", tcalc::eval_error_type::overflow}
+    ));

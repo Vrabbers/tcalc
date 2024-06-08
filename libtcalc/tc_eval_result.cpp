@@ -29,6 +29,14 @@ std::string_view tcalc::eval_error_type_name(eval_error_type t)
             return "zero_pow_zero"sv;
         case eval_error_type::assign_to_constant:
             return "assign_to_constant"sv;
+        case eval_error_type::zero_root:
+            return "zero_root"sv;
+        case eval_error_type::real_mode_complex_result:
+            return "real_mode_complex_result"sv;
+        case eval_error_type::overflow:
+            return "overflow";
+        case eval_error_type::nan_error:
+            return "nan_error"sv;
         default:
             return {};
     }

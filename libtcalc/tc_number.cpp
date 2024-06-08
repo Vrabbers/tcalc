@@ -31,7 +31,31 @@ struct memory_stuff final
 
 struct tcalc::number_pimpl final
 {
-    mpc_t handle{};
+    mpc_t ref{};
+
+    [[nodiscard]]
+    mpfr_ptr real_ref()
+    {
+        return mpc_realref(ref);
+    }
+
+    [[nodiscard]]
+    mpfr_srcptr real_ref() const
+    {
+        return mpc_realref(ref);
+    }
+
+    [[nodiscard]]
+    mpfr_ptr imag_ref()
+    {
+        return mpc_imagref(ref);
+    }
+
+    [[nodiscard]]
+    mpfr_srcptr imag_ref() const
+    {
+        return mpc_imagref(ref);
+    }
 
     static memory_stuff memory_stuff_inst;
 };
@@ -61,7 +85,7 @@ static std::string make_mpfr_format(const std::string_view from)
 
 number::number(const long precision) : d{std::make_unique<number_pimpl>()}
 {
-    mpc_init2(d->handle, precision);
+    mpc_init2(d->ref, precision);
     set(0, 0);
 }
 
@@ -74,8 +98,8 @@ number& number::operator=(const number& other)
 {
     const auto prec = other.precision();
     d = std::make_unique<number_pimpl>();
-    mpc_init2(d->handle, prec);
-    mpc_set(d->handle, other.d->handle, round_mode);
+    mpc_init2(d->ref, prec);
+    mpc_set(d->ref, other.d->ref, round_mode);
     return *this;
 }
 
@@ -93,63 +117,73 @@ number& number::operator=(number&& other) noexcept
 number::~number()
 {
     if (d != nullptr)
-        mpc_clear(d->handle);
+        mpc_clear(d->ref);
 }
 
 void number::set(const long real, const long imaginary)
 {
     assert_owns(d);
-    mpc_set_si_si(d->handle, real, imaginary, round_mode);
+    mpc_set_si_si(d->ref, real, imaginary, round_mode);
 }
 
 void number::set(const number& other)
 {
     assert_owns(d);
-    mpc_set(d->handle, other.d->handle, round_mode);
+    mpc_set(d->ref, other.d->ref, round_mode);
 }
 
 void number::set_real(const std::string_view real)
 {
     const auto string = make_mpfr_format(real);
-    mpfr_set_str(mpc_realref(d->handle), string.c_str(), 10, fr_round_mode);
+    mpfr_set_str(d->real_ref(), string.c_str(), 10, fr_round_mode);
 }
 
 void number::set_imaginary(const std::string_view imaginary)
 {
     const auto string = make_mpfr_format(imaginary);
-    mpfr_set_str(mpc_imagref(d->handle), string.c_str(), 10, fr_round_mode);
+    mpfr_set_str(d->imag_ref(), string.c_str(), 10, fr_round_mode);
 }
 
 void number::set_imaginary(const long im)
 {
-    mpfr_set_si(mpc_imagref(d->handle), im, fr_round_mode);
+    mpfr_set_si(mpc_imagref(d->ref), im, fr_round_mode);
 }
 
 void number::set_binary(const std::string_view bin)
 {
     const auto string = make_mpfr_format(bin);
     assert(string.length() >= 2);
-    mpfr_set_str(mpc_realref(d->handle),  &string.c_str()[2], 2, fr_round_mode); // Cut 0b part off
+    mpfr_set_str(d->real_ref(),  &string.c_str()[2], 2, fr_round_mode); // Cut 0b part off
 }
 
 void number::set_hexadecimal(const std::string_view hex)
 {
     const auto string = make_mpfr_format(hex);
     assert(string.length() >= 2);
-    mpfr_set_str(mpc_realref(d->handle), &string.c_str()[2], 16, fr_round_mode); // Cut 0x part off
+    mpfr_set_str(d->real_ref(), &string.c_str()[2], 16, fr_round_mode); // Cut 0x part off
 }
 
 bool number::is_real() const
 {
     assert_owns(d);
-    return mpfr_zero_p(mpc_imagref(d->handle));
+    return mpfr_zero_p(d->imag_ref());
+}
+
+bool number::is_infinity() const
+{
+    return mpfr_inf_p(d->real_ref()) || mpfr_inf_p(d->imag_ref());
+}
+
+bool number::is_nan() const
+{
+    return mpfr_nan_p(d->real_ref()) || mpfr_nan_p(d->imag_ref());
 }
 
 bool number::is_integer() const
 {
     if (!is_real())
         return false;
-    return mpfr_integer_p(mpc_realref(d->handle));
+    return mpfr_integer_p(d->real_ref());
 }
 
 static std::string real_only_string(const mpc_t handle)
@@ -186,92 +220,92 @@ static std::string both_string(const mpc_t handle)
 bool number::operator==(const long r) const
 {
     assert_owns(d);
-    return mpc_cmp_si_si(d->handle, r, 0) == 0;
+    return mpc_cmp_si_si(d->ref, r, 0) == 0;
 }
 
 bool number::operator<(const number& b) const
 {
     assert_owns(d);
-    const int res = mpc_cmp(d->handle, b.d->handle);
+    const int res = mpc_cmp(d->ref, b.d->ref);
     return MPC_INEX_RE(res) < 0;
 }
 
 bool number::operator>(const number& b) const
 {
     assert_owns(d);
-    int res = mpc_cmp(d->handle, b.d->handle);
+    int res = mpc_cmp(d->ref, b.d->ref);
     return MPC_INEX_RE(res) > 0;
 }
 
 bool number::operator==(const number& b) const
 {
     assert_owns(d);
-    return mpc_cmp(d->handle, b.d->handle) == 0;
+    return mpc_cmp(d->ref, b.d->ref) == 0;
 }
 
 long number::precision() const
 {
-    return mpc_get_prec(d->handle);
+    return mpc_get_prec(d->ref);
 }
 
 void number::add(const number& lhs, const number& rhs)
 {
     assert_owns(d);
-    mpc_add(d->handle, lhs.d->handle, rhs.d->handle, round_mode);
+    mpc_add(d->ref, lhs.d->ref, rhs.d->ref, round_mode);
 }
 
 void number::sub(const number& lhs, const number& rhs)
 {
     assert_owns(d);
-    mpc_sub(d->handle, lhs.d->handle, rhs.d->handle, round_mode);
+    mpc_sub(d->ref, lhs.d->ref, rhs.d->ref, round_mode);
 }
 
 void number::negate(const number& x)
 {
     assert_owns(d);
     if (*this != 0)
-        mpc_mul_si(d->handle, x.d->handle, -1, round_mode);
+        mpc_mul_si(d->ref, x.d->ref, -1, round_mode);
 }
 
 void number::mul(const number& lhs, const number& rhs)
 {
     assert_owns(d);
-    mpc_mul(d->handle, lhs.d->handle, rhs.d->handle, round_mode);
+    mpc_mul(d->ref, lhs.d->ref, rhs.d->ref, round_mode);
 }
 
 void number::mul(const number& lhs, const long rhs)
 {
     assert_owns(d);
-    mpc_mul_si(d->handle, lhs.d->handle, rhs, round_mode);
+    mpc_mul_si(d->ref, lhs.d->ref, rhs, round_mode);
 }
 
 void number::div(const number& lhs, const number& rhs)
 {
     assert_owns(d);
-    mpc_div(d->handle, lhs.d->handle, rhs.d->handle, round_mode);
+    mpc_div(d->ref, lhs.d->ref, rhs.d->ref, round_mode);
 }
 
 void number::div(const number &lhs, unsigned long rhs)
 {
-    mpc_div_ui(d->handle, lhs.d->handle, rhs, round_mode);
+    mpc_div_ui(d->ref, lhs.d->ref, rhs, round_mode);
 }
 
 void number::pow(const number& lhs, const number& rhs)
 {
     assert_owns(d);
-    mpc_pow(d->handle, lhs.d->handle, rhs.d->handle, round_mode);
+    mpc_pow(d->ref, lhs.d->ref, rhs.d->ref, round_mode);
 }
 
 void number::sqrt(const number& x)
 {
     assert_owns(d);
-    mpc_sqrt(d->handle, x.d->handle, round_mode);
+    mpc_sqrt(d->ref, x.d->ref, round_mode);
 }
 
 void number::reciprocal(const number& x)
 {
     assert_owns(d);
-    mpc_pow_si(d->handle, x.d->handle, -1, round_mode);
+    mpc_pow_si(d->ref, x.d->ref, -1, round_mode);
 }
 
 void number::reciprocal(const long x)
@@ -286,7 +320,7 @@ void number::nth_root(const number& x, const number& root)
     assert_owns(d);
     number recip{precision()};
     recip.reciprocal(root);
-    mpc_pow(d->handle, x.d->handle, recip.d->handle, round_mode);
+    mpc_pow(d->ref, x.d->ref, recip.d->ref, round_mode);
 }
 
 void number::nth_root(const number& x, const long root)
@@ -298,25 +332,25 @@ void number::nth_root(const number& x, const long root)
     assert_owns(d);
     number recip{precision()};
     recip.reciprocal(root);
-    mpc_pow(d->handle, d->handle, recip.d->handle, round_mode);
+    mpc_pow(d->ref, d->ref, recip.d->ref, round_mode);
 }
 
 void number::exp(const number& x)
 {
     assert_owns(d);
-    mpc_exp(d->handle, x.d->handle, round_mode);
+    mpc_exp(d->ref, x.d->ref, round_mode);
 }
 
 void number::log(const number& x)
 {
     assert_owns(d);
-    mpc_log10(d->handle, x.d->handle, round_mode);
+    mpc_log10(d->ref, x.d->ref, round_mode);
 }
 
 void number::ln(const number& x)
 {
     assert_owns(d);
-    mpc_log(d->handle, x.d->handle, round_mode);
+    mpc_log(d->ref, x.d->ref, round_mode);
 }
 
 void number::sin(const number& x)
@@ -328,7 +362,7 @@ void number::sin(const number& x)
     if (k.is_integer())
         set(0);
     else
-        mpc_sin(d->handle, x.d->handle, round_mode);
+        mpc_sin(d->ref, x.d->ref, round_mode);
 }
 
 void number::cos(const number& x)
@@ -337,11 +371,11 @@ void number::cos(const number& x)
     const number pi = number::pi(x.precision());
     number k{x.precision()};
     k.div(x, pi);
-    mpfr_sub_d(mpc_realref(k.d->handle), mpc_realref(k.d->handle), 0.5, fr_round_mode);
+    mpfr_sub_d(k.d->real_ref(), k.d->real_ref(), 0.5, fr_round_mode);
     if (k.is_integer())
         set(0);
     else
-        mpc_cos(d->handle, x.d->handle, round_mode);
+        mpc_cos(d->ref, x.d->ref, round_mode);
 }
 
 void number::tan(const number& x)
@@ -353,26 +387,26 @@ void number::tan(const number& x)
     if (k.is_integer())
         set(0);
     else
-        mpc_tan(d->handle, x.d->handle, round_mode);
+        mpc_tan(d->ref, x.d->ref, round_mode);
 }
 
 void number::abs(const number& x)
 {
     assert_owns(d);
-    mpc_abs(mpc_realref(d->handle), x.d->handle, fr_round_mode);
+    mpc_abs(d->real_ref(), x.d->ref, fr_round_mode);
     set_imaginary(0);
 }
 
 std::string number::string() const
 {
     if (is_real())
-        return real_only_string(d->handle);
-    return both_string(d->handle);
+        return real_only_string(d->ref);
+    return both_string(d->ref);
 }
 
 std::string number::dbg_string() const
 {
-    char* a = mpc_get_str(10, 0, d->handle, fr_round_mode);
+    char* a = mpc_get_str(10, 0, d->ref, fr_round_mode);
     std::string str{a};
     mpc_free_str(a);
     return str;
@@ -381,14 +415,14 @@ std::string number::dbg_string() const
 number number::pi(const long prec)
 {
     number pi{prec};
-    mpfr_const_pi(mpc_realref(pi.d->handle), fr_round_mode);
+    mpfr_const_pi(pi.d->real_ref(), fr_round_mode);
     return pi;
 }
 
 number number::tau(const long prec)
 {
     number tau = pi(prec);
-    mpc_mul_si(tau.d->handle, tau.d->handle, 2, round_mode);
+    mpc_mul_si(tau.d->ref, tau.d->ref, 2, round_mode);
     return tau;
 }
 
@@ -397,7 +431,7 @@ number number::e(const long prec)
     number e{prec};
     mpfr_t fr_one;
     mpfr_init_set_si(fr_one, 1, fr_round_mode);
-    mpfr_exp(mpc_realref(e.d->handle), fr_one, fr_round_mode);
+    mpfr_exp(e.d->real_ref(), fr_one, fr_round_mode);
     mpfr_clear(fr_one);
     return e;
 }
