@@ -1,5 +1,7 @@
 #include "tc_evaluator.h"
 
+#include <stdexcept>
+
 #ifdef _MSC_VER
 #pragma warning(push, 0) // mpc header has warnings on MSVC /W4
 #endif
@@ -11,8 +13,7 @@
 #endif
 
 #include "tc_eval_result.h"
-
-#include <stdexcept>
+#include "internal/builtins.h"
 
 using namespace tcalc;
 
@@ -23,37 +24,7 @@ namespace
     using namespace std::string_literals;
     using namespace std::string_view_literals;
 
-    void convert_angle(number& number, const angle_unit from, const angle_unit to)
-    {
-        if (from == to)
-            return;
-        switch (from)
-        {
-            case angle_unit::degrees:
-                number.div(number, 180);
-                if (to == angle_unit::radians)
-                    number.mul(number, number::pi(number.precision()));
-                else // to == gradians
-                    number.mul(number, 200);
-                break;
-            case angle_unit::radians:
-                number.div(number, number::pi(number.precision()));
-                if (to == angle_unit::degrees)
-                    number.mul(number, 180);
-                else // to == gradians
-                    number.mul(number, 200);
-                break;
-            case angle_unit::gradians:
-                number.div(number, 200);
-                if (to == angle_unit::radians)
-                    number.mul(number, number::pi(number.precision()));
-                else // to == degrees
-                    number.mul(number, 180);
-                break;
-        }
-    }
-
-    std::unordered_map<std::string, number> initialize_constants(const mpfr_prec_t prec)
+    std::map<std::string, number> initialize_constants(const mpfr_prec_t prec)
     {
         return {
             {"pi"s, number::pi(prec)},
@@ -64,96 +35,7 @@ namespace
         };
     }
 
-    eval_error_type builtin_sqrt(evaluator::stack& stack, const evaluator&)
-    {
-        stack.back().sqrt(stack.back());
-        return eval_error_type::none;
-    }
-
-    eval_error_type builtin_cbrt(evaluator::stack& stack, const evaluator&)
-    {
-        stack.back().nth_root(stack.back(), 3);
-        return eval_error_type::none;
-    }
-
-    eval_error_type builtin_root(evaluator::stack& stack, const evaluator&)
-    {
-        if (stack.back() == 0)
-            return eval_error_type::zero_root;
-        const auto n = std::move(stack.back());
-        stack.pop_back();
-        stack.back().nth_root(stack.back(), n);
-        return eval_error_type::none;
-    }
-
-    eval_error_type builtin_exp(evaluator::stack& stack, const evaluator&)
-    {
-        stack.back().exp(stack.back());
-        return eval_error_type::none;
-    }
-
-    eval_error_type builtin_abs(evaluator::stack& stack, const evaluator&)
-    {
-        stack.back().abs(stack.back());
-        return eval_error_type::none;
-    }
-
-    eval_error_type builtin_log1(evaluator::stack& stack, const evaluator&)
-    {
-        if (stack.back() == 0)
-            return eval_error_type::log_zero;
-        stack.back().log(stack.back());
-        return eval_error_type::none;
-    }
-
-    eval_error_type builtin_ln(evaluator::stack& stack, const evaluator&)
-    {
-        if (stack.back() == 0)
-            return eval_error_type::log_zero;
-        stack.back().ln(stack.back());
-        return eval_error_type::none;
-    }
-
-    eval_error_type builtin_log2(evaluator::stack& stack, const evaluator&)
-    {
-        if (stack.back() == 0 || stack.back() == 1)
-            return eval_error_type::log_base;
-        auto base = std::move(stack.back());
-        stack.pop_back();
-        if (stack.back() == 0)
-            return eval_error_type::log_zero;
-        base.ln(base);
-        stack.back().ln(stack.back());
-        stack.back().div(stack.back(), base);
-        return eval_error_type::none;
-    }
-
-    eval_error_type builtin_sin(evaluator::stack& stack, const evaluator& eval)
-    {
-        convert_angle(stack.back(), eval.trig_unit(), angle_unit::radians);
-        stack.back().sin(stack.back());
-        return eval_error_type::none;
-    }
-
-    eval_error_type builtin_cos(evaluator::stack& stack, const evaluator& eval)
-    {
-        convert_angle(stack.back(), eval.trig_unit(), angle_unit::radians);
-        stack.back().cos(stack.back());
-        return eval_error_type::none;
-    }
-
-    eval_error_type builtin_tan(evaluator::stack& stack, const evaluator& eval)
-    {
-        convert_angle(stack.back(), eval.trig_unit(), angle_unit::radians);
-        number test{ eval.precision() };
-        test.cos(stack.back());
-        if (test == 0)
-            return eval_error_type::out_of_tan_domain;
-        stack.back().tan(stack.back());
-        return eval_error_type::none;
-    }
-
-    std::unordered_map<std::string, std::vector<evaluator::native_fn>> basic_builtins()
+    std::map<std::string, std::vector<evaluator::native_fn>> basic_builtins()
     {
         return
         {
@@ -258,9 +140,7 @@ eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& 
             if (stack.size() < 2)
                 return eval_result<number>{eval_error_type::invalid_program, binop->position};
 
-            number rhs = std::move(stack.back());
-            stack.pop_back();
-            const eval_error_type err = evaluate_binary_operator(binop, stack.back(), rhs);
+            const eval_error_type err = evaluate_binary_operator(binop, stack);
 
             if (err == eval_error_type::none) 
                 continue;
@@ -272,8 +152,7 @@ eval_result<number> evaluator::evaluate_arithmetic(const arithmetic_expression& 
             if (stack.empty())
                 return eval_result<number>{eval_error_type::invalid_program, unop->position};
 
-            number& operand = stack.back();
-            const auto err = evaluate_unary_operation(unop, operand);
+            const auto err = evaluate_unary_operation(unop, stack);
 
             if (err == eval_error_type::none)
                 continue;
@@ -365,40 +244,40 @@ eval_result<assign_result> evaluator::evaluate_assignment(const assignment_expre
     return eval_result<assign_result>{{expr.variable, std::move(res.mut_value())}};
 }
 
-eval_error_type evaluator::evaluate_unary_operation(const unary_operator* op, number& stack_back) const
+eval_error_type evaluator::evaluate_unary_operation(const unary_operator* op, stack& stack) const
 {
     switch (op->operation)
     {
         case token_kind::radical:
-            stack_back.sqrt(stack_back);
+            stack.back().sqrt(stack.back());
             break;
 
         case token_kind::cube_root:
-            stack_back.nth_root(stack_back, 3);
+            stack.back().nth_root(stack.back(), 3);
             break;
 
         case token_kind::fourth_root:
-            stack_back.nth_root(stack_back, 4);
+            stack.back().nth_root(stack.back(), 4);
             break;
 
         case token_kind::minus:
-            stack_back.negate(stack_back);
+            stack.back().negate(stack.back());
             break;
 
         case token_kind::percent:
-            stack_back.div(stack_back, 100);
+            stack.back().div(stack.back(), 100);
             break;
 
         case token_kind::deg:
-            convert_angle(stack_back, angle_unit::degrees, _trig_unit);
+            convert_angle(stack.back(), angle_unit::degrees, _trig_unit);
             break;
 
         case token_kind::rad:
-            convert_angle(stack_back, angle_unit::radians, _trig_unit);
+            convert_angle(stack.back(), angle_unit::radians, _trig_unit);
             break;
 
         case token_kind::grad:
-            convert_angle(stack_back, angle_unit::gradians, _trig_unit);
+            convert_angle(stack.back(), angle_unit::gradians, _trig_unit);
             break;
                 
         default:
@@ -408,8 +287,30 @@ eval_error_type evaluator::evaluate_unary_operation(const unary_operator* op, nu
     return eval_error_type::none;
 }
 
-eval_error_type evaluator::evaluate_binary_operator(const binary_operator* op, number& lhs, const number& rhs)
+template <void (number::* fn)(const number&, const number&)>
+void basic_binop(evaluator::stack& stack)
 {
+    const number rhs = std::move(stack.back());
+    stack.pop_back();
+    stack.back().*fn(stack.back(), rhs);
+}
+
+eval_error_type evaluator::evaluate_binary_operator(const binary_operator* op, stack& stack) const
+{
+    if (op->operation == token_kind::radical)
+    {
+        if (stack.back() == 0)
+            return eval_error_type::zero_root;
+        if (stack.back() == 2)
+            return builtin_sqrt(stack, *this);
+
+        return builtin_root(stack, *this);
+    }
+
+    const number rhs = std::move(stack.back());
+    stack.pop_back();
+    number& lhs = stack.back();
+
     switch (op->operation)
     {
         case token_kind::plus:
@@ -434,12 +335,6 @@ eval_error_type evaluator::evaluate_binary_operator(const binary_operator* op, n
             if (lhs == 0 && rhs == 0)
                 return eval_error_type::zero_pow_zero;
             lhs.pow(lhs, rhs);
-            break;
-
-        case token_kind::radical:
-            if (lhs == 0)
-                return eval_error_type::zero_root;
-            lhs.nth_root(rhs, lhs);
             break;
 
         default:

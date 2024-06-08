@@ -14,9 +14,10 @@ set(SOURCES
     tc_parser.cpp
     tc_number.cpp
     tc_operation.cpp
-    utf8utils.cpp
     tc_evaluator.cpp
     tc_eval_result.cpp
+    internal/utf8utils.cpp
+    internal/builtins.cpp
 )
 
 set(HEADERS

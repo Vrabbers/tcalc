@@ -2,7 +2,7 @@
 
 #include <optional>
 
-#include "utf8utils.h"
+#include "internal/utf8utils.h"
 
 using namespace tcalc;
 

@@ -2,6 +2,7 @@
 #define TC_EVALUATOR_H
 
 #include <functional>
+#include <map>
 #include <string>
 #include <unordered_map>
 
@@ -65,14 +66,14 @@ namespace tcalc
         eval_result<assign_result> evaluate_assignment(const assignment_expression& expr) const;
 
     private:
-        eval_error_type evaluate_unary_operation(const unary_operator* op, number& stack_top) const;
-        static eval_error_type evaluate_binary_operator(const binary_operator* op, number& lhs, const number& rhs);
+        eval_error_type evaluate_unary_operation(const unary_operator* op, stack& stack) const;
+        eval_error_type evaluate_binary_operator(const binary_operator* op, stack& stack) const;
 
         long _precision;
         angle_unit _trig_unit = angle_unit::degrees;
-        std::unordered_map<std::string, number> _constants;
-        std::unordered_map<std::string, number> _variables;
-        std::unordered_map<std::string, std::vector<native_fn>> _native_fns;
+        std::map<std::string, number> _constants;
+        std::map<std::string, number> _variables;
+        std::map<std::string, std::vector<native_fn>> _native_fns;
     };
 }
 

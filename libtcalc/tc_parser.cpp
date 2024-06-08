@@ -1,6 +1,6 @@
 #include "tc_parser.h"
 
-#include "utf8utils.h"
+#include "internal/utf8utils.h"
 
 using namespace tcalc;
 
