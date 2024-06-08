@@ -1,18 +1,19 @@
 #include <gtest/gtest.h>
 
-#include <tc_lexer.h>
-#include <tc_parser.h>
-#include <tc_evaluator.h>
+#include "tc_lexer.h"
+#include "tc_parser.h"
+#include "tc_evaluator.h"
 
-constexpr long precision =  64;
+constexpr long precision = 64;
 
-class ExpressionEvaluation : public ::testing::TestWithParam<std::pair<std::string, std::string>>
+class ExpressionEvaluation : public testing::TestWithParam<std::pair<std::string, std::string>>
 {
 public:
     tcalc::evaluator evaluator{precision};
 };
 
-TEST_P(ExpressionEvaluation, Evaluate) {
+TEST_P(ExpressionEvaluation, Evaluate)
+{
     auto [inputExpression, expectedExpression] = GetParam();
 
     tcalc::lexer lexer(inputExpression, true);

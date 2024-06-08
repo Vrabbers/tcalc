@@ -1,30 +1,31 @@
 #include <gtest/gtest.h>
 
-#include <tc_lexer.h>
-#include <tc_parser.h>
-#include <tc_evaluator.h>
+#include "tc_lexer.h"
+#include "tc_parser.h"
+#include "tc_evaluator.h"
 
-constexpr long precision =  64;
+constexpr long precision = 64;
 
-class Errors : public ::testing::TestWithParam<std::pair<std::string, tcalc::eval_error_type>>
+class Errors : public testing::TestWithParam<std::pair<std::string, tcalc::eval_error_type>>
 {
 public:
-  tcalc::evaluator evaluator{precision};
+    tcalc::evaluator evaluator{precision};
 };
 
 
-TEST_P(Errors, Evaluate) {
-  auto [inputExpression, expectedError] = GetParam();
+TEST_P(Errors, Evaluate)
+{
+    auto [inputExpression, expectedError] = GetParam();
 
-  tcalc::lexer lexer(inputExpression, true);
-  tcalc::parser parser(std::move(lexer), precision);
+    tcalc::lexer lexer(inputExpression, true);
+    tcalc::parser parser(std::move(lexer), precision);
 
-  auto expr = parser.parse_expression();
-  ASSERT_TRUE(parser.diagnostic_bag().empty());
+    auto expr = parser.parse_expression();
+    ASSERT_TRUE(parser.diagnostic_bag().empty());
 
-  auto result = evaluator.evaluate(expr);
-  ASSERT_TRUE(result.is_error());
-  ASSERT_EQ(result.error().type, expectedError);
+    auto result = evaluator.evaluate(expr);
+    ASSERT_TRUE(result.is_error());
+    ASSERT_EQ(result.error().type, expectedError);
 }
 
 INSTANTIATE_TEST_SUITE_P(
