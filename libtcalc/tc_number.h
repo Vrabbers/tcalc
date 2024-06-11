@@ -104,6 +104,14 @@ namespace tcalc
 
         void abs(const number& x);
 
+        void re(const number& x);
+
+        void im(const number& x);
+
+        void arg(const number& x);
+
+        void conj(const number& x);
+
         [[nodiscard]]
         std::string string() const;
 

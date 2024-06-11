@@ -42,7 +42,7 @@ namespace
             {"sqrt"s, {{1, &builtin_sqrt}}},
             {"cbrt"s, {{1, &builtin_cbrt}}},
             {"root"s, {{2, &builtin_root}}},
-            {"exp"s, {{1, &builtin_exp}}},
+            {"exp"s, {{1, &builtin1<&number::exp>}}},
             {
                 "log"s,
                 {
@@ -54,7 +54,11 @@ namespace
             {"sin"s, {{1, &builtin_sin}}},
             {"cos"s, {{1, &builtin_cos}}},
             {"tan"s, {{1, &builtin_tan}}},
-            {"abs"s, {{1, &builtin_abs}}},
+            {"abs"s, {{1, &builtin1<&number::abs>}}},
+            {"re"s, {{1, &builtin1<&number::re>}}},
+            {"im"s, {{1, &builtin1<&number::im>}}},
+            {"arg"s, {{1, &builtin1<&number::arg>}}},
+            {"conj"s, {{1, &builtin1<&number::conj>}}}
         };
     }
 
@@ -275,11 +279,11 @@ eval_error_type evaluator::evaluate_unary_operation(const unary_operator* op, st
     switch (op->operation)
     {
         case token_kind::radical:
-            stack.back().sqrt(stack.back());
+            builtin_sqrt(stack, *this);
             break;
 
         case token_kind::cube_root:
-            stack.back().nth_root(stack.back(), 3);
+            builtin_cbrt(stack, *this);
             break;
 
         case token_kind::fourth_root:
@@ -311,14 +315,6 @@ eval_error_type evaluator::evaluate_unary_operation(const unary_operator* op, st
     }
 
     return eval_error_type::none;
-}
-
-template <void (number::* Fn)(const number&, const number&)>
-void basic_binop(evaluator::stack& stack)
-{
-    const number rhs = std::move(stack.back());
-    stack.pop_back();
-    (stack.back().*Fn)(stack.back(), rhs);
 }
 
 eval_error_type evaluator::evaluate_binary_operator(const binary_operator* op, stack& stack) const

@@ -55,18 +55,6 @@ eval_error_type tcalc::builtin_root(evaluator::stack& stack, const evaluator&)
     return eval_error_type::none;
 }
 
-eval_error_type tcalc::builtin_exp(evaluator::stack& stack, const evaluator&)
-{
-    stack.back().exp(stack.back());
-    return eval_error_type::none;
-}
-
-eval_error_type tcalc::builtin_abs(evaluator::stack& stack, const evaluator&)
-{
-    stack.back().abs(stack.back());
-    return eval_error_type::none;
-}
-
 eval_error_type tcalc::builtin_log1(evaluator::stack& stack, const evaluator&)
 {
     if (stack.back() == 0)

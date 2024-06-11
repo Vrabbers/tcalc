@@ -4,7 +4,6 @@
 #include <functional>
 #include <map>
 #include <string>
-#include <unordered_map>
 
 #include "tc_eval_result.h"
 #include "tc_expression.h"

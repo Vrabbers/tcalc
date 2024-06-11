@@ -99,7 +99,6 @@ static void interactive()
     std::cout << "tcalc console\n";
 
     tcalc::evaluator evaluator{prec};
-    evaluator.complex_mode(false);
 
     while (true)
     {

@@ -13,13 +13,7 @@
 #pragma warning(pop)
 #endif
 
-
 using namespace tcalc;
-
-inline void assert_owns(const std::unique_ptr<number_pimpl>& p)
-{
-    assert(p != nullptr);
-}
 
 struct memory_stuff final
 {
@@ -122,13 +116,11 @@ number::~number()
 
 void number::set(const long real, const long imaginary)
 {
-    assert_owns(d);
     mpc_set_si_si(d->ref, real, imaginary, round_mode);
 }
 
 void number::set(const number& other)
 {
-    assert_owns(d);
     mpc_set(d->ref, other.d->ref, round_mode);
 }
 
@@ -165,7 +157,6 @@ void number::set_hexadecimal(const std::string_view hex)
 
 bool number::is_real() const
 {
-    assert_owns(d);
     return mpfr_zero_p(d->imag_ref());
 }
 
@@ -219,27 +210,23 @@ static std::string both_string(const mpc_t handle)
 
 bool number::operator==(const long r) const
 {
-    assert_owns(d);
     return mpc_cmp_si_si(d->ref, r, 0) == 0;
 }
 
 bool number::operator<(const number& b) const
 {
-    assert_owns(d);
     const int res = mpc_cmp(d->ref, b.d->ref);
     return MPC_INEX_RE(res) < 0;
 }
 
 bool number::operator>(const number& b) const
 {
-    assert_owns(d);
     int res = mpc_cmp(d->ref, b.d->ref);
     return MPC_INEX_RE(res) > 0;
 }
 
 bool number::operator==(const number& b) const
 {
-    assert_owns(d);
     return mpc_cmp(d->ref, b.d->ref) == 0;
 }
 
@@ -250,38 +237,32 @@ long number::precision() const
 
 void number::add(const number& lhs, const number& rhs)
 {
-    assert_owns(d);
     mpc_add(d->ref, lhs.d->ref, rhs.d->ref, round_mode);
 }
 
 void number::sub(const number& lhs, const number& rhs)
 {
-    assert_owns(d);
     mpc_sub(d->ref, lhs.d->ref, rhs.d->ref, round_mode);
 }
 
 void number::negate(const number& x)
 {
-    assert_owns(d);
     if (*this != 0)
         mpc_mul_si(d->ref, x.d->ref, -1, round_mode);
 }
 
 void number::mul(const number& lhs, const number& rhs)
 {
-    assert_owns(d);
     mpc_mul(d->ref, lhs.d->ref, rhs.d->ref, round_mode);
 }
 
 void number::mul(const number& lhs, const long rhs)
 {
-    assert_owns(d);
     mpc_mul_si(d->ref, lhs.d->ref, rhs, round_mode);
 }
 
 void number::div(const number& lhs, const number& rhs)
 {
-    assert_owns(d);
     mpc_div(d->ref, lhs.d->ref, rhs.d->ref, round_mode);
 }
 
@@ -292,32 +273,27 @@ void number::div(const number &lhs, unsigned long rhs)
 
 void number::pow(const number& lhs, const number& rhs)
 {
-    assert_owns(d);
     mpc_pow(d->ref, lhs.d->ref, rhs.d->ref, round_mode);
 }
 
 void number::sqrt(const number& x)
 {
-    assert_owns(d);
     mpc_sqrt(d->ref, x.d->ref, round_mode);
 }
 
 void number::reciprocal(const number& x)
 {
-    assert_owns(d);
     mpc_pow_si(d->ref, x.d->ref, -1, round_mode);
 }
 
 void number::reciprocal(const long x)
 {
-    assert_owns(d);
     set(x);
     reciprocal(*this);
 }
 
 void number::nth_root(const number& x, const number& root)
 {
-    assert_owns(d);
     number recip{precision()};
     recip.reciprocal(root);
     mpc_pow(d->ref, x.d->ref, recip.d->ref, round_mode);
@@ -329,7 +305,6 @@ void number::nth_root(const number& x, const long root)
     {
         set(x);
     }
-    assert_owns(d);
     number recip{precision()};
     recip.reciprocal(root);
     mpc_pow(d->ref, d->ref, recip.d->ref, round_mode);
@@ -337,25 +312,21 @@ void number::nth_root(const number& x, const long root)
 
 void number::exp(const number& x)
 {
-    assert_owns(d);
     mpc_exp(d->ref, x.d->ref, round_mode);
 }
 
 void number::log(const number& x)
 {
-    assert_owns(d);
     mpc_log10(d->ref, x.d->ref, round_mode);
 }
 
 void number::ln(const number& x)
 {
-    assert_owns(d);
     mpc_log(d->ref, x.d->ref, round_mode);
 }
 
 void number::sin(const number& x)
 {
-    assert_owns(d);
     const number pi = number::pi(x.precision());
     number k{x.precision()};
     k.div(x, pi);
@@ -367,7 +338,6 @@ void number::sin(const number& x)
 
 void number::cos(const number& x)
 {
-    assert_owns(d);
     const number pi = number::pi(x.precision());
     number k{x.precision()};
     k.div(x, pi);
@@ -380,7 +350,6 @@ void number::cos(const number& x)
 
 void number::tan(const number& x)
 {
-    assert_owns(d);
     const number pi = number::pi(x.precision());
     number k{x.precision()};
     k.div(x, pi);
@@ -392,9 +361,31 @@ void number::tan(const number& x)
 
 void number::abs(const number& x)
 {
-    assert_owns(d);
     mpc_abs(d->real_ref(), x.d->ref, fr_round_mode);
     set_imaginary(0);
+}
+
+void number::re(const number& x)
+{
+    mpc_real(d->real_ref(), x.d->ref, fr_round_mode);
+    set_imaginary(0);
+}
+
+void number::im(const number& x)
+{
+    mpc_imag(d->real_ref(), x.d->ref, fr_round_mode);
+    set_imaginary(0);
+}
+
+void number::arg(const number& x)
+{
+    mpc_arg(d->real_ref(), x.d->ref, fr_round_mode);
+    set_imaginary(0);
+}
+
+void number::conj(const number& x)
+{
+    mpc_conj(d->ref, x.d->ref, round_mode);
 }
 
 std::string number::string() const

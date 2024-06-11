@@ -5,12 +5,17 @@
 
 namespace tcalc
 {
+    template <void (number::* Fn)(const number&)>
+    eval_error_type builtin1(evaluator::stack& stack, const evaluator&)
+    {
+        (stack.back().*Fn)(stack.back());
+        return eval_error_type::none;
+    }
+
     void convert_angle(number& number, angle_unit from, angle_unit to);
     eval_error_type builtin_sqrt(evaluator::stack&, const evaluator&);
     eval_error_type builtin_cbrt(evaluator::stack&, const evaluator&);
     eval_error_type builtin_root(evaluator::stack&, const evaluator&);
-    eval_error_type builtin_exp(evaluator::stack&, const evaluator&);
-    eval_error_type builtin_abs(evaluator::stack&, const evaluator&);
     eval_error_type builtin_log1(evaluator::stack&, const evaluator&);
     eval_error_type builtin_ln(evaluator::stack&, const evaluator&);
     eval_error_type builtin_log2(evaluator::stack& , const evaluator&);
