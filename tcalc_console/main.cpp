@@ -30,7 +30,7 @@ static tcalc::parser parse(std::string&& str)
 
     return parser;
 }
-
+/*
 static void show_arith(const tcalc::arithmetic_expression& arith)
 {
     for (const auto& op : arith.tokens)
@@ -38,7 +38,7 @@ static void show_arith(const tcalc::arithmetic_expression& arith)
         std::cout << op_to_string(op) << ' ';
     }
 }
-
+*/
 static void eval(tcalc::evaluator& eval, std::string&& input, bool show)
 {
     auto p = parse(std::move(input));
