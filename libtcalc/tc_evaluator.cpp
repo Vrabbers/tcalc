@@ -313,12 +313,12 @@ eval_error_type evaluator::evaluate_unary_operation(const unary_operator* op, st
     return eval_error_type::none;
 }
 
-template <void (number::* fn)(const number&, const number&)>
+template <void (number::* Fn)(const number&, const number&)>
 void basic_binop(evaluator::stack& stack)
 {
     const number rhs = std::move(stack.back());
     stack.pop_back();
-    stack.back().*fn(stack.back(), rhs);
+    (stack.back().*Fn)(stack.back(), rhs);
 }
 
 eval_error_type evaluator::evaluate_binary_operator(const binary_operator* op, stack& stack) const
