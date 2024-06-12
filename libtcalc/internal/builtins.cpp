@@ -85,20 +85,6 @@ eval_error_type tcalc::builtin_log2(evaluator::stack& stack, const evaluator&)
     return eval_error_type::none;
 }
 
-eval_error_type tcalc::builtin_sin(evaluator::stack& stack, const evaluator& eval)
-{
-    convert_angle(stack.back(), eval.trig_unit(), angle_unit::radians);
-    stack.back().sin(stack.back());
-    return eval_error_type::none;
-}
-
-eval_error_type tcalc::builtin_cos(evaluator::stack& stack, const evaluator& eval)
-{
-    convert_angle(stack.back(), eval.trig_unit(), angle_unit::radians);
-    stack.back().cos(stack.back());
-    return eval_error_type::none;
-}
-
 eval_error_type tcalc::builtin_tan(evaluator::stack& stack, const evaluator& eval)
 {
     convert_angle(stack.back(), eval.trig_unit(), angle_unit::radians);

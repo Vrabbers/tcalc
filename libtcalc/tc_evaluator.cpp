@@ -51,13 +51,13 @@ namespace
                 }
             },
             {"ln"s, {{1, &builtin_ln}}},
-            {"sin"s, {{1, &builtin_sin}}},
-            {"cos"s, {{1, &builtin_cos}}},
+            {"sin"s, {{1, &builtin1_angle_argument<&number::sin>}}},
+            {"cos"s, {{1, &builtin1_angle_argument<&number::cos>}}},
             {"tan"s, {{1, &builtin_tan}}},
             {"abs"s, {{1, &builtin1<&number::abs>}}},
             {"re"s, {{1, &builtin1<&number::re>}}},
             {"im"s, {{1, &builtin1<&number::im>}}},
-            {"arg"s, {{1, &builtin1<&number::arg>}}},
+            {"arg"s, {{1, &builtin1_angle_result<&number::arg>}}},
             {"conj"s, {{1, &builtin1<&number::conj>}}}
         };
     }
