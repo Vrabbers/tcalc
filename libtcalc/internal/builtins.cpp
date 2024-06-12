@@ -87,7 +87,8 @@ eval_error_type tcalc::builtin_log2(evaluator::stack& stack, const evaluator&)
 
 eval_error_type tcalc::builtin_tan(evaluator::stack& stack, const evaluator& eval)
 {
-    convert_angle(stack.back(), eval.trig_unit(), angle_unit::radians);
+    if (stack.back().is_real())
+        convert_angle(stack.back(), eval.trig_unit(), angle_unit::radians);
     number test{eval.precision()};
     test.cos(stack.back());
     if (test == 0)

@@ -388,6 +388,21 @@ void number::conj(const number& x)
     mpc_conj(d->ref, x.d->ref, round_mode);
 }
 
+void tcalc::number::asin(const number& x)
+{
+    mpc_asin(d->ref, x.d->ref, round_mode);
+}
+
+void tcalc::number::acos(const number& x)
+{
+    mpc_acos(d->ref, x.d->ref, round_mode);
+}
+
+void tcalc::number::atan(const number& x)
+{
+    mpc_atan(d->ref, x.d->ref, round_mode);
+}
+
 std::string number::string() const
 {
     if (is_real())

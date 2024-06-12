@@ -112,6 +112,12 @@ namespace tcalc
 
         void conj(const number& x);
 
+        void asin(const number& x);
+
+        void acos(const number& x);
+
+        void atan(const number& x);
+
         [[nodiscard]]
         std::string string() const;
 

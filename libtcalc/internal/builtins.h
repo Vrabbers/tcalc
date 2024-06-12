@@ -19,7 +19,8 @@ namespace tcalc
     template <number_member_fn Fn>
     eval_error_type builtin1_angle_argument(evaluator::stack& stack, const evaluator& eval)
     {
-        convert_angle(stack.back(), eval.trig_unit(), angle_unit::radians);
+        if (stack.back().is_real())
+            convert_angle(stack.back(), eval.trig_unit(), angle_unit::radians);
         (stack.back().*Fn)(stack.back());
         return eval_error_type::none;
     }
@@ -28,7 +29,8 @@ namespace tcalc
     eval_error_type builtin1_angle_result(evaluator::stack& stack, const evaluator& eval)
     {
         (stack.back().*Fn)(stack.back());
-        convert_angle(stack.back(), angle_unit::radians, eval.trig_unit());
+        if (stack.back().is_real())
+            convert_angle(stack.back(), angle_unit::radians, eval.trig_unit());
         return eval_error_type::none;
     }
 
