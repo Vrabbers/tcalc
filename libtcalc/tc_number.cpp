@@ -403,6 +403,36 @@ void tcalc::number::atan(const number& x)
     mpc_atan(d->ref, x.d->ref, round_mode);
 }
 
+void number::sinh(const number& x)
+{
+    mpc_sinh(d->ref, x.d->ref, round_mode);
+}
+
+void number::cosh(const number& x)
+{
+    mpc_cosh(d->ref, x.d->ref, round_mode);
+}
+
+void number::tanh(const number& x)
+{
+    mpc_tanh(d->ref, x.d->ref, round_mode);
+}
+
+void number::asinh(const number& x)
+{
+    mpc_asinh(d->ref, x.d->ref, round_mode);
+}
+
+void number::acosh(const number& x)
+{
+    mpc_acosh(d->ref, x.d->ref, round_mode);
+}
+
+void number::atanh(const number& x)
+{
+    mpc_atanh(d->ref, x.d->ref, round_mode);
+}
+
 std::string number::string() const
 {
     if (is_real())

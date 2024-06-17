@@ -118,6 +118,13 @@ namespace tcalc
 
         void atan(const number& x);
 
+        void sinh(const number& x);
+        void cosh(const number& x);
+        void tanh(const number& x);
+        void asinh(const number& x);
+        void acosh(const number& x);
+        void atanh(const number& x);
+
         [[nodiscard]]
         std::string string() const;
 
