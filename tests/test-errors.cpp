@@ -111,6 +111,40 @@ INSTANTIATE_TEST_SUITE_P(
     ));
 
 INSTANTIATE_TEST_SUITE_P(
+    OutOfSecDomain, Errors,
+    testing::Values(
+        std::pair{"sec(90deg)", tcalc::eval_error_type::out_of_sec_domain},
+        std::pair{"sec((pi/2)rad)", tcalc::eval_error_type::out_of_sec_domain},
+        std::pair{"sec(100grad)", tcalc::eval_error_type::out_of_sec_domain},
+        std::pair{"sec(270deg)", tcalc::eval_error_type::out_of_sec_domain},
+        std::pair{"sec(-90deg)", tcalc::eval_error_type::out_of_sec_domain},
+        std::pair{"sec((23 pi/2)rad)", tcalc::eval_error_type::out_of_sec_domain}
+        ));
+
+
+INSTANTIATE_TEST_SUITE_P(
+    OutOfCscDomain, Errors,
+    testing::Values(
+        std::pair{"csc(180deg)", tcalc::eval_error_type::out_of_csc_domain},
+        std::pair{"csc(pi rad)", tcalc::eval_error_type::out_of_csc_domain},
+        std::pair{"csc(200grad)", tcalc::eval_error_type::out_of_csc_domain},
+        std::pair{"csc(360deg)", tcalc::eval_error_type::out_of_csc_domain},
+        std::pair{"csc(-180deg)", tcalc::eval_error_type::out_of_csc_domain},
+        std::pair{"csc((23 pi)rad)", tcalc::eval_error_type::out_of_csc_domain}
+        ));
+
+INSTANTIATE_TEST_SUITE_P(
+    OutOfCotDomain, Errors,
+    testing::Values(
+        std::pair{"cot(180deg)", tcalc::eval_error_type::out_of_cot_domain},
+        std::pair{"cot(pi rad)", tcalc::eval_error_type::out_of_cot_domain},
+        std::pair{"cot(200grad)", tcalc::eval_error_type::out_of_cot_domain},
+        std::pair{"cot(360deg)", tcalc::eval_error_type::out_of_cot_domain},
+        std::pair{"cot(-180deg)", tcalc::eval_error_type::out_of_cot_domain},
+        std::pair{"cot((23 pi)rad)", tcalc::eval_error_type::out_of_cot_domain}
+        ));
+
+INSTANTIATE_TEST_SUITE_P(
     ZeroPowZero, Errors,
     testing::Values(
         std::pair{"0^0", tcalc::eval_error_type::zero_pow_zero}

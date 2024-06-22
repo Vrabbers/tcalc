@@ -97,3 +97,41 @@ eval_error_type tcalc::builtin_tan(evaluator::stack& stack, const evaluator& eva
     return eval_error_type::none;
 }
 
+eval_error_type tcalc::builtin_sec(evaluator::stack& stack, const evaluator& eval) {
+    if (stack.back().is_real())
+      convert_angle(stack.back(), eval.trig_unit(), angle_unit::radians);
+
+    stack.back().cos(stack.back());
+
+    if (stack.back() == 0)
+      return eval_error_type::out_of_sec_domain;
+
+    stack.back().reciprocal(stack.back());
+    return eval_error_type::none;
+}
+
+eval_error_type tcalc::builtin_csc(evaluator::stack& stack, const evaluator& eval) {
+  if (stack.back().is_real())
+    convert_angle(stack.back(), eval.trig_unit(), angle_unit::radians);
+
+  stack.back().sin(stack.back());
+
+  if (stack.back() == 0)
+    return eval_error_type::out_of_csc_domain;
+
+  stack.back().reciprocal(stack.back());
+  return eval_error_type::none;
+}
+
+eval_error_type tcalc::builtin_cot(evaluator::stack& stack, const evaluator& eval) {
+  if (stack.back().is_real())
+    convert_angle(stack.back(), eval.trig_unit(), angle_unit::radians);
+
+  stack.back().tan(stack.back());
+  stack.back().reciprocal(stack.back());
+
+  if (stack.back().is_infinity())
+    return eval_error_type::out_of_cot_domain;
+
+  return eval_error_type::none;
+}

@@ -41,6 +41,9 @@ namespace tcalc
     eval_error_type builtin_ln(evaluator::stack&, const evaluator&);
     eval_error_type builtin_log2(evaluator::stack& , const evaluator&);
     eval_error_type builtin_tan(evaluator::stack&, const evaluator&);
+    eval_error_type builtin_sec(evaluator::stack&, const evaluator&);
+    eval_error_type builtin_csc(evaluator::stack&, const evaluator&);
+    eval_error_type builtin_cot(evaluator::stack&, const evaluator&);
 }
 
 #endif //BUILTINS_H
