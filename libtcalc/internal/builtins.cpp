@@ -34,7 +34,7 @@ void tcalc::convert_angle(number& number, const angle_unit from, const angle_uni
 
 eval_error_type tcalc::builtin_sqrt(evaluator::stack& stack, const evaluator&)
 {
-    stack.back().sqrt(stack.back());
+    stack.back().nth_root(stack.back(), 2);
     return eval_error_type::none;
 }
 

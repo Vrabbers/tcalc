@@ -342,11 +342,12 @@ eval_error_type evaluator::evaluate_binary_operator(const binary_operator* op, s
 {
     if (op->operation == token_kind::radical)
     {
-        if (stack.back() == 0)
-            return eval_error_type::zero_root;
-        if (stack.back() == 2)
-            return builtin_sqrt(stack, *this);
-
+        auto val = std::move(stack.back());
+        stack.pop_back();
+        auto root = std::move(stack.back());
+        stack.pop_back();
+        stack.push_back(std::move(val));
+        stack.push_back(std::move(root));
         return builtin_root(stack, *this);
     }
 
