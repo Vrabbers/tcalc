@@ -24,7 +24,27 @@ std::string_view tcalc::eval_error_type_name(eval_error_type t)
         case eval_error_type::complex_inequality:
             return "complex_inequality"sv;
         case eval_error_type::out_of_tan_domain:
-            return "out_of_tan_domanin"sv;
+            return "out_of_tan_domain"sv;
+        case eval_error_type::out_of_sec_domain:
+            return "out_of_sec_domain"sv;
+        case eval_error_type::out_of_csc_domain:
+            return "out_of_csc_domain"sv;
+        case eval_error_type::out_of_cot_domain:
+            return "out_of_cot_domain"sv;
+        case eval_error_type::out_of_asec_domain:
+            return "out_of_asec_domain"sv;
+        case eval_error_type::out_of_acsc_domain:
+            return "out_of_acsc_domain"sv;
+        case eval_error_type::out_of_csch_domain:
+            return "out_of_csch_domain"sv;
+        case eval_error_type::out_of_coth_domain:
+            return "out_of_coth_domain"sv;
+        case eval_error_type::out_of_asech_domain:
+            return "out_of_asech_domain"sv;
+        case eval_error_type::out_of_acsch_domain:
+            return "out_of_acsch_domain"sv;
+        case eval_error_type::out_of_acoth_domain:
+            return "out_of_acoth_domain"sv;
         case eval_error_type::zero_pow_zero:
             return "zero_pow_zero"sv;
         case eval_error_type::assign_to_constant:
@@ -39,5 +59,5 @@ std::string_view tcalc::eval_error_type_name(eval_error_type t)
             return "nan_error"sv;
         default:
             return {};
-    }
+        }
 }

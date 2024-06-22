@@ -111,6 +111,72 @@ INSTANTIATE_TEST_SUITE_P(
     ));
 
 INSTANTIATE_TEST_SUITE_P(
+    OutOfSecDomain, Errors,
+    testing::Values(
+        std::pair{"sec(90deg)", tcalc::eval_error_type::out_of_sec_domain},
+        std::pair{"sec((pi/2)rad)", tcalc::eval_error_type::out_of_sec_domain},
+        std::pair{"sec(100grad)", tcalc::eval_error_type::out_of_sec_domain},
+        std::pair{"sec(270deg)", tcalc::eval_error_type::out_of_sec_domain},
+        std::pair{"sec(-90deg)", tcalc::eval_error_type::out_of_sec_domain},
+        std::pair{"sec((23 pi/2)rad)", tcalc::eval_error_type::out_of_sec_domain}
+        ));
+
+
+INSTANTIATE_TEST_SUITE_P(
+    OutOfCscDomain, Errors,
+    testing::Values(
+        std::pair{"csc(180deg)", tcalc::eval_error_type::out_of_csc_domain},
+        std::pair{"csc(pi rad)", tcalc::eval_error_type::out_of_csc_domain},
+        std::pair{"csc(200grad)", tcalc::eval_error_type::out_of_csc_domain},
+        std::pair{"csc(360deg)", tcalc::eval_error_type::out_of_csc_domain},
+        std::pair{"csc(-180deg)", tcalc::eval_error_type::out_of_csc_domain},
+        std::pair{"csc((23 pi)rad)", tcalc::eval_error_type::out_of_csc_domain}
+        ));
+
+INSTANTIATE_TEST_SUITE_P(
+    OutOfCotDomain, Errors,
+    testing::Values(
+        std::pair{"cot(180deg)", tcalc::eval_error_type::out_of_cot_domain},
+        std::pair{"cot(pi rad)", tcalc::eval_error_type::out_of_cot_domain},
+        std::pair{"cot(200grad)", tcalc::eval_error_type::out_of_cot_domain},
+        std::pair{"cot(360deg)", tcalc::eval_error_type::out_of_cot_domain},
+        std::pair{"cot(-180deg)", tcalc::eval_error_type::out_of_cot_domain},
+        std::pair{"cot((23 pi)rad)", tcalc::eval_error_type::out_of_cot_domain}
+        ));
+
+INSTANTIATE_TEST_SUITE_P(
+    OutOfAsecDomain, Errors,
+    testing::Values(
+        std::pair{"asec(0)", tcalc::eval_error_type::out_of_asec_domain}
+        ));
+
+INSTANTIATE_TEST_SUITE_P(
+    OutOfAcscDomain, Errors,
+    testing::Values(
+        std::pair{"acsc(0)", tcalc::eval_error_type::out_of_acsc_domain}
+        ));
+
+INSTANTIATE_TEST_SUITE_P(
+    OutOfAsechDomain, Errors,
+    testing::Values(
+        std::pair{"asech(0)", tcalc::eval_error_type::out_of_asech_domain}
+        ));
+
+INSTANTIATE_TEST_SUITE_P(
+    OutOfCschDomain, Errors,
+    testing::Values(
+        std::pair{"csch(0)", tcalc::eval_error_type::out_of_csch_domain}
+        ));
+
+INSTANTIATE_TEST_SUITE_P(
+    OutOfAcothDomain, Errors,
+    testing::Values(
+        std::pair{"acoth(1)", tcalc::eval_error_type::out_of_acoth_domain},
+        std::pair{"acoth(0)", tcalc::eval_error_type::out_of_acoth_domain},
+        std::pair{"acoth(-1)", tcalc::eval_error_type::out_of_acoth_domain}
+        ));
+
+INSTANTIATE_TEST_SUITE_P(
     ZeroPowZero, Errors,
     testing::Values(
         std::pair{"0^0", tcalc::eval_error_type::zero_pow_zero}
@@ -133,3 +199,14 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(
         std::pair{"10^1000^1000", tcalc::eval_error_type::overflow}
     ));
+
+TEST_F(Errors, ErrorEnum)
+{
+    auto last_error = static_cast<int>(tcalc::eval_error_type::nan_error);
+    for (int i = static_cast<int>(tcalc::eval_error_type::none); i <= last_error; i++)
+    {
+        ASSERT_NE(tcalc::eval_error_type_name(static_cast<tcalc::eval_error_type>(i)), "");
+    }
+
+    ASSERT_EQ(tcalc::eval_error_type_name(static_cast<tcalc::eval_error_type>(last_error + 1)), "");
+}

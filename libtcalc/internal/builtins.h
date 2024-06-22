@@ -41,6 +41,18 @@ namespace tcalc
     eval_error_type builtin_ln(evaluator::stack&, const evaluator&);
     eval_error_type builtin_log2(evaluator::stack& , const evaluator&);
     eval_error_type builtin_tan(evaluator::stack&, const evaluator&);
+    eval_error_type builtin_sec(evaluator::stack&, const evaluator&);
+    eval_error_type builtin_csc(evaluator::stack&, const evaluator&);
+    eval_error_type builtin_cot(evaluator::stack&, const evaluator&);
+    eval_error_type builtin_asec(evaluator::stack&, const evaluator&);
+    eval_error_type builtin_acsc(evaluator::stack&, const evaluator&);
+    eval_error_type builtin_acot(evaluator::stack&, const evaluator&);
+    eval_error_type builtin_sech(evaluator::stack&, const evaluator&);
+    eval_error_type builtin_csch(evaluator::stack&, const evaluator&);
+    eval_error_type builtin_coth(evaluator::stack&, const evaluator&);
+    eval_error_type builtin_asech(evaluator::stack&, const evaluator&);
+    eval_error_type builtin_acsch(evaluator::stack&, const evaluator&);
+    eval_error_type builtin_acoth(evaluator::stack&, const evaluator&);
 }
 
 #endif //BUILTINS_H
