@@ -59,5 +59,5 @@ std::string_view tcalc::eval_error_type_name(eval_error_type t)
             return "nan_error"sv;
         default:
             return {};
-        }
+    }
 }

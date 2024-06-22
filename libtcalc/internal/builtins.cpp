@@ -10,28 +10,27 @@ void tcalc::convert_angle(number& number, const angle_unit from, const angle_uni
     {
         case angle_unit::degrees:
             number.div(number, 180);
-        if (to == angle_unit::radians)
-            number.mul(number, number::pi(number.precision()));
-        else // to == gradians
-            number.mul(number, 200);
-        break;
+            if (to == angle_unit::radians)
+                number.mul(number, number::pi(number.precision()));
+            else // to == gradians
+                number.mul(number, 200);
+            break;
         case angle_unit::radians:
             number.div(number, number::pi(number.precision()));
-        if (to == angle_unit::degrees)
-            number.mul(number, 180);
-        else // to == gradians
-            number.mul(number, 200);
-        break;
+            if (to == angle_unit::degrees)
+                number.mul(number, 180);
+            else // to == gradians
+                number.mul(number, 200);
+            break;
         case angle_unit::gradians:
             number.div(number, 200);
-        if (to == angle_unit::radians)
-            number.mul(number, number::pi(number.precision()));
-        else // to == degrees
-            number.mul(number, 180);
-        break;
+            if (to == angle_unit::radians)
+                number.mul(number, number::pi(number.precision()));
+            else // to == degrees
+                number.mul(number, 180);
+            break;
     }
 }
-
 
 eval_error_type tcalc::builtin_sqrt(evaluator::stack& stack, const evaluator&)
 {
@@ -45,10 +44,23 @@ eval_error_type tcalc::builtin_cbrt(evaluator::stack& stack, const evaluator&)
     return eval_error_type::none;
 }
 
-eval_error_type tcalc::builtin_root(evaluator::stack& stack, const evaluator&)
+eval_error_type tcalc::builtin_fourth_root(evaluator::stack& stack, const evaluator&)
+{
+    stack.back().nth_root(stack.back(), 4);
+    return eval_error_type::none;
+}
+
+eval_error_type tcalc::builtin_root(evaluator::stack& stack, const evaluator& evaluator)
 {
     if (stack.back() == 0)
         return eval_error_type::zero_root;
+
+    if (stack.back() == 2)
+    {
+        stack.pop_back();
+        return builtin_sqrt(stack, evaluator);
+    }
+
     const auto n = std::move(stack.back());
     stack.pop_back();
     stack.back().nth_root(stack.back(), n);

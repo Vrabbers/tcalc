@@ -36,6 +36,7 @@ namespace tcalc
 
     eval_error_type builtin_sqrt(evaluator::stack&, const evaluator&);
     eval_error_type builtin_cbrt(evaluator::stack&, const evaluator&);
+    eval_error_type builtin_fourth_root(evaluator::stack&, const evaluator&);
     eval_error_type builtin_root(evaluator::stack&, const evaluator&);
     eval_error_type builtin_log1(evaluator::stack&, const evaluator&);
     eval_error_type builtin_ln(evaluator::stack&, const evaluator&);

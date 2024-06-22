@@ -310,39 +310,39 @@ void parser::parse_primary_term(std::vector<operation>& parsing)
             }
             return;
         case token_kind::numeric_literal:
+        {
+            number num{_number_precision};
+            if (_current.source().back() == 'i')
             {
-                number num{_number_precision};
-                if (_current.source().back() == 'i')
-                {
-                    if (_current.source().length() == 1)
-                        num.set(0, 1); // string is "i", set to 0 + 1i
-                    else
-                        num.set_imaginary(_current.source());
-                }
+                if (_current.source().length() == 1)
+                    num.set(0, 1); // string is "i", set to 0 + 1i
                 else
-                {
-                    num.set_real(_current.source());
-                }
-                const auto token = forward();
-                parsing.emplace_back(literal_number{std::move(num), token.position()});
-                return;
+                    num.set_imaginary(_current.source());
             }
+            else
+            {
+                num.set_real(_current.source());
+            }
+            const auto token = forward();
+            parsing.emplace_back(literal_number{std::move(num), token.position()});
+            return;
+        }
         case token_kind::binary_literal:
-            {
-                auto num = number{_number_precision};
-                num.set_binary(_current.source());
-                parsing.emplace_back(literal_number{std::move(num), _current.position()});
-                forward();
-                return;
-            }
+        {
+            auto num = number{_number_precision};
+            num.set_binary(_current.source());
+            parsing.emplace_back(literal_number{std::move(num), _current.position()});
+            forward();
+            return;
+        }
         case token_kind::hex_literal:
-            {
-                auto num = number{_number_precision};
-                num.set_hexadecimal(_current.source());
-                parsing.emplace_back(literal_number{std::move(num), _current.position()});
-                forward();
-                return;
-            }
+        {
+            auto num = number{_number_precision};
+            num.set_hexadecimal(_current.source());
+            parsing.emplace_back(literal_number{std::move(num), _current.position()});
+            forward();
+            return;
+        }
         case token_kind::open_parenthesis:
             forward();
             parse_arithmetic(parsing);

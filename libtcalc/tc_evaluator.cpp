@@ -308,7 +308,7 @@ eval_error_type evaluator::evaluate_unary_operation(const unary_operator* op, st
             break;
 
         case token_kind::fourth_root:
-            stack.back().nth_root(stack.back(), 4);
+            builtin_fourth_root(stack, *this);
             break;
 
         case token_kind::minus:
