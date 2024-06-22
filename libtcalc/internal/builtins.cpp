@@ -168,3 +168,62 @@ eval_error_type tcalc::builtin_acot(evaluator::stack& stack, const evaluator& ev
     convert_angle(stack.back(), angle_unit::radians, eval.trig_unit());
   return eval_error_type::none;
 }
+
+eval_error_type tcalc::builtin_sech(evaluator::stack& stack, const evaluator& eval) {
+  stack.back().cosh(stack.back());
+  stack.back().reciprocal(stack.back());
+  return eval_error_type::none;
+}
+
+eval_error_type tcalc::builtin_csch(evaluator::stack& stack, const evaluator& eval) {
+  stack.back().sinh(stack.back());
+
+  if (stack.back() == 0)
+    return eval_error_type::out_of_csch_domain;
+
+  stack.back().reciprocal(stack.back());
+  return eval_error_type::none;
+}
+
+eval_error_type tcalc::builtin_coth(evaluator::stack& stack, const evaluator& eval) {
+  stack.back().tanh(stack.back());
+
+  if (stack.back() == 0)
+    return eval_error_type::out_of_coth_domain;
+
+  stack.back().reciprocal(stack.back());
+  return eval_error_type::none;
+}
+
+eval_error_type tcalc::builtin_asech(evaluator::stack& stack, const evaluator& eval) {
+  if (stack.back() == 0)
+    return eval_error_type::out_of_asech_domain;
+
+  stack.back().reciprocal(stack.back());
+  stack.back().acosh(stack.back());
+  if (stack.back().is_infinity())
+    return eval_error_type::out_of_acoth_domain;
+  
+  return eval_error_type::none;
+}
+
+eval_error_type tcalc::builtin_acsch(evaluator::stack& stack, const evaluator& eval) {
+  if (stack.back() == 0)
+    return eval_error_type::out_of_acsch_domain;
+
+  stack.back().reciprocal(stack.back());
+  stack.back().asinh(stack.back());
+  return eval_error_type::none;
+}
+
+eval_error_type tcalc::builtin_acoth(evaluator::stack& stack, const evaluator& eval) {
+    if (stack.back() == 0)
+      return eval_error_type::out_of_acoth_domain;
+
+  stack.back().reciprocal(stack.back());
+  stack.back().atanh(stack.back());
+  if (stack.back().is_infinity())
+      return eval_error_type::out_of_acoth_domain;
+
+  return eval_error_type::none;
+}

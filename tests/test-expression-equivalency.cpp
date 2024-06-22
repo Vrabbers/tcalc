@@ -61,3 +61,28 @@ INSTANTIATE_TEST_SUITE_P(
         std::pair{"cot(5)", "1/tan(5)"},
         std::pair{"cot(5)", "cos(5)/sin(5)"}
         ));
+
+INSTANTIATE_TEST_SUITE_P(HyperbolicSecantOperations, ExpressionEquivalency,
+                         testing::Values(std::pair{"sech(0)", "1"}));
+
+INSTANTIATE_TEST_SUITE_P(HyperbolicTangentOperations, ExpressionEquivalency,
+                         testing::Values(std::pair{"tanh(0)", "0"}));
+
+INSTANTIATE_TEST_SUITE_P(
+    InverseHyperbolicSecantOperations, ExpressionEquivalency,
+    testing::Values(
+        std::pair{"asech(1)", "0"},
+        std::pair{"asech(0.5)", "ln(sqrt(-1+0.5^(-2))+0.5^(-1))"}
+    ));
+
+INSTANTIATE_TEST_SUITE_P(
+    InverseHyperbolicCosecantOperations, ExpressionEquivalency,
+    testing::Values(
+        std::pair{"acsch(5)", "ln(sqrt(1+5^(-2))+5^(-1))"}
+    ));
+
+INSTANTIATE_TEST_SUITE_P(
+    InverseHyperbolicCotangentOperations, ExpressionEquivalency,
+    testing::Values(
+        std::pair{"acoth(5)", "ln(2/(5-1)+1)/2"}
+    ));

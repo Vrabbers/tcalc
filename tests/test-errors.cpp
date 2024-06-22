@@ -157,6 +157,26 @@ INSTANTIATE_TEST_SUITE_P(
         ));
 
 INSTANTIATE_TEST_SUITE_P(
+    OutOfAsechDomain, Errors,
+    testing::Values(
+        std::pair{"asech(0)", tcalc::eval_error_type::out_of_asech_domain}
+        ));
+
+INSTANTIATE_TEST_SUITE_P(
+    OutOfCschDomain, Errors,
+    testing::Values(
+        std::pair{"csch(0)", tcalc::eval_error_type::out_of_csch_domain}
+        ));
+
+INSTANTIATE_TEST_SUITE_P(
+    OutOfAcothDomain, Errors,
+    testing::Values(
+        std::pair{"acoth(1)", tcalc::eval_error_type::out_of_acoth_domain},
+        std::pair{"acoth(0)", tcalc::eval_error_type::out_of_acoth_domain},
+        std::pair{"acoth(-1)", tcalc::eval_error_type::out_of_acoth_domain}
+        ));
+
+INSTANTIATE_TEST_SUITE_P(
     ZeroPowZero, Errors,
     testing::Values(
         std::pair{"0^0", tcalc::eval_error_type::zero_pow_zero}
