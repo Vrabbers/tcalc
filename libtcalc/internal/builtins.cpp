@@ -135,3 +135,30 @@ eval_error_type tcalc::builtin_cot(evaluator::stack& stack, const evaluator& eva
 
   return eval_error_type::none;
 }
+
+eval_error_type tcalc::builtin_asec(evaluator::stack& stack, const evaluator& eval) {
+  stack.back().reciprocal(stack.back());
+  stack.back().acos(stack.back());
+
+  if (stack.back().is_real())
+    convert_angle(stack.back(), angle_unit::radians, eval.trig_unit());
+  return eval_error_type::none;
+}
+
+eval_error_type tcalc::builtin_acsc(evaluator::stack& stack, const evaluator& eval) {
+  stack.back().reciprocal(stack.back());
+  stack.back().asin(stack.back());
+
+  if (stack.back().is_real())
+    convert_angle(stack.back(), angle_unit::radians, eval.trig_unit());
+  return eval_error_type::none;
+}
+
+eval_error_type tcalc::builtin_acot(evaluator::stack& stack, const evaluator& eval) {
+  stack.back().reciprocal(stack.back());
+  stack.back().atan(stack.back());
+
+  if (stack.back().is_real())
+    convert_angle(stack.back(), angle_unit::radians, eval.trig_unit());
+  return eval_error_type::none;
+}

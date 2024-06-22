@@ -65,3 +65,13 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(
         std::pair{"2+3^2*4", "38"}
     ));
+INSTANTIATE_TEST_SUITE_P(
+    TrigonometricOperations, ExpressionEvaluation,
+    testing::Values(
+        std::pair{"asin(sin(30))", "30"},
+        std::pair{"acos(cos(30))", "30"},
+        std::pair{"atan(tan(30))", "30"},
+        std::pair{"asec(sec(30))", "30"},
+        std::pair{"acsc(csc(30))", "30"},
+        std::pair{"acot(cot(30))", "30"}
+        ));
