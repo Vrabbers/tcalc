@@ -73,5 +73,11 @@ INSTANTIATE_TEST_SUITE_P(
         std::pair{"atan(tan(30))", "30"},
         std::pair{"asec(sec(30))", "30"},
         std::pair{"acsc(csc(30))", "30"},
-        std::pair{"acot(cot(30))", "30"}
+        std::pair{"acot(cot(30))", "30"},
+        std::pair{"asinh(sinh(30))", "30"},
+        std::pair{"acosh(cosh(30))", "30"},
+        std::pair{"atanh(tanh(1))", "1"},
+        std::pair{"asech(sech(30))", "30"},
+        std::pair{"acsch(csch(30))", "30"},
+        std::pair{"acoth(coth(1))", "1"}
         ));
