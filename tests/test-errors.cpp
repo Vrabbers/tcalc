@@ -167,3 +167,14 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(
         std::pair{"10^1000^1000", tcalc::eval_error_type::overflow}
     ));
+
+TEST_F(Errors, ErrorEnum)
+{
+    auto last_error = static_cast<int>(tcalc::eval_error_type::nan_error);
+    for (int i = static_cast<int>(tcalc::eval_error_type::none); i <= last_error; i++)
+    {
+        ASSERT_NE(tcalc::eval_error_type_name(static_cast<tcalc::eval_error_type>(i)), "");
+    }
+
+    ASSERT_EQ(tcalc::eval_error_type_name(static_cast<tcalc::eval_error_type>(last_error + 1)), "");
+}
