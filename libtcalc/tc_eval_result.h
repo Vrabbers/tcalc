@@ -24,6 +24,8 @@ namespace tcalc
         out_of_sec_domain,
         out_of_csc_domain,
         out_of_cot_domain,
+        out_of_asec_domain,
+        out_of_acsc_domain,
         zero_pow_zero,
         assign_to_constant,
         zero_root,

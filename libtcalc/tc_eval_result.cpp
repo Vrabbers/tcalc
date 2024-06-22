@@ -31,6 +31,10 @@ std::string_view tcalc::eval_error_type_name(eval_error_type t)
             return "out_of_csc_domain"sv;
         case eval_error_type::out_of_cot_domain:
             return "out_of_cot_domain"sv;
+        case eval_error_type::out_of_asec_domain:
+            return "out_of_asec_domain"sv;
+        case eval_error_type::out_of_acsc_domain:
+            return "out_of_acsc_domain"sv;
         case eval_error_type::zero_pow_zero:
             return "zero_pow_zero"sv;
         case eval_error_type::assign_to_constant:

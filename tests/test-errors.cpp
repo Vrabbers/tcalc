@@ -145,6 +145,18 @@ INSTANTIATE_TEST_SUITE_P(
         ));
 
 INSTANTIATE_TEST_SUITE_P(
+    OutOfAsecDomain, Errors,
+    testing::Values(
+        std::pair{"asec(0)", tcalc::eval_error_type::out_of_asec_domain}
+        ));
+
+INSTANTIATE_TEST_SUITE_P(
+    OutOfAcscDomain, Errors,
+    testing::Values(
+        std::pair{"acsc(0)", tcalc::eval_error_type::out_of_acsc_domain}
+        ));
+
+INSTANTIATE_TEST_SUITE_P(
     ZeroPowZero, Errors,
     testing::Values(
         std::pair{"0^0", tcalc::eval_error_type::zero_pow_zero}

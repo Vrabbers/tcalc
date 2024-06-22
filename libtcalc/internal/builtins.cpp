@@ -137,6 +137,9 @@ eval_error_type tcalc::builtin_cot(evaluator::stack& stack, const evaluator& eva
 }
 
 eval_error_type tcalc::builtin_asec(evaluator::stack& stack, const evaluator& eval) {
+  if (stack.back() == 0)
+    return eval_error_type::out_of_asec_domain;
+
   stack.back().reciprocal(stack.back());
   stack.back().acos(stack.back());
 
@@ -146,6 +149,9 @@ eval_error_type tcalc::builtin_asec(evaluator::stack& stack, const evaluator& ev
 }
 
 eval_error_type tcalc::builtin_acsc(evaluator::stack& stack, const evaluator& eval) {
+  if (stack.back() == 0)
+    return eval_error_type::out_of_acsc_domain;
+
   stack.back().reciprocal(stack.back());
   stack.back().asin(stack.back());
 
