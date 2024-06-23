@@ -177,6 +177,12 @@ bool number::is_integer() const
     return mpfr_integer_p(d->real_ref());
 }
 
+bool number::is_negative() const
+{
+    auto cmp = mpc_cmp_si_si(d->ref, 0, 0);
+    return MPC_INEX_RE(cmp) < 0;
+}
+
 static std::string real_only_string(const mpc_t handle)
 {
     const auto size = mpfr_snprintf(nullptr, 0, "%.18Rg", mpc_realref(handle));
@@ -294,20 +300,25 @@ void number::reciprocal(const long x)
 
 void number::nth_root(const number& x, const number& root)
 {
-    number recip{precision()};
-    recip.reciprocal(root);
-    mpc_pow(d->ref, x.d->ref, recip.d->ref, round_mode);
+    if (x.is_real() && !x.is_negative() && root.is_integer() && !root.is_negative())
+    {
+        long si_root = mpfr_get_si(root.d->real_ref(), fr_round_mode);
+        set_imaginary(0);
+        mpfr_rootn_si(d->real_ref(), x.d->real_ref(), si_root, fr_round_mode);
+    }
+    else
+    {
+        number recip{precision()};
+        recip.reciprocal(root);
+        mpc_pow(d->ref, x.d->ref, recip.d->ref, round_mode);
+    }
 }
 
 void number::nth_root(const number& x, const long root)
 {
-    if (root % 2 == 1)
-    {
-        set(x);
-    }
-    number recip{precision()};
-    recip.reciprocal(root);
-    mpc_pow(d->ref, d->ref, recip.d->ref, round_mode);
+    number r{precision()};
+    r.set(root);
+    nth_root(x, r);
 }
 
 void number::exp(const number& x)
