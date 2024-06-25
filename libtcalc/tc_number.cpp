@@ -7,6 +7,7 @@
 #pragma warning(push, 0) // mpc header has warnings on MSVC /W4
 #endif
 
+#include <format>
 #include <mpc.h>
 
 #ifdef _MSC_VER
@@ -181,37 +182,6 @@ bool number::is_negative() const
 {
     auto cmp = mpc_cmp_si_si(d->ref, 0, 0);
     return MPC_INEX_RE(cmp) < 0;
-}
-
-static std::string real_only_string(const mpc_t handle)
-{
-    const auto size = mpfr_snprintf(nullptr, 0, "%.18Rg", mpc_realref(handle));
-    std::string str(static_cast<size_t>(size), '\0');
-    mpfr_snprintf(str.data(), size + 1, "%.18Rg", mpc_realref(handle));
-    return str;
-}
-
-static std::string both_string_positive_imaginary(const mpc_t handle)
-{
-    const auto size = mpfr_snprintf(nullptr, 0, "%.18Rg+%.18Rgi", mpc_realref(handle), mpc_imagref(handle));
-    std::string str(static_cast<size_t>(size), '\0');
-    mpfr_snprintf(str.data(), size + 1, "%.18Rg+%.18Rgi", mpc_realref(handle), mpc_imagref(handle));
-    return str;
-}
-
-static std::string both_string_negative_imaginary(const mpc_t handle)
-{
-    const auto size = mpfr_snprintf(nullptr, 0, "%.18Rg%.18Rgi", mpc_realref(handle), mpc_imagref(handle));
-    std::string str(static_cast<size_t>(size), '\0');
-    mpfr_snprintf(str.data(), size + 1, "%.18Rg%.18Rgi", mpc_realref(handle), mpc_imagref(handle));
-    return str;
-}
-
-static std::string both_string(const mpc_t handle)
-{
-    if (mpfr_sgn(mpc_imagref(handle)) < 0)
-        return both_string_negative_imaginary(handle);
-    return both_string_positive_imaginary(handle);
 }
 
 bool number::operator==(const long r) const
@@ -444,11 +414,60 @@ void number::atanh(const number& x)
     mpc_atanh(d->ref, x.d->ref, round_mode);
 }
 
+static std::string make_string(mpfr_srcptr op, int digits, char format)
+{
+    const auto format_string = std::format("%.{}R{}", digits, format);
+    const auto size = mpfr_snprintf(nullptr, 0, format_string.c_str(), op);
+    std::string str(static_cast<size_t>(size), '\0');
+    mpfr_snprintf(str.data(), size + 1, format_string.c_str(), op);
+    return str;
+}
+
 std::string number::string() const
 {
+    const int digits = static_cast<int>(std::floor(std::log10(2) * precision()) - 1);
+    const char format = 'g';
+    auto re_str = make_string(d->real_ref(), digits, format);
+
     if (is_real())
-        return real_only_string(d->ref);
-    return both_string(d->ref);
+    {
+        return re_str;
+    }
+
+    std::string im_str;
+    if (mpfr_cmp_si(d->imag_ref(), 1) == 0)
+    {
+        im_str = "i";
+    }
+    else if (mpfr_cmp_si(d->imag_ref(), -1) == 0)
+    {
+        im_str = "-i";
+    }
+    else
+    {
+        im_str = make_string(d->imag_ref(), digits, format);
+        im_str.push_back('i');
+    }
+
+    if (mpfr_zero_p(d->real_ref()))
+    {
+        return im_str;
+    }
+
+    std::string out_str{};
+
+    if (mpfr_sgn(d->imag_ref()) > 0)
+    {
+        out_str.append(re_str);
+        out_str.push_back('+');
+        out_str.append(im_str);
+    }
+    else
+    {
+        out_str.append(re_str);
+        out_str.append(im_str);
+    }
+    return out_str;
 }
 
 std::string number::dbg_string() const
