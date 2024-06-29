@@ -187,14 +187,14 @@ eval_error_type tcalc::builtin_acot(evaluator::stack& stack, const evaluator& ev
     return eval_error_type::none;
 }
 
-eval_error_type tcalc::builtin_sech(evaluator::stack& stack, const evaluator& eval)
+eval_error_type tcalc::builtin_sech(evaluator::stack& stack, const evaluator&)
 {
     stack.back().cosh(stack.back());
     stack.back().reciprocal(stack.back());
     return eval_error_type::none;
 }
 
-eval_error_type tcalc::builtin_csch(evaluator::stack& stack, const evaluator& eval)
+eval_error_type tcalc::builtin_csch(evaluator::stack& stack, const evaluator&)
 {
     stack.back().sinh(stack.back());
 
@@ -205,7 +205,7 @@ eval_error_type tcalc::builtin_csch(evaluator::stack& stack, const evaluator& ev
     return eval_error_type::none;
 }
 
-eval_error_type tcalc::builtin_coth(evaluator::stack& stack, const evaluator& eval)
+eval_error_type tcalc::builtin_coth(evaluator::stack& stack, const evaluator&)
 {
     stack.back().tanh(stack.back());
 
@@ -216,7 +216,7 @@ eval_error_type tcalc::builtin_coth(evaluator::stack& stack, const evaluator& ev
     return eval_error_type::none;
 }
 
-eval_error_type tcalc::builtin_asech(evaluator::stack& stack, const evaluator& eval)
+eval_error_type tcalc::builtin_asech(evaluator::stack& stack, const evaluator&)
 {
     if (stack.back() == 0)
         return eval_error_type::out_of_asech_domain;
@@ -229,7 +229,7 @@ eval_error_type tcalc::builtin_asech(evaluator::stack& stack, const evaluator& e
     return eval_error_type::none;
 }
 
-eval_error_type tcalc::builtin_acsch(evaluator::stack& stack, const evaluator& eval)
+eval_error_type tcalc::builtin_acsch(evaluator::stack& stack, const evaluator&)
 {
     if (stack.back() == 0)
         return eval_error_type::out_of_acsch_domain;
@@ -239,7 +239,7 @@ eval_error_type tcalc::builtin_acsch(evaluator::stack& stack, const evaluator& e
     return eval_error_type::none;
 }
 
-eval_error_type tcalc::builtin_acoth(evaluator::stack& stack, const evaluator& eval)
+eval_error_type tcalc::builtin_acoth(evaluator::stack& stack, const evaluator&)
 {
     if (stack.back() == 0)
         return eval_error_type::out_of_acoth_domain;

@@ -1,6 +1,7 @@
 #include "tc_number.h"
 
 #include <cassert>
+#include <cmath>
 #include <iostream>
 
 #ifdef _MSC_VER
