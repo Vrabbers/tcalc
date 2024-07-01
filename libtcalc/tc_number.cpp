@@ -426,9 +426,33 @@ static std::string make_string(mpfr_srcptr op, int digits, char format)
 
 std::string number::string() const
 {
-    const int digits = static_cast<int>(std::floor(std::log10(2) * precision()) - 1);
-    const char format = 'g';
-    auto re_str = make_string(d->real_ref(), digits, format);
+    return string(0, number_format::normal);
+}
+
+std::string number::string(int digits, const number_format format) const
+{
+    char format_ch;
+    switch (format)
+    {
+        case number_format::normal:
+            format_ch = 'G';
+            break;
+        case number_format::fixed_point:
+            format_ch = 'F';
+            break;
+        case number_format::scientific:
+            format_ch = 'E';
+            break;
+        default:
+            throw std::invalid_argument{"format"};
+    }
+
+    if (digits == 0)
+    {
+        digits = static_cast<int>(std::floor(std::log10(2) * precision()) - 1);
+    }
+
+    auto re_str = make_string(d->real_ref(), digits, format_ch);
 
     if (is_real())
     {
@@ -446,7 +470,7 @@ std::string number::string() const
     }
     else
     {
-        im_str = make_string(d->imag_ref(), digits, format);
+        im_str = make_string(d->imag_ref(), digits, format_ch);
         im_str.push_back('i');
     }
 

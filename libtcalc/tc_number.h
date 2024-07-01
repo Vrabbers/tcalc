@@ -8,6 +8,13 @@ namespace tcalc
 {
     struct number_pimpl;
 
+    enum class number_format
+    {
+        normal,
+        fixed_point,
+        scientific
+    };
+
     class number final
     {
     public:
@@ -91,6 +98,8 @@ namespace tcalc
 
         [[nodiscard]]
         std::string string() const;
+        [[nodiscard]]
+        std::string string(int digits, number_format format) const;
 
         [[nodiscard]]
         std::string dbg_string() const;

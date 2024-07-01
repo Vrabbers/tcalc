@@ -9,7 +9,6 @@
 #include "tc_evaluator.h"
 #include "tc_expression.h"
 #include "tc_lexer.h"
-#include "tc_operation.h"
 #include "tc_number.h"
 #include "tc_parser.h"
 
@@ -79,7 +78,10 @@ static void eval(tcalc::evaluator& eval, std::string&& input, bool show)
 
         if (const auto* num = std::get_if<tcalc::number>(&res.value()))
         {
-            std::cout << num->string() << ' ' << num->dbg_string();
+            std::cout << num->string() << ' ' << num->dbg_string() << '\n';
+            std::cout << "normal:     " << num->string(0, tcalc::number_format::normal) << '\n';
+            std::cout << "fixed:      " << num->string(0, tcalc::number_format::fixed_point) << '\n';
+            std::cout << "scientific: " << num->string(0, tcalc::number_format::scientific) << '\n';
         }
         else if (const auto* boolean = std::get_if<bool>(&res.value()))
         {
