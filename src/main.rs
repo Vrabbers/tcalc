@@ -1,6 +1,6 @@
 use std::io::stdin;
 
-use tcalc::lexer::Lexer;
+use tcalc::{lexer::Lexer, parser::Parser};
 
 fn read() -> String {
     let mut ln = String::new();
@@ -10,20 +10,24 @@ fn read() -> String {
 
 fn main() {
     println!("tcalc");
-    let mut lines: Vec<String> = Vec::new();
-
     loop {
-        let x = read();
-        if x.trim().is_empty() {
-            break;
+        let mut lines: Vec<String> = Vec::new();
+
+        loop {
+            let x = read();
+            if x.trim().is_empty() {
+                break;
+            }
+            print!("{x}");
+            lines.push(String::from(x.trim()));
         }
-        print!("{x}");
-        lines.push(String::from(x.trim()));
-    }
 
-    let src = lines.concat(); //already have line
+        let src = lines.concat(); //already have line
+        let lex = Lexer::new(src, false);
+        let par = Parser::new(lex);
 
-    for token in Lexer::new(src, true) {
-        println!("{token:?}");
+        for expr in par {
+            println!("{expr:#?}");
+        }
     }
 }
