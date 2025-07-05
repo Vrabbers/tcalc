@@ -1,4 +1,4 @@
-use std::io::stdin;
+use std::{io::stdin};
 
 use tcalc::{lexer::Lexer, parser::Parser};
 
@@ -23,11 +23,15 @@ fn main() {
         }
 
         let src = lines.concat(); //already have line
-        let lex = Lexer::new(src, false);
-        let par = Parser::new(lex);
+        let lex = Lexer::new(src, true);
+        let mut par = Parser::new(lex);
 
-        for expr in par {
+        for expr in par.by_ref() {
             println!("{expr:#?}");
+        }
+
+        for e in par.diagnostic_bag() {
+            println!("{e:?}");
         }
     }
 }

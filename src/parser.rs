@@ -252,12 +252,10 @@ impl Parser {
         loop {
             let mut prec = binary_precedence(self.current.kind);
             let (op_kind, position) = if prec != -1 {
-                let t = self.forward();
-
                 if enclosing_precedence_test(prec, enclosing_prec, enclosing_right_assoc) {
                     return;
                 }
-
+                let t = self.forward();
                 (t.kind, t.position)
             } else if can_insert_implicit_multiply(self.current.kind) {
                 prec = binary_precedence(TokenKind::Multiply);
@@ -474,6 +472,10 @@ impl Parser {
             err_pos,
             DiagnosticType::UnexpectedToken(err_kind),
         ));
+    }
+
+    pub fn diagnostic_bag(&self) -> &[Diagnostic] {
+        self.lexer.diagnostic_bag()
     }
 
     fn diagnostic_bag_mut(&mut self) -> &mut Vec<Diagnostic> {
