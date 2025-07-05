@@ -17,13 +17,13 @@ fn main() {
         if x.trim().is_empty() {
             break;
         }
-        print!("{}", x);
+        print!("{x}");
         lines.push(String::from(x.trim()));
     }
 
     let src = lines.concat(); //already have line
 
     for token in Lexer::new(src, true) {
-        println!("{:?}", token);
+        println!("{token:?}");
     }
 }

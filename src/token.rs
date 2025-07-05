@@ -1,6 +1,6 @@
-use crate::SourcePosition;
+use crate::SourcePos;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenKind {
     Bad,
     EndOfFile,
@@ -53,6 +53,6 @@ pub enum TokenKind {
 #[derive(Debug, Clone)]
 pub struct Token {
     pub source: String,
-    pub position: SourcePosition,
+    pub position: SourcePos,
     pub kind: TokenKind,
 }

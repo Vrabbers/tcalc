@@ -1,4 +1,4 @@
-use crate::SourcePosition;
+use crate::SourcePos;
 
 #[derive(Debug, Clone, Copy)]
 pub enum DiagnosticType {
@@ -9,14 +9,14 @@ pub enum DiagnosticType {
 
 #[derive(Debug, Clone)]
 pub struct Diagnostic {
-    position: SourcePosition,
+    position: SourcePos,
     diagnostic: DiagnosticType,
     arguments: Vec<String>,
 }
 
 impl Diagnostic {
     pub fn new_args(
-        position: SourcePosition,
+        position: SourcePos,
         diagnostic: DiagnosticType,
         arguments: Vec<String>,
     ) -> Self {
@@ -27,7 +27,7 @@ impl Diagnostic {
         }
     }
 
-    pub fn new(position: SourcePosition, diagnostic: DiagnosticType) -> Self {
+    pub fn new(position: SourcePos, diagnostic: DiagnosticType) -> Self {
         Self {
             position,
             diagnostic,
@@ -35,7 +35,7 @@ impl Diagnostic {
         }
     }
 
-    pub fn position(&self) -> SourcePosition {
+    pub fn position(&self) -> SourcePos {
         self.position
     }
 

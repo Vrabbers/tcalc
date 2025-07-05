@@ -1,4 +1,4 @@
-use crate::SourcePosition;
+use crate::SourcePos;
 
 #[derive(Debug, Clone)]
 pub struct StringReader {
@@ -42,9 +42,9 @@ impl StringReader {
         }
     }
 
-    pub fn flush(&mut self) -> (SourcePosition, String) {
+    pub fn flush(&mut self) -> (SourcePos, String) {
         let substr = String::from(&self.str[self.start..self.end]);
-        let pos = SourcePosition(self.start, self.end);
+        let pos = SourcePos::new(self.start, self.end);
         self.discard_token();
         (pos, substr)
     }

@@ -1,5 +1,3 @@
-use std::slice::Iter;
-
 use unicode_categories::UnicodeCategories;
 
 use crate::{
@@ -100,11 +98,19 @@ impl Lexer {
         }
     }
 
+    pub fn diagnostic_bag(&self) -> &[Diagnostic] {
+        &self.diagnostic_bag
+    }
+
+    pub fn diagnostic_bag_mut(&mut self) -> &mut Vec<Diagnostic> {
+        &mut self.diagnostic_bag
+    }
+
     pub fn reached_end(&self) -> bool {
         self.reached_end
     }
 
-    fn next_token(&mut self) -> Token {
+    pub fn next_token(&mut self) -> Token {
         while self.sr.peek().map(is_whitespace).unwrap_or_default() {
             self.sr.forward();
         }
@@ -125,10 +131,6 @@ impl Lexer {
             self.reached_end = true;
             self.flush_token(TokenKind::EndOfFile)
         }
-    }
-
-    pub fn diag_bag_iter(&self) -> Iter<Diagnostic> {
-        self.diagnostic_bag.iter()
     }
 
     fn decimal_sep(&self) -> char {
