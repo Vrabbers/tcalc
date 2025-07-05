@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::SourcePos;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -48,6 +50,12 @@ pub enum TokenKind {
 
     ArgumentSeparator,
     ExpressionSeparator,
+}
+
+impl fmt::Display for TokenKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{self:?}")
+    }
 }
 
 #[derive(Debug, Clone)]

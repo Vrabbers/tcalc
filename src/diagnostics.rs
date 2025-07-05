@@ -1,10 +1,10 @@
-use crate::SourcePos;
+use crate::{token::TokenKind, SourcePos};
 
 #[derive(Debug, Clone, Copy)]
 pub enum DiagnosticType {
     InvalidNumberLiteral,
     InvalidSymbol,
-    UnexpectedToken,
+    UnexpectedToken(TokenKind),
 }
 
 #[derive(Debug, Clone)]

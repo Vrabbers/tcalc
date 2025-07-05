@@ -1,4 +1,4 @@
-use crate::{token::TokenKind, SourcePos};
+use crate::{SourcePos, token::TokenKind};
 
 type Number = String;
 
@@ -9,23 +9,32 @@ pub enum Op {
     Literal(Number),
     VarRef(String),
     FnCall { name: String, arity: i32 },
-} 
-
-#[derive(Debug, Clone)]
-pub struct Operation { 
-    pub op: Op, 
-    pub position: SourcePos
 }
 
 #[derive(Debug, Clone)]
-pub enum Expr {
-    Arithmetic(Vec<Operation>),
-    Assignment { var: String, comp: Vec<Operation> },
-    Boolean { lhs: Vec<Operation>, rhs: Vec<Operation>, kind: TokenKind }
-}
-
-#[derive(Debug, Clone)]
-pub struct Expression {
-    pub expr: Expr,
+pub struct Operation {
+    pub op: Op,
     pub position: SourcePos,
+}
+
+#[derive(Debug, Clone)]
+pub struct Computation {
+    pub ops: Vec<Operation>,
+    pub position: SourcePos,
+}
+
+#[derive(Debug, Clone)]
+pub enum Expression {
+    Arithmetic(Computation),
+    Assignment {
+        var: String,
+        comp: Computation,
+        position: SourcePos,
+    },
+    Boolean {
+        lhs: Computation,
+        rhs: Computation,
+        kind: TokenKind,
+        position: SourcePos,
+    },
 }

@@ -1,9 +1,12 @@
 use std::mem;
 
-use crate::SourcePos;
-use crate::token::{Token, TokenKind};
-use crate::lexer::Lexer;
-use crate::expressions::{Expr, Expression, Op, Operation};
+use crate::{
+    SourcePos,
+    diagnostics::{Diagnostic, DiagnosticType},
+    expressions::{Computation, Expression, Op, Operation},
+    lexer::Lexer,
+    token::{Token, TokenKind},
+};
 
 #[derive(Debug, Clone)]
 pub struct Parser {
@@ -64,17 +67,21 @@ fn can_insert_implicit_multiply(kind: TokenKind) -> bool {
 }
 
 fn is_postfix_operator(kind: TokenKind) -> bool {
-    matches!(kind, TokenKind::Rad
-        | TokenKind::Deg
-        | TokenKind::Grad
-        | TokenKind::Percent
-        | TokenKind::Factorial)
+    matches!(
+        kind,
+        TokenKind::Rad
+            | TokenKind::Deg
+            | TokenKind::Grad
+            | TokenKind::Percent
+            | TokenKind::Factorial
+    )
 }
 
 fn is_superscript(kind: TokenKind) -> bool {
-    matches!(kind, TokenKind::SuperscriptLiteral
-        | TokenKind::SuperscriptMinus
-        | TokenKind::SuperscriptPlus)
+    matches!(
+        kind,
+        TokenKind::SuperscriptLiteral | TokenKind::SuperscriptMinus | TokenKind::SuperscriptPlus
+    )
 }
 
 impl Parser {
@@ -98,17 +105,19 @@ impl Parser {
 
         if lhs_parse.is_empty() {
             self.expect_end();
-            return Expression {
-                expr: Expr::Arithmetic(lhs_parse),
+            return Expression::Arithmetic(Computation {
+                ops: lhs_parse,
                 position: SourcePos::new(lhs_start, lhs_end),
-            };
+            });
+        }
+
+        if self.current.kind == TokenKind::Equal && lhs_parse.len() == 1 {
+            if let Op::VarRef(var) = lhs_parse.pop().unwrap().op {
+                return self.parse_variable_assignment(lhs_start, var);
+            }
         }
 
         match self.current.kind {
-            TokenKind::Equal
-                if lhs_parse.len() == 1 && matches!(lhs_parse[0].op, Op::VarRef(_)) =>
-                self.parse_variable_assignment(lhs_start, lhs_parse),
-
             TokenKind::Equal
             | TokenKind::Equality
             | TokenKind::NotEqual
@@ -118,9 +127,15 @@ impl Parser {
             | TokenKind::GreaterOrEqual => {
                 let boolean_kind = self.forward().kind;
                 self.parse_boolean_expression(lhs_start, lhs_end, lhs_parse, boolean_kind)
-            },
+            }
 
-            _ => todo!()
+            _ => {
+                self.expect_end();
+                Expression::Arithmetic(Computation {
+                    ops: lhs_parse,
+                    position: SourcePos::new(lhs_start, lhs_end),
+                })
+            }
         }
     }
 
@@ -128,20 +143,36 @@ impl Parser {
         self.current.kind == TokenKind::EndOfFile
     }
 
-    fn parse_arithmetic(&mut self, lhs_parse: &mut Vec<Operation>) {
+    fn parse_arithmetic(&mut self, parse: &mut Vec<Operation>) {
         todo!()
     }
 
     fn expect_end(&mut self) {
-        todo!()
+        if !ends_expr(self.current.kind) {
+            self.unexpected_token(self.current.position, self.current.kind);
+        }
+        self.forward();
     }
-    
-    fn parse_variable_assignment(&mut self, lhs_start: usize, lhs_parse: Vec<Operation>) -> Expression {
-        todo!()
+
+    fn parse_variable_assignment(&mut self, lhs_start: usize, var: String) -> Expression {
+        self.forward();
+        let rhs_start = self.current.position.start;
+        let mut rhs_parse = Vec::new();
+        self.parse_arithmetic(&mut rhs_parse);
+        let rhs_end = self.current.position.end;
+        self.expect_end();
+        Expression::Assignment {
+            var,
+            comp: Computation {
+                ops: rhs_parse,
+                position: SourcePos::new(rhs_start, rhs_end),
+            },
+            position: SourcePos::new(lhs_start, rhs_end),
+        }
     }
-    
+
     fn forward(&mut self) -> Token {
-        let mut val  = self.peek.take().unwrap_or_else(|| self.lexer.next_token());
+        let mut val = self.peek.take().unwrap_or_else(|| self.lexer.next_token());
         mem::swap(&mut self.current, &mut val);
         val
     }
@@ -152,8 +183,21 @@ impl Parser {
         }
         self.peek.as_ref().unwrap()
     }
-    
-    fn parse_boolean_expression(&mut self, lhs_start: usize, lhs_end: usize, lhs_parse: Vec<Operation>, kind: TokenKind) -> Expression {
+
+    fn parse_boolean_expression(
+        &mut self,
+        lhs_start: usize,
+        lhs_end: usize,
+        lhs_parse: Vec<Operation>,
+        kind: TokenKind,
+    ) -> Expression {
         todo!()
+    }
+
+    fn unexpected_token(&mut self, err_pos: SourcePos, err_kind: TokenKind) {
+        self.lexer.diagnostic_bag_mut().push(Diagnostic::new(
+            err_pos,
+            DiagnosticType::UnexpectedToken(err_kind),
+        ));
     }
 }
