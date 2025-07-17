@@ -1,7 +1,3 @@
-[package]
-name = "tcalc"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-unicode_categories = "0.1.1"
+[workspace]
+resolver = "3"
+members = ["tcalc", "tcalc_num"]
