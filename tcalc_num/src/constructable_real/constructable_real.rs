@@ -1,7 +1,7 @@
 use crate::error::DomainViolation::{LogarithmOfNegative, SquareRootOfNegative};
 use crate::error::InternalError::{ConstructableRealFromInf, ConstructableRealFromNan};
 use crate::error::NumError::{DomainViolation, InternalError, PrecisionOverflow};
-use crate::error::{NumError, NumResult};
+use crate::error::{CancelCheckable, NumError, NumResult};
 use num::bigint::Sign;
 use num::traits::real::Real;
 use num::{BigInt, Integer, One, Signed, ToPrimitive, Zero};
@@ -12,8 +12,8 @@ use std::fmt::{Display, Formatter};
 use std::mem::swap;
 use std::ops::{Add, Div, Mul, Neg, Shl, Shr, Sub};
 use std::rc::Rc;
-use std::sync::LazyLock;
-use crate::constructable_real::constructable_real::ConstructableRealType::BigInteger;
+use cancellation_token::CancellationToken;
+
 // https://android.googlesource.com/platform/external/crcalc/+/6db978c639e9bd5ac63fd88cbf3765d8c0fb3271/src/com/hp/creals/CR.java
 
 #[derive(Clone, Debug)]
@@ -37,9 +37,14 @@ enum ConstructableRealType {
 #[derive(Clone, Debug)]
 pub struct ConstructableReal {
     t: Box<ConstructableRealType>,
-    pub min_prec: Rc<RefCell<i32>>,
-    pub max_appr: Rc<RefCell<BigInt>>,
-    pub appr_valid: Rc<RefCell<bool>>,
+    current_approximation: Rc<RefCell<Option<ConstructableRealApproximation>>>,
+    cancellation_token: CancellationToken
+}
+
+#[derive(Debug)]
+pub struct ConstructableRealApproximation {
+    pub min_prec: i32,
+    pub max_appr: BigInt,
 }
 
 impl ConstructableReal {
@@ -195,6 +200,7 @@ impl ConstructableReal {
                 let mut n = 0;
                 let max_trunc_error = BigInt::one() << (precision - 4 - calc_precision);
                 while current_term.clone().abs() >= max_trunc_error {
+                    self.cancellation_token.stop_if_cancelled()?;
                     n += 1;
                     /* current_term = current_term * op / n */
                     current_term = scale(current_term * op_appr.clone(), op_prec);
@@ -224,6 +230,7 @@ impl ConstructableReal {
                 let mut current_sign = 1; // (-1)^(n-1)
                 let max_trunc_error = BigInt::one() << (precision - 4 - calc_precision);
                 while current_term.abs() >= max_trunc_error {
+                    self.cancellation_token.stop_if_cancelled()?;
                     n += 1;
                     current_sign = -current_sign;
                     x_nth = scale(x_nth * op_appr.clone(), op_prec);
@@ -257,7 +264,8 @@ impl ConstructableReal {
                 n = 0;
                 current_term = BigInt::one() << -calc_precision;
                 let mut current_sum = current_term.clone();
-                while (current_term.abs() >= max_trunc_error) {
+                while current_term.abs() >= max_trunc_error {
+                    self.cancellation_token.stop_if_cancelled()?;
                     n += 2;
                     /* current_term = - current_term * op * op / n * (n - 1)   */
                     current_term = scale(current_term * op_appr.clone(), op_prec);
@@ -343,7 +351,8 @@ impl ConstructableReal {
                 let mut current_sign = 1;
                 let mut n = 1;
                 let max_trunc_error = BigInt::one() << (precision - 2 - calc_precision);
-                while (current_term.abs() >= max_trunc_error) {
+                while current_term.abs() >= max_trunc_error {
+                    self.cancellation_token.stop_if_cancelled()?;
                     n += 2;
                     current_power = current_power / big_op_squared.clone();
                     current_sign = -current_sign;
@@ -358,39 +367,58 @@ impl ConstructableReal {
     fn get_appr(&self, precision: i32) -> NumResult<BigInt> {
         check_prec(precision)?;
 
+        let current_approximation_borrow = self.current_approximation.borrow();
+        let current_approximation = current_approximation_borrow.as_ref();
+
         if self.t.is_slow_cr() {
             let max_prec = -64;
             let prec_incr = 32;
 
-            if *self.appr_valid.borrow() && precision >= *self.min_prec.borrow() {
+            if let Some(current_approximation) = current_approximation && precision >= current_approximation.min_prec {
                 Ok(scale(
-                    self.max_appr.borrow().clone(),
-                    *self.min_prec.borrow() - precision,
+                    current_approximation.max_appr.clone(),
+                    current_approximation.min_prec - precision,
                 ))
             } else {
+                drop(current_approximation_borrow);
+
                 let eval_prec = if precision >= max_prec {
                     max_prec
                 } else {
                     (precision - prec_incr + 1) & !(prec_incr - 1)
                 };
                 let result = self.approximate(eval_prec)?;
-                self.min_prec.replace(eval_prec);
-                self.max_appr.replace(result.clone());
-                self.appr_valid.replace(true);
+                if let Some(current_approximation) = self.current_approximation.borrow_mut().as_mut() {
+                    current_approximation.min_prec = precision;
+                    current_approximation.max_appr = result.clone();
+                } else {
+                    self.current_approximation.replace(Some(ConstructableRealApproximation {
+                        min_prec: precision,
+                        max_appr: result.clone(),
+                    }));
+                }
                 Ok(scale(result, eval_prec - precision))
             }
         } else {
-            if *self.appr_valid.borrow() && precision >= *self.min_prec.borrow() {
+            if let Some(current_approximation) = current_approximation && precision >= current_approximation.min_prec {
                 Ok(scale(
-                    self.max_appr.borrow().clone(),
-                    *self.min_prec.borrow() - precision,
+                    current_approximation.max_appr.clone(),
+                    current_approximation.min_prec - precision,
                 ))
             } else {
-                let result = self.approximate(precision);
-                self.min_prec.replace(precision);
-                self.max_appr.replace(result.clone()?);
-                self.appr_valid.replace(true);
-                result
+                drop(current_approximation_borrow);
+
+                let result = self.approximate(precision)?;
+                if let Some(current_approximation) = self.current_approximation.borrow_mut().as_mut() {
+                    current_approximation.min_prec = precision;
+                    current_approximation.max_appr = result.clone();
+                } else {
+                    self.current_approximation.replace(Some(ConstructableRealApproximation {
+                        min_prec: precision,
+                        max_appr: result.clone(),
+                    }));
+                }
+                Ok(result)
             }
         }
     }
@@ -402,25 +430,33 @@ impl ConstructableReal {
     /// and sufficiently removed from zero
     /// that the msd is determined.
     fn known_msd(&self) -> i32 {
-        let max_appr = self.max_appr.borrow();
-        let length = if max_appr.sign() != Sign::Minus {
-            max_appr.bits()
+        let current_approximation_borrow = self.current_approximation.borrow();
+        let current_approximation = current_approximation_borrow.as_ref().unwrap();
+
+        let length = if current_approximation.max_appr.sign() != Sign::Minus {
+            current_approximation.max_appr.bits()
         } else {
-            max_appr.abs().bits()
+            current_approximation.max_appr.abs().bits()
         } as i32;
-        let first_digit = self.min_prec.borrow().clone() + length - 1;
+        let first_digit = current_approximation.min_prec + length - 1;
         first_digit
     }
 
     /// This version may return i32::MIN if the correct
     /// answer is < n.
     fn msd_n(&mut self, n: i32) -> NumResult<i32> {
-        if !*self.appr_valid.borrow()
-            || *self.max_appr.borrow() <= BigInt::one()
-            && *self.max_appr.borrow() >= BigInt::one().mul(-1)
-        {
+        let current_approximation_borrow = self.current_approximation.borrow();
+        let current_approximation = current_approximation_borrow.as_ref();
+
+        if current_approximation.is_none() || {
+            let current_approximation = current_approximation.unwrap();
+            current_approximation.max_appr <= BigInt::one() && current_approximation.max_appr >= BigInt::one().mul(-1)
+        } {
+            drop(current_approximation_borrow);
+
             self.get_appr(n - 1)?;
-            if self.max_appr.borrow().abs() <= BigInt::one() {
+
+            if self.current_approximation.borrow().as_ref().unwrap().max_appr.abs() <= BigInt::one() {
                 return Ok(i32::MIN);
             }
         }
@@ -438,6 +474,7 @@ impl ConstructableReal {
                 return Ok(msd);
             }
             check_prec(prec)?;
+            self.cancellation_token.stop_if_cancelled()?;
             prec = (prec * 3) / 2 - 16;
         }
         self.msd_n(n)
@@ -518,8 +555,8 @@ impl ConstructableReal {
 
     /// Equivalent to <TT>compareTo(CR.valueOf(0), a)</tt>
     pub fn sign_precision(&mut self, a: i32) -> NumResult<Sign> {
-        if *self.appr_valid.borrow() {
-            let quick_try = self.max_appr.borrow().sign();
+        if let Some(current_approximation) = self.current_approximation.borrow().as_ref() {
+            let quick_try = current_approximation.max_appr.sign();
             if quick_try != Sign::NoSign {
                 return Ok(quick_try);
             }
@@ -596,6 +633,7 @@ impl ConstructableReal {
     /// of the decimal point, and may thus improve performance.
     pub fn assume_int(self) -> ConstructableReal {
         ConstructableReal {
+            cancellation_token: self.cancellation_token.clone(),
             t: Box::new(ConstructableRealType::AssumedInt(self)),
             ..ConstructableReal::default()
         }
@@ -605,6 +643,7 @@ impl ConstructableReal {
     /// x.inverse() is equivalent to ConstructableReal::from(1).divide(x).
     pub fn inverse(self) -> ConstructableReal {
         ConstructableReal {
+            cancellation_token: self.cancellation_token.clone(),
             t: Box::new(ConstructableRealType::Inverted(self)),
             ..ConstructableReal::default()
         }
@@ -616,6 +655,7 @@ impl ConstructableReal {
     /// a useful alternative to conditionals.
     pub fn select(self, x: Self, y: Self) -> ConstructableReal {
         ConstructableReal {
+            cancellation_token: self.cancellation_token.clone(),
             t: Box::new(ConstructableRealType::Select(self, x, y)),
             ..ConstructableReal::default()
         }
@@ -636,16 +676,18 @@ impl ConstructableReal {
     /// The exponential function, that is e**self
     pub fn exp(self) -> NumResult<ConstructableReal> {
         let low_prec = -10;
-        let rough_appr = self.clone().get_appr(low_prec)?;
-        if rough_appr.sign() == Sign::Minus {
-            return Ok((-self).exp()?.inverse());
-        };
-        if rough_appr > BigInt::from(2) {
+        let rough_appr = self.get_appr(low_prec)?;
+        // Handle negative arguments directly; negating and computing inverse
+        // can be very expensive.
+        if rough_appr > BigInt::from(2) || rough_appr < BigInt::from(-2) {
             let square_root = (self >> 1)?.exp()?;
             Ok(square_root.clone() * square_root)
         } else {
             Ok(ConstructableReal {
-                t: Box::new(ConstructableRealType::PrescaledExp(self)),
+                cancellation_token: self.cancellation_token.clone(),
+                t: Box::new(ConstructableRealType::PrescaledExp(
+                    self,
+                )),
                 ..ConstructableReal::default()
             })
         }
@@ -693,6 +735,7 @@ impl ConstructableReal {
 
     pub fn simple_ln(self) -> ConstructableReal {
         ConstructableReal {
+            cancellation_token: self.cancellation_token.clone(),
             t: Box::new(ConstructableRealType::PrescaledLn(
                 self - ConstructableReal::from(1),
             )),
@@ -702,6 +745,7 @@ impl ConstructableReal {
 
     pub fn sqrt(self) -> ConstructableReal {
         ConstructableReal {
+            cancellation_token: self.cancellation_token.clone(),
             t: Box::new(ConstructableRealType::SquareRoot(self)),
             ..ConstructableReal::default()
         }
@@ -730,7 +774,7 @@ impl ConstructableReal {
             // Subtract multiples of PI
             let multiplier = rough_appr / BigInt::from(6);
             let adjustment = Self::pi() * ConstructableReal::from(multiplier.clone());
-            if ((multiplier & BigInt::one()).sign() == Sign::NoSign) {
+            if (multiplier & BigInt::one()).sign() == Sign::NoSign {
                 Ok(-(self - adjustment).cos()?)
             } else {
                 (self - adjustment).cos()
@@ -741,10 +785,16 @@ impl ConstructableReal {
             Ok(((cos_half.clone() * cos_half) << 1)? - ConstructableReal::from(1))
         } else {
             Ok(ConstructableReal {
+                cancellation_token: self.cancellation_token.clone(),
                 t: Box::new(ConstructableRealType::PrescaledCos(self)),
                 ..ConstructableReal::default()
             })
         }
+    }
+
+    pub fn with_cancellation_token(mut self, cancellation_token: CancellationToken) -> Self {
+        self.cancellation_token = cancellation_token;
+        self
     }
 }
 
@@ -752,9 +802,8 @@ impl Default for ConstructableReal {
     fn default() -> Self {
         ConstructableReal {
             t: Box::new(ConstructableRealType::Invalid),
-            min_prec: Rc::new(RefCell::new(0)),
-            max_appr: Rc::new(RefCell::new(BigInt::zero())),
-            appr_valid: Rc::new(RefCell::new(false)),
+            current_approximation: Rc::new(RefCell::new(None)),
+            cancellation_token: CancellationToken::new(false)
         }
     }
 }
@@ -841,6 +890,7 @@ impl Add for ConstructableReal {
 
     fn add(self, rhs: Self) -> Self::Output {
         ConstructableReal {
+            cancellation_token: self.cancellation_token.clone(),
             t: Box::new(ConstructableRealType::Add(self, rhs)),
             ..ConstructableReal::default()
         }
@@ -853,6 +903,7 @@ impl Shl<i32> for ConstructableReal {
     fn shl(self, rhs: i32) -> Self::Output {
         check_prec(rhs)?;
         Ok(ConstructableReal {
+            cancellation_token: self.cancellation_token.clone(),
             t: Box::new(ConstructableRealType::Shift(self, rhs)),
             ..ConstructableReal::default()
         })
@@ -865,6 +916,7 @@ impl Shr<i32> for ConstructableReal {
     fn shr(self, rhs: i32) -> Self::Output {
         check_prec(rhs)?;
         Ok(ConstructableReal {
+            cancellation_token: self.cancellation_token.clone(),
             t: Box::new(ConstructableRealType::Shift(self, -rhs)),
             ..ConstructableReal::default()
         })
@@ -884,6 +936,7 @@ impl Mul for ConstructableReal {
 
     fn mul(self, rhs: Self) -> Self::Output {
         ConstructableReal {
+            cancellation_token: self.cancellation_token.clone(),
             t: Box::new(ConstructableRealType::Multiply(self, rhs)),
             ..ConstructableReal::default()
         }
@@ -903,6 +956,7 @@ impl Neg for ConstructableReal {
 
     fn neg(self) -> Self::Output {
         ConstructableReal {
+            cancellation_token: self.cancellation_token.clone(),
             t: Box::new(ConstructableRealType::Negated(self)),
             ..ConstructableReal::default()
         }
