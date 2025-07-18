@@ -306,8 +306,13 @@ impl Parser {
                 }
             }
             TokenKind::NumericLiteral | TokenKind::BinaryLiteral | TokenKind::HexLiteral => {
+                let mut str = token.source.chars().filter(|c| !matches!(c, '\''|'_')).collect::<String>();
+                if !self.lexer.comma_is_arg_separator {
+                    str = str.replace(',', ".");
+                }
+
                 parse.push(Operation {
-                    op: Op::Literal(token.source),
+                    op: Op::Literal(str),
                     position: token.position,
                 });
             }
@@ -475,10 +480,10 @@ impl Parser {
     }
 
     pub fn diagnostic_bag(&self) -> &[Diagnostic] {
-        self.lexer.diagnostic_bag()
+        &self.lexer.diagnostic_bag
     }
 
     fn diagnostic_bag_mut(&mut self) -> &mut Vec<Diagnostic> {
-        self.lexer.diagnostic_bag_mut()
+        &mut self.lexer.diagnostic_bag
     }
 }

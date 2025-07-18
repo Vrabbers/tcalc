@@ -9,9 +9,9 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct Lexer {
     sr: StringReader,
-    comma_is_arg_separator: bool,
+    pub(crate) comma_is_arg_separator: bool,
     reached_end: bool,
-    diagnostic_bag: Vec<Diagnostic>,
+    pub(crate) diagnostic_bag: Vec<Diagnostic>,
 }
 
 fn is_whitespace(c: char) -> bool {
@@ -173,7 +173,7 @@ impl Lexer {
         while self
             .sr
             .peek()
-            .map(|c| matches!(c, '0' | '1' | '_'))
+            .map(|c| matches!(c, '0' | '1' | '_' | '\''))
             .unwrap_or_default()
         {
             self.sr.forward();
@@ -187,7 +187,7 @@ impl Lexer {
         while self
             .sr
             .peek()
-            .map(|c| is_hex_digit(c) || c == '_')
+            .map(|c| is_hex_digit(c) || matches!(c, '_' | '\''))
             .unwrap_or_default()
         {
             self.sr.forward();
@@ -202,7 +202,9 @@ impl Lexer {
         loop {
             let next = self.sr.peek();
 
-            if next.map(|c| c.is_ascii_digit()).unwrap_or_default() || next == Some('\'') {
+            if next.map(|c| c.is_ascii_digit()).unwrap_or_default()
+                || matches!(next, Some('\'') | Some('_'))
+            {
                 self.sr.forward();
             } else if next == Some(self.decimal_sep()) {
                 self.sr.forward();
