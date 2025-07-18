@@ -679,13 +679,13 @@ impl ConstructableReal {
         }
 
         if rough_appr >= HIGH_LN_LIMIT {
-            if rough_appr <= SCALED_4 {
+            return if rough_appr <= SCALED_4 {
                 let quarter = self.sqrt().sqrt().ln()?;
-                return quarter << 2;
+                quarter << 2
             } else {
                 let extra_bits = rough_appr.bits() - 3;
-                let scaled_result = (self << extra_bits as i32)?.ln()?;
-                return Ok(scaled_result + (ConstructableReal::from(extra_bits) * LN2));
+                let scaled_result = (self >> extra_bits as i32)?.ln()?;
+                Ok(scaled_result + (ConstructableReal::from(extra_bits) * LN2))
             }
         }
         Ok(self.simple_ln())
@@ -694,7 +694,7 @@ impl ConstructableReal {
     pub fn simple_ln(self) -> ConstructableReal {
         ConstructableReal {
             t: Box::new(ConstructableRealType::PrescaledLn(
-                self - ConstructableReal::from(1).clone(),
+                self - ConstructableReal::from(1),
             )),
             ..ConstructableReal::default()
         }

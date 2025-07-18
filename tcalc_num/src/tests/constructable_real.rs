@@ -128,9 +128,9 @@ fn test_constructable_real() {
         Ok(-123),
         "into<i32> failed"
     );
-    // assert_eq!(
-    //     NumResult::<f64>::from(tmp2.clone().ln().unwrap()),
-    //     Ok(-123.0),
-    //     "into<f64> failed"
-    // );
+    assert_eq!(
+        NumResult::<f64>::from(tmp2.clone().ln().unwrap()),
+        Ok(-123.0),
+        "into<f64> failed"
+    );
 }
