@@ -1,4 +1,4 @@
-use crate::constructable_real::constructable_real::ConstructiveReal;
+use crate::constructable_real::ConstructiveReal;
 use crate::error::NumResult;
 use num::bigint::Sign;
 use std::cmp::Ordering;
