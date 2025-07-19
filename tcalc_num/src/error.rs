@@ -6,7 +6,7 @@ pub enum NumError {
     OperationCancelledError,
     PrecisionOverflow,
     DivisionByZero,
-    DomainViolation(DomainViolation)
+    DomainViolation(DomainViolation),
 }
 
 #[derive(Debug, PartialEq, Clone)]

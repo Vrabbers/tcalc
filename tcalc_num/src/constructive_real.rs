@@ -6,20 +6,19 @@ use crate::error::{CancelCheckable, NumError, NumResult};
 use cancellation_token::CancellationToken;
 use num::bigint::Sign;
 use num::{BigInt, Integer, One, Signed, ToPrimitive, Zero};
-use std::cell::RefCell;
 use std::clone::Clone;
 use std::cmp::Ordering;
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::{Add, Div, Mul, Neg, Shl, Shr, Sub};
-use std::rc::Rc;
+use std::sync::{Arc, RwLock};
 
 mod types;
 // https://android.googlesource.com/platform/external/crcalc/+/6db978c639e9bd5ac63fd88cbf3765d8c0fb3271/src/com/hp/creals/CR.java
 
 #[derive(Clone, Debug)]
 pub struct ConstructiveReal {
-    t: Rc<dyn ConstructiveRealType>,
-    current_approximation: Rc<RefCell<Option<ConstructiveRealApproximation>>>,
+    t: Arc<dyn ConstructiveRealType>,
+    current_approximation: Arc<RwLock<Option<ConstructiveRealApproximation>>>,
     cancellation_token: CancellationToken,
 }
 
@@ -29,10 +28,11 @@ pub struct ConstructiveRealApproximation {
     pub max_appr: BigInt,
 }
 
-
 trait ConstructiveRealType
 where
     Self: Debug,
+    Self: Send,
+    Self: Sync
 {
     ///  Must be defined in implementors of ConstructiveRealApproximation
     ///  Returns value / 2 ** precision rounded to an integer.
@@ -44,7 +44,7 @@ where
     fn approximate(&self, precision: i32, ct: CancellationToken) -> NumResult<BigInt>;
 
     // Should be true for implementations for which approximate calls are
-    // somewhat expensive.
+    // somewhat expensive. Default implementation just returns false.
     // If we need to (re)evaluate, we speculatively evaluate to slightly
     // higher precision, miminimizing reevaluations.
     // Note that this requires any arguments to be evaluated to higher
@@ -60,7 +60,7 @@ impl ConstructiveReal {
     fn get_appr(&self, precision: i32) -> NumResult<BigInt> {
         check_prec(precision)?;
 
-        let current_approximation_borrow = self.current_approximation.borrow();
+        let mut current_approximation_borrow = self.current_approximation.write().unwrap();
         let current_approximation = current_approximation_borrow.as_ref();
 
         if self.t.is_slow() {
@@ -75,8 +75,6 @@ impl ConstructiveReal {
                     current_approximation.min_prec - precision,
                 ))
             } else {
-                drop(current_approximation_borrow);
-
                 let eval_prec = if precision >= max_prec {
                     max_prec
                 } else {
@@ -85,17 +83,15 @@ impl ConstructiveReal {
                 let result = self
                     .t
                     .approximate(eval_prec, self.cancellation_token.clone())?;
-                if let Some(current_approximation) =
-                    self.current_approximation.borrow_mut().as_mut()
-                {
+
+                if let Some(current_approximation) = current_approximation_borrow.as_mut() {
                     current_approximation.min_prec = precision;
                     current_approximation.max_appr = result.clone();
                 } else {
-                    self.current_approximation
-                        .replace(Some(ConstructiveRealApproximation {
-                            min_prec: precision,
-                            max_appr: result.clone(),
-                        }));
+                    current_approximation_borrow.replace(ConstructiveRealApproximation {
+                        min_prec: precision,
+                        max_appr: result.clone(),
+                    });
                 }
                 Ok(scale(result, eval_prec - precision))
             }
@@ -107,20 +103,17 @@ impl ConstructiveReal {
                 current_approximation.min_prec - precision,
             ))
         } else {
-            drop(current_approximation_borrow);
-
             let result = self
                 .t
                 .approximate(precision, self.cancellation_token.clone())?;
-            if let Some(current_approximation) = self.current_approximation.borrow_mut().as_mut() {
+            if let Some(current_approximation) = current_approximation_borrow.as_mut() {
                 current_approximation.min_prec = precision;
                 current_approximation.max_appr = result.clone();
             } else {
-                self.current_approximation
-                    .replace(Some(ConstructiveRealApproximation {
-                        min_prec: precision,
-                        max_appr: result.clone(),
-                    }));
+                current_approximation_borrow.replace(ConstructiveRealApproximation {
+                    min_prec: precision,
+                    max_appr: result.clone(),
+                });
             }
             Ok(result)
         }
@@ -133,7 +126,7 @@ impl ConstructiveReal {
     /// and sufficiently removed from zero
     /// that the msd is determined.
     fn known_msd(&self) -> i32 {
-        let current_approximation_borrow = self.current_approximation.borrow();
+        let current_approximation_borrow = self.current_approximation.read().unwrap();
         let current_approximation = current_approximation_borrow.as_ref().unwrap();
 
         let length = if current_approximation.max_appr.sign() != Sign::Minus {
@@ -148,7 +141,7 @@ impl ConstructiveReal {
     /// This version may return i32::MIN if the correct
     /// answer is < n.
     fn msd_n(&mut self, n: i32) -> NumResult<i32> {
-        let current_approximation_borrow = self.current_approximation.borrow();
+        let current_approximation_borrow = self.current_approximation.read().unwrap();
         let current_approximation = current_approximation_borrow.as_ref();
 
         if current_approximation.is_none() || {
@@ -157,14 +150,15 @@ impl ConstructiveReal {
                 && current_approximation.max_appr >= BigInt::one().mul(-1)
         } {
             drop(current_approximation_borrow);
-
-            self.get_appr(n - 1)?;
+            // TODO: Race condition! 🏎️🏎️🏎️🏎️🏎️🏎️🏎️🏎️🏎️🏎️
+            self.get_appr(n - 1)?; 
 
             if self
                 .current_approximation
-                .borrow()
-                .as_ref()
+                .read()
                 .unwrap()
+                .as_ref()
+                .unwrap() // TODO: Race condition! 🏎️🏎️🏎️🏎️🏎️🏎️🏎️🏎️🏎️🏇🏇🏇🏇🏇🏇🏁🏁🏁🏁🏁🏁🏁
                 .max_appr
                 .abs()
                 <= BigInt::one()
@@ -267,7 +261,7 @@ impl ConstructiveReal {
 
     /// Equivalent to <TT>compareTo(CR.valueOf(0), a)</tt>
     pub fn sign_precision(&mut self, a: i32) -> NumResult<Sign> {
-        if let Some(current_approximation) = self.current_approximation.borrow().as_ref() {
+        if let Some(current_approximation) = self.current_approximation.read().unwrap().as_ref() {
             let quick_try = current_approximation.max_appr.sign();
             if quick_try != Sign::NoSign {
                 return Ok(quick_try);
@@ -346,7 +340,7 @@ impl ConstructiveReal {
     pub fn assume_int(self) -> ConstructiveReal {
         ConstructiveReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Rc::new(AssumedIntConstructive(self)),
+            t: Arc::new(AssumedIntConstructive(self)),
             ..ConstructiveReal::default()
         }
     }
@@ -356,7 +350,7 @@ impl ConstructiveReal {
     pub fn inverse(self) -> ConstructiveReal {
         ConstructiveReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Rc::new(InvertedConstructive(self)),
+            t: Arc::new(InvertedConstructive(self)),
             ..ConstructiveReal::default()
         }
     }
@@ -368,7 +362,7 @@ impl ConstructiveReal {
     pub fn select(self, x: Self, y: Self) -> ConstructiveReal {
         ConstructiveReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Rc::new(SelectConstructive {
+            t: Arc::new(SelectConstructive {
                 selector: self,
                 op1: x,
                 op2: y,
@@ -401,7 +395,7 @@ impl ConstructiveReal {
         } else {
             Ok(ConstructiveReal {
                 cancellation_token: self.cancellation_token.clone(),
-                t: Rc::new(PrescaledExpConstructive(self)),
+                t: Arc::new(PrescaledExpConstructive(self)),
                 ..ConstructiveReal::default()
             })
         }
@@ -409,38 +403,38 @@ impl ConstructiveReal {
 
     /// The natural (base e) logarithm
     pub fn ln(self) -> NumResult<ConstructiveReal> {
-        let LOW_LN_LIMIT: BigInt = BigInt::from(8);
-        let HIGH_LN_LIMIT: BigInt = BigInt::from(16 + 8 /* 1.5 */);
-        let SCALED_4: BigInt = BigInt::from(4 * 16);
-        let TEN_NINTHS: ConstructiveReal = ConstructiveReal::from(10) / ConstructiveReal::from(9);
-        let TWENTYFIVE_TWENTYFOURTHS: ConstructiveReal =
+        let low_ln_limit: BigInt = BigInt::from(8);
+        let high_ln_limit: BigInt = BigInt::from(16 + 8 /* 1.5 */);
+        let scaled_4: BigInt = BigInt::from(4 * 16);
+        let ten_ninths: ConstructiveReal = ConstructiveReal::from(10) / ConstructiveReal::from(9);
+        let twentyfive_twentyfourths: ConstructiveReal =
             ConstructiveReal::from(25) / ConstructiveReal::from(24);
-        let EIGHTYONE_EIGHTYETHS: ConstructiveReal =
+        let eightyone_eightyeths: ConstructiveReal =
             ConstructiveReal::from(81) / ConstructiveReal::from(80);
-        let LN2_1: ConstructiveReal = ConstructiveReal::from(7) * TEN_NINTHS.clone().simple_ln();
-        let LN2_2: ConstructiveReal =
-            ConstructiveReal::from(2) * TWENTYFIVE_TWENTYFOURTHS.clone().simple_ln();
-        let LN2_3: ConstructiveReal =
-            ConstructiveReal::from(3) * EIGHTYONE_EIGHTYETHS.clone().simple_ln();
-        let LN2: ConstructiveReal = LN2_1.clone() - LN2_2.clone() + LN2_3.clone();
+        let ln2_1: ConstructiveReal = ConstructiveReal::from(7) * ten_ninths.clone().simple_ln();
+        let ln2_2: ConstructiveReal =
+            ConstructiveReal::from(2) * twentyfive_twentyfourths.clone().simple_ln();
+        let ln2_3: ConstructiveReal =
+            ConstructiveReal::from(3) * eightyone_eightyeths.clone().simple_ln();
+        let ln2: ConstructiveReal = ln2_1.clone() - ln2_2.clone() + ln2_3.clone();
 
         let low_prec = -4;
         let rough_appr = self.get_appr(low_prec)?; /* In sixteenths */
         if rough_appr < BigInt::zero() {
             return Err(DomainViolation(LogarithmOfNegative));
         };
-        if rough_appr <= LOW_LN_LIMIT {
+        if rough_appr <= low_ln_limit {
             return Ok(-self.inverse().ln()?);
         }
 
-        if rough_appr >= HIGH_LN_LIMIT {
-            return if rough_appr <= SCALED_4 {
+        if rough_appr >= high_ln_limit {
+            return if rough_appr <= scaled_4 {
                 let quarter = self.sqrt().sqrt().ln()?;
                 quarter << 2
             } else {
                 let extra_bits = rough_appr.bits() - 3;
                 let scaled_result = (self >> extra_bits as i32)?.ln()?;
-                Ok(scaled_result + (ConstructiveReal::from(extra_bits) * LN2))
+                Ok(scaled_result + (ConstructiveReal::from(extra_bits) * ln2))
             };
         }
         Ok(self.simple_ln())
@@ -449,7 +443,7 @@ impl ConstructiveReal {
     pub fn simple_ln(self) -> ConstructiveReal {
         ConstructiveReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Rc::new(PrescaledLnConstructive(self - ConstructiveReal::from(1))),
+            t: Arc::new(PrescaledLnConstructive(self - ConstructiveReal::from(1))),
             ..ConstructiveReal::default()
         }
     }
@@ -457,14 +451,14 @@ impl ConstructiveReal {
     pub fn sqrt(self) -> ConstructiveReal {
         ConstructiveReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Rc::new(SquareRootConstructive(self)),
+            t: Arc::new(SquareRootConstructive(self)),
             ..ConstructiveReal::default()
         }
     }
 
     pub fn atan_reciporical(n: i32) -> ConstructiveReal {
         ConstructiveReal {
-            t: Rc::new(InverseTanReciprocalConstructive(n)),
+            t: Arc::new(InverseTanReciprocalConstructive(n)),
             ..ConstructiveReal::default()
         }
     }
@@ -497,7 +491,7 @@ impl ConstructiveReal {
         } else {
             Ok(ConstructiveReal {
                 cancellation_token: self.cancellation_token.clone(),
-                t: Rc::new(PrescaledCosConstructive(self)),
+                t: Arc::new(PrescaledCosConstructive(self)),
                 ..ConstructiveReal::default()
             })
         }
@@ -512,8 +506,8 @@ impl ConstructiveReal {
 impl Default for ConstructiveReal {
     fn default() -> Self {
         ConstructiveReal {
-            t: Rc::new(InvalidConstructive()),
-            current_approximation: Rc::new(RefCell::new(None)),
+            t: Arc::new(InvalidConstructive()),
+            current_approximation: Arc::new(RwLock::new(None)),
             cancellation_token: CancellationToken::new(false),
         }
     }
@@ -522,7 +516,7 @@ impl Default for ConstructiveReal {
 impl From<BigInt> for ConstructiveReal {
     fn from(n: BigInt) -> Self {
         ConstructiveReal {
-            t: Rc::new(BigIntegerConstructive(n)),
+            t: Arc::new(BigIntegerConstructive(n)),
             ..ConstructiveReal::default()
         }
     }
@@ -602,7 +596,7 @@ impl Add for ConstructiveReal {
     fn add(self, rhs: Self) -> Self::Output {
         ConstructiveReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Rc::new(AddConstructive {
+            t: Arc::new(AddConstructive {
                 op1: self,
                 op2: rhs,
             }),
@@ -618,7 +612,7 @@ impl Shl<i32> for ConstructiveReal {
         check_prec(rhs)?;
         Ok(ConstructiveReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Rc::new(ShiftConstructive {
+            t: Arc::new(ShiftConstructive {
                 op: self,
                 count: rhs,
             }),
@@ -634,7 +628,7 @@ impl Shr<i32> for ConstructiveReal {
         check_prec(rhs)?;
         Ok(ConstructiveReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Rc::new(ShiftConstructive {
+            t: Arc::new(ShiftConstructive {
                 op: self,
                 count: -rhs,
             }),
@@ -657,7 +651,7 @@ impl Mul for ConstructiveReal {
     fn mul(self, rhs: Self) -> Self::Output {
         ConstructiveReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Rc::new(MultiplyConstructive {
+            t: Arc::new(MultiplyConstructive {
                 op1: self,
                 op2: rhs,
             }),
@@ -684,7 +678,7 @@ impl Neg for ConstructiveReal {
     fn neg(self) -> Self::Output {
         ConstructiveReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Rc::new(NegatedConstructive(self)),
+            t: Arc::new(NegatedConstructive(self)),
             ..ConstructiveReal::default()
         }
     }
