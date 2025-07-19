@@ -1,4 +1,4 @@
-use crate::constructable_real::constructable_real::ConstructableReal;
+use crate::constructable_real::constructable_real::ConstructiveReal;
 use crate::error::NumResult;
 use num::bigint::Sign;
 use std::cmp::Ordering;
@@ -30,9 +30,9 @@ fn check_appr_eq(x: f64, y: f64) {
 
 #[test]
 fn test_constructable_real() {
-    let mut zero = ConstructableReal::from(0);
-    let mut one = ConstructableReal::from(1);
-    let mut two = ConstructableReal::from(2);
+    let mut zero = ConstructiveReal::from(0);
+    let mut one = ConstructiveReal::from(1);
+    let mut two = ConstructiveReal::from(2);
 
     assert_eq!(one.sign(), Ok(Sign::Plus), "sign(1) failed");
     assert_eq!((-one.clone()).sign(), Ok(Sign::Minus), "sign(-1) failed");
@@ -69,8 +69,8 @@ fn test_constructable_real() {
 
     let mut three = two.clone() + one.clone();
     let mut four = two.clone() + two.clone();
-    check_eq!(ConstructableReal::from(4), &mut four, "2 + 2 failed");
-    check_eq!(ConstructableReal::from(3), &mut three, "2 + 1 failed");
+    check_eq!(ConstructiveReal::from(4), &mut four, "2 + 2 failed");
+    check_eq!(ConstructiveReal::from(3), &mut three, "2 + 1 failed");
     check_eq!((-one.clone()).add(two.clone()), &mut one, "negate failed");
     assert_eq!((-one.clone()).sign(), Ok(Sign::Minus), "sign(-1) failed");
     check_eq!((two.clone() * two.clone()), &mut four, "multiply failed");
@@ -85,7 +85,7 @@ fn test_constructable_real() {
         "divide(neg) failed"
     );
 
-    let mut thirteen = ConstructableReal::from(13);
+    let mut thirteen = ConstructiveReal::from(13);
     check_eq!(
         one.clone() / thirteen.clone() * thirteen.clone(),
         &mut one,
@@ -110,19 +110,19 @@ fn test_constructable_real() {
         "exp(1) failed"
     );
     check_eq!(e.ln().unwrap(), &mut one, "ln(e) failed");
-    let half_pi = ConstructableReal::pi() / two.clone();
+    let half_pi = ConstructiveReal::pi() / two.clone();
     let half = one.clone() / two.clone();
 
     let million = BigInt::from(1000*1000);
     let thousand = BigInt::from(1000);
-    let huge = ConstructableReal::from(million.clone() * million * thousand);
+    let huge = ConstructiveReal::from(million.clone() * million * thousand);
     check_eq!(half_pi.sin().unwrap(), &mut one, "sin(pi/2) failed");
 
     let sqrt13 = thirteen.clone().sqrt();
     check_eq!(sqrt13.clone() * sqrt13.clone(), &mut thirteen, "sqrt(13)*sqrt(13) failed");
 
-    let tmp = ConstructableReal::pi() + ConstructableReal::from(-123).exp().unwrap();
-    let tmp2 = tmp - ConstructableReal::pi();
+    let tmp = ConstructiveReal::pi() + ConstructiveReal::from(-123).exp().unwrap();
+    let tmp2 = tmp - ConstructiveReal::pi();
     assert_eq!(
         NumResult::<i32>::from(tmp2.clone().ln().unwrap()),
         Ok(-123),
