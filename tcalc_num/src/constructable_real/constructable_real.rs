@@ -10,7 +10,7 @@ use std::clone::Clone;
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 use std::mem::swap;
-use std::ops::{Add, Div, Mul, Neg, Shl, Shr, Sub};
+use std::ops::{Add, Deref, Div, Mul, Neg, Shl, Shr, Sub};
 use std::rc::Rc;
 use cancellation_token::CancellationToken;
 
@@ -36,7 +36,7 @@ enum ConstructableRealType {
 
 #[derive(Clone, Debug)]
 pub struct ConstructableReal {
-    t: Box<ConstructableRealType>,
+    t: Rc<ConstructableRealType>,
     current_approximation: Rc<RefCell<Option<ConstructableRealApproximation>>>,
     cancellation_token: CancellationToken
 }
@@ -58,7 +58,7 @@ impl ConstructableReal {
     ///  Implementations may safely assume that precision is
     ///  at least a factor of 8 away from overflow.
     fn approximate(&self, precision: i32) -> NumResult<BigInt> {
-        match self.t.as_ref() {
+        match self.t.deref() {
             ConstructableRealType::Invalid => {
                 panic!("Tried to approximate an invalid constructable real.")
             }
@@ -634,7 +634,7 @@ impl ConstructableReal {
     pub fn assume_int(self) -> ConstructableReal {
         ConstructableReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Box::new(ConstructableRealType::AssumedInt(self)),
+            t: Rc::new(ConstructableRealType::AssumedInt(self)),
             ..ConstructableReal::default()
         }
     }
@@ -644,7 +644,7 @@ impl ConstructableReal {
     pub fn inverse(self) -> ConstructableReal {
         ConstructableReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Box::new(ConstructableRealType::Inverted(self)),
+            t: Rc::new(ConstructableRealType::Inverted(self)),
             ..ConstructableReal::default()
         }
     }
@@ -656,7 +656,7 @@ impl ConstructableReal {
     pub fn select(self, x: Self, y: Self) -> ConstructableReal {
         ConstructableReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Box::new(ConstructableRealType::Select(self, x, y)),
+            t: Rc::new(ConstructableRealType::Select(self, x, y)),
             ..ConstructableReal::default()
         }
     }
@@ -685,7 +685,7 @@ impl ConstructableReal {
         } else {
             Ok(ConstructableReal {
                 cancellation_token: self.cancellation_token.clone(),
-                t: Box::new(ConstructableRealType::PrescaledExp(
+                t: Rc::new(ConstructableRealType::PrescaledExp(
                     self,
                 )),
                 ..ConstructableReal::default()
@@ -736,7 +736,7 @@ impl ConstructableReal {
     pub fn simple_ln(self) -> ConstructableReal {
         ConstructableReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Box::new(ConstructableRealType::PrescaledLn(
+            t: Rc::new(ConstructableRealType::PrescaledLn(
                 self - ConstructableReal::from(1),
             )),
             ..ConstructableReal::default()
@@ -746,14 +746,14 @@ impl ConstructableReal {
     pub fn sqrt(self) -> ConstructableReal {
         ConstructableReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Box::new(ConstructableRealType::SquareRoot(self)),
+            t: Rc::new(ConstructableRealType::SquareRoot(self)),
             ..ConstructableReal::default()
         }
     }
 
     pub fn atan_reciporical(n: i32) -> ConstructableReal {
         ConstructableReal {
-            t: Box::new(ConstructableRealType::InverseTanReciporical(n)),
+            t: Rc::new(ConstructableRealType::InverseTanReciporical(n)),
             ..ConstructableReal::default()
         }
     }
@@ -786,7 +786,7 @@ impl ConstructableReal {
         } else {
             Ok(ConstructableReal {
                 cancellation_token: self.cancellation_token.clone(),
-                t: Box::new(ConstructableRealType::PrescaledCos(self)),
+                t: Rc::new(ConstructableRealType::PrescaledCos(self)),
                 ..ConstructableReal::default()
             })
         }
@@ -801,7 +801,7 @@ impl ConstructableReal {
 impl Default for ConstructableReal {
     fn default() -> Self {
         ConstructableReal {
-            t: Box::new(ConstructableRealType::Invalid),
+            t: Rc::new(ConstructableRealType::Invalid),
             current_approximation: Rc::new(RefCell::new(None)),
             cancellation_token: CancellationToken::new(false)
         }
@@ -811,7 +811,7 @@ impl Default for ConstructableReal {
 impl From<BigInt> for ConstructableReal {
     fn from(n: BigInt) -> Self {
         ConstructableReal {
-            t: Box::new(ConstructableRealType::BigInteger(n)),
+            t: Rc::new(ConstructableRealType::BigInteger(n)),
             ..ConstructableReal::default()
         }
     }
@@ -891,7 +891,7 @@ impl Add for ConstructableReal {
     fn add(self, rhs: Self) -> Self::Output {
         ConstructableReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Box::new(ConstructableRealType::Add(self, rhs)),
+            t: Rc::new(ConstructableRealType::Add(self, rhs)),
             ..ConstructableReal::default()
         }
     }
@@ -904,7 +904,7 @@ impl Shl<i32> for ConstructableReal {
         check_prec(rhs)?;
         Ok(ConstructableReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Box::new(ConstructableRealType::Shift(self, rhs)),
+            t: Rc::new(ConstructableRealType::Shift(self, rhs)),
             ..ConstructableReal::default()
         })
     }
@@ -917,7 +917,7 @@ impl Shr<i32> for ConstructableReal {
         check_prec(rhs)?;
         Ok(ConstructableReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Box::new(ConstructableRealType::Shift(self, -rhs)),
+            t: Rc::new(ConstructableRealType::Shift(self, -rhs)),
             ..ConstructableReal::default()
         })
     }
@@ -937,7 +937,7 @@ impl Mul for ConstructableReal {
     fn mul(self, rhs: Self) -> Self::Output {
         ConstructableReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Box::new(ConstructableRealType::Multiply(self, rhs)),
+            t: Rc::new(ConstructableRealType::Multiply(self, rhs)),
             ..ConstructableReal::default()
         }
     }
@@ -957,7 +957,7 @@ impl Neg for ConstructableReal {
     fn neg(self) -> Self::Output {
         ConstructableReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Box::new(ConstructableRealType::Negated(self)),
+            t: Rc::new(ConstructableRealType::Negated(self)),
             ..ConstructableReal::default()
         }
     }
@@ -1033,7 +1033,7 @@ impl ConstructableRealType {
     }
 }
 
-pub fn bound_log2(n: i32) -> i32 {
+fn bound_log2(n: i32) -> i32 {
     let abs_n = n.abs();
     ((abs_n + 1) as f64).log(2.).ceil() as i32
 }
@@ -1043,7 +1043,7 @@ pub fn bound_log2(n: i32) -> i32 {
 /// We generally perform this check early on, and then convince
 /// ourselves that none of the operations performed on precisions
 /// inside a function can generate an overflow.
-pub fn check_prec(n: i32) -> NumResult<()> {
+fn check_prec(n: i32) -> NumResult<()> {
     let high = n >> 28;
 
     // if n is not in danger of overflowing, then the 4 high order
@@ -1058,7 +1058,7 @@ pub fn check_prec(n: i32) -> NumResult<()> {
     }
 }
 
-pub fn shift(k: BigInt, n: i32) -> BigInt {
+fn shift(k: BigInt, n: i32) -> BigInt {
     if n == 0 {
         k
     } else if n < 0 {
@@ -1068,7 +1068,7 @@ pub fn shift(k: BigInt, n: i32) -> BigInt {
     }
 }
 
-pub fn scale(k: BigInt, n: i32) -> BigInt {
+fn scale(k: BigInt, n: i32) -> BigInt {
     if n >= 0 {
         shift(k, n)
     } else {
