@@ -1,4 +1,3 @@
-use crate::constructive_real::types::*;
 use crate::error::DomainViolation::LogarithmOfNegative;
 use crate::error::InternalError::{ConstructiveRealFromInf, ConstructiveRealFromNan};
 use crate::error::NumError::{DomainViolation, InternalError, PrecisionOverflow};
@@ -11,8 +10,36 @@ use std::cmp::Ordering;
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::{Add, Div, Mul, Neg, Shl, Shr, Sub};
 use std::sync::{Arc, RwLock};
+use crate::constructive_real::add_constructive::AddConstructive;
+use crate::constructive_real::assumed_int_constructive::AssumedIntConstructive;
+use crate::constructive_real::big_integer_constructive::BigIntegerConstructive;
+use crate::constructive_real::invalid_constructive::InvalidConstructive;
+use crate::constructive_real::inverse_tan_reciporical_constructive::InverseTanReciprocalConstructive;
+use crate::constructive_real::inverted_constructive::InvertedConstructive;
+use crate::constructive_real::multiply_constructive::MultiplyConstructive;
+use crate::constructive_real::negated_constructive::NegatedConstructive;
+use crate::constructive_real::prescaled_cos_constructive::PrescaledCosConstructive;
+use crate::constructive_real::prescaled_exp_constructive::PrescaledExpConstructive;
+use crate::constructive_real::prescaled_ln_constructive::PrescaledLnConstructive;
+use crate::constructive_real::select_constructive::SelectConstructive;
+use crate::constructive_real::shift_constructive::ShiftConstructive;
+use crate::constructive_real::square_root_constructive::SquareRootConstructive;
 
-mod types;
+mod invalid_constructive;
+mod big_integer_constructive;
+mod add_constructive;
+mod shift_constructive;
+mod assumed_int_constructive;
+mod negated_constructive;
+mod multiply_constructive;
+mod inverted_constructive;
+mod select_constructive;
+mod prescaled_exp_constructive;
+mod prescaled_ln_constructive;
+mod prescaled_cos_constructive;
+mod square_root_constructive;
+mod inverse_tan_reciporical_constructive;
+
 // https://android.googlesource.com/platform/external/crcalc/+/6db978c639e9bd5ac63fd88cbf3765d8c0fb3271/src/com/hp/creals/CR.java
 
 #[derive(Clone, Debug)]
@@ -34,6 +61,18 @@ where
     Self: Send,
     Self: Sync
 {
+    /// Should be true for implementations for which approximate calls are
+    /// somewhat expensive. Default implementation just returns false.
+    /// If we need to (re)evaluate, we speculatively evaluate to slightly
+    /// higher precision, miminimizing reevaluations.
+    /// Note that this requires any arguments to be evaluated to higher
+    /// precision than absolutely necessary.  It can thus potentially
+    /// result in lots of wasted effort, and should be used judiciously.
+    /// This assumes that the order of magnitude of the number is roughly one.
+    fn is_slow(&self) -> bool {
+        false
+    }
+
     ///  Must be defined in implementors of ConstructiveRealApproximation
     ///  Returns value / 2 ** precision rounded to an integer.
     ///  The error in the result is strictly < 1.
@@ -42,18 +81,6 @@ where
     ///  Implementations may safely assume that precision is
     ///  at least a factor of 8 away from overflow.
     fn approximate(&self, precision: i32, ct: CancellationToken) -> NumResult<BigInt>;
-
-    // Should be true for implementations for which approximate calls are
-    // somewhat expensive. Default implementation just returns false.
-    // If we need to (re)evaluate, we speculatively evaluate to slightly
-    // higher precision, miminimizing reevaluations.
-    // Note that this requires any arguments to be evaluated to higher
-    // precision than absolutely necessary.  It can thus potentially
-    // result in lots of wasted effort, and should be used judiciously.
-    // This assumes that the order of magnitude of the number is roughly one.
-    fn is_slow(&self) -> bool {
-        false
-    }
 }
 
 impl ConstructiveReal {
