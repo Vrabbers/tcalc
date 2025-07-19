@@ -143,14 +143,12 @@ impl ConstructiveReal {
     fn msd_n(&mut self, n: i32) -> NumResult<i32> {
         let current_approximation_borrow = self.current_approximation.read().unwrap();
         let current_approximation = current_approximation_borrow.as_ref();
-
         if current_approximation.is_none() || {
             let current_approximation = current_approximation.unwrap();
             current_approximation.max_appr <= BigInt::one()
                 && current_approximation.max_appr >= BigInt::one().mul(-1)
         } {
             drop(current_approximation_borrow);
-            // TODO: Race condition! 🏎️🏎️🏎️🏎️🏎️🏎️🏎️🏎️🏎️🏎️
             self.get_appr(n - 1)?; 
 
             if self
@@ -158,7 +156,7 @@ impl ConstructiveReal {
                 .read()
                 .unwrap()
                 .as_ref()
-                .unwrap() // TODO: Race condition! 🏎️🏎️🏎️🏎️🏎️🏎️🏎️🏎️🏎️🏇🏇🏇🏇🏇🏇🏁🏁🏁🏁🏁🏁🏁
+                .unwrap()
                 .max_appr
                 .abs()
                 <= BigInt::one()
