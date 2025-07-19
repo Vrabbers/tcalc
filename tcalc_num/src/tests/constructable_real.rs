@@ -1,3 +1,5 @@
+#![allow(dead_code, unused_macros, unused_imports)]
+
 use crate::constructable_real::ConstructiveReal;
 use crate::error::NumResult;
 use num::bigint::Sign;
@@ -103,7 +105,7 @@ fn test_constructable_real() {
     );
     check_eq!(zero.clone().exp().unwrap(), &mut one);
 
-    let mut e = one.clone().exp().unwrap();
+    let e = one.clone().exp().unwrap();
     assert_eq!(
         e.to_string(20, 10).unwrap()[0..17].to_string(),
         "2.718281828459045".to_string(),
@@ -111,11 +113,11 @@ fn test_constructable_real() {
     );
     check_eq!(e.ln().unwrap(), &mut one, "ln(e) failed");
     let half_pi = ConstructiveReal::pi() / two.clone();
-    let half = one.clone() / two.clone();
+    let _half = one.clone() / two.clone();
 
     let million = BigInt::from(1000*1000);
     let thousand = BigInt::from(1000);
-    let huge = ConstructiveReal::from(million.clone() * million * thousand);
+    let _huge = ConstructiveReal::from(million.clone() * million * thousand);
     check_eq!(half_pi.sin().unwrap(), &mut one, "sin(pi/2) failed");
 
     let sqrt13 = thirteen.clone().sqrt();
