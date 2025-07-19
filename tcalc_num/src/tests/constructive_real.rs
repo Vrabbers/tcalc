@@ -1,6 +1,6 @@
 #![allow(dead_code, unused_macros, unused_imports)]
 
-use crate::constructable_real::ConstructiveReal;
+use crate::constructive_real::ConstructiveReal;
 use crate::error::NumResult;
 use num::bigint::Sign;
 use std::cmp::Ordering;
@@ -31,7 +31,7 @@ fn check_appr_eq(x: f64, y: f64) {
 }
 
 #[test]
-fn test_constructable_real() {
+fn test_constructive_real() {
     let mut zero = ConstructiveReal::from(0);
     let mut one = ConstructiveReal::from(1);
     let mut two = ConstructiveReal::from(2);

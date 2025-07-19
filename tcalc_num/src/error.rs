@@ -11,8 +11,8 @@ pub enum NumError {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum InternalError {
-    ConstructableRealFromNan,
-    ConstructableRealFromInf,
+    ConstructiveRealFromNan,
+    ConstructiveRealFromInf,
 }
 
 #[derive(Debug, PartialEq, Clone)]

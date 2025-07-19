@@ -1,5 +1,5 @@
 use crate::error::DomainViolation::{LogarithmOfNegative, SquareRootOfNegative};
-use crate::error::InternalError::{ConstructableRealFromInf, ConstructableRealFromNan};
+use crate::error::InternalError::{ConstructiveRealFromInf, ConstructiveRealFromNan};
 use crate::error::NumError::{DomainViolation, InternalError, PrecisionOverflow};
 use crate::error::{CancelCheckable, NumError, NumResult};
 use cancellation_token::CancellationToken;
@@ -15,7 +15,7 @@ use std::rc::Rc;
 
 // https://android.googlesource.com/platform/external/crcalc/+/6db978c639e9bd5ac63fd88cbf3765d8c0fb3271/src/com/hp/creals/CR.java
 
-trait ConstructiveRealApproximation
+trait ConstructiveRealType
 where
     Self: Debug,
 {
@@ -44,16 +44,16 @@ where
 #[derive(Debug)]
 struct InvalidConstructive();
 
-impl ConstructiveRealApproximation for InvalidConstructive {
+impl ConstructiveRealType for InvalidConstructive {
     fn approximate(&self, _precision: i32, _: CancellationToken) -> NumResult<BigInt> {
-        panic!("Tried to approximate an invalid constructable real.")
+        panic!("Tried to approximate an invalid constructive real.")
     }
 }
 
 #[derive(Debug)]
 struct BigIntegerConstructive(BigInt);
 
-impl ConstructiveRealApproximation for BigIntegerConstructive {
+impl ConstructiveRealType for BigIntegerConstructive {
     fn approximate(&self, precision: i32, _: CancellationToken) -> NumResult<BigInt> {
         Ok(scale(self.0.clone(), -precision))
     }
@@ -65,7 +65,7 @@ struct AddConstructive {
     op2: ConstructiveReal,
 }
 
-impl ConstructiveRealApproximation for AddConstructive {
+impl ConstructiveRealType for AddConstructive {
     fn approximate(&self, precision: i32, _: CancellationToken) -> NumResult<BigInt> {
         // Args need to be evaluated so that each error is < 1/4 ulp.
         // Rounding error from the cale call is <= 1/2 ulp, so that
@@ -83,7 +83,7 @@ struct ShiftConstructive {
     count: i32,
 }
 
-impl ConstructiveRealApproximation for ShiftConstructive {
+impl ConstructiveRealType for ShiftConstructive {
     fn approximate(&self, precision: i32, _: CancellationToken) -> NumResult<BigInt> {
         self.op.clone().get_appr(precision - self.count)
     }
@@ -92,7 +92,7 @@ impl ConstructiveRealApproximation for ShiftConstructive {
 #[derive(Debug)]
 struct AssumedIntConstructive(ConstructiveReal);
 
-impl ConstructiveRealApproximation for AssumedIntConstructive {
+impl ConstructiveRealType for AssumedIntConstructive {
     fn approximate(&self, precision: i32, _: CancellationToken) -> NumResult<BigInt> {
         if precision >= 0 {
             self.0.clone().get_appr(precision)
@@ -105,7 +105,7 @@ impl ConstructiveRealApproximation for AssumedIntConstructive {
 #[derive(Debug)]
 struct NegatedConstructive(ConstructiveReal);
 
-impl ConstructiveRealApproximation for NegatedConstructive {
+impl ConstructiveRealType for NegatedConstructive {
     fn approximate(&self, precision: i32, _: CancellationToken) -> NumResult<BigInt> {
         Ok(self.0.clone().get_appr(precision)?.neg())
     }
@@ -117,7 +117,7 @@ struct MultiplyConstructive {
     op2: ConstructiveReal,
 }
 
-impl ConstructiveRealApproximation for MultiplyConstructive {
+impl ConstructiveRealType for MultiplyConstructive {
     fn approximate(&self, precision: i32, _: CancellationToken) -> NumResult<BigInt> {
         let mut op1 = self.op1.clone();
         let mut op2 = self.op2.clone();
@@ -161,7 +161,7 @@ impl ConstructiveRealApproximation for MultiplyConstructive {
 #[derive(Debug)]
 struct InvertedConstructive(ConstructiveReal);
 
-impl ConstructiveRealApproximation for InvertedConstructive {
+impl ConstructiveRealType for InvertedConstructive {
     fn approximate(&self, precision: i32, _: CancellationToken) -> NumResult<BigInt> {
         let mut op = self.0.clone();
         let msd = op.msd()?;
@@ -206,7 +206,7 @@ struct SelectConstructive {
     op2: ConstructiveReal,
 }
 
-impl ConstructiveRealApproximation for SelectConstructive {
+impl ConstructiveRealType for SelectConstructive {
     fn approximate(&self, precision: i32, _: CancellationToken) -> NumResult<BigInt> {
         let selector_sign = self.selector.clone().get_appr(-20)?.sign();
         match selector_sign {
@@ -234,7 +234,7 @@ impl ConstructiveRealApproximation for SelectConstructive {
 #[derive(Debug)]
 struct PrescaledExpConstructive(ConstructiveReal);
 
-impl ConstructiveRealApproximation for PrescaledExpConstructive {
+impl ConstructiveRealType for PrescaledExpConstructive {
     fn approximate(&self, precision: i32, ct: CancellationToken) -> NumResult<BigInt> {
         if precision >= 1 {
             return Ok(BigInt::zero());
@@ -273,7 +273,7 @@ impl ConstructiveRealApproximation for PrescaledExpConstructive {
 #[derive(Debug)]
 struct PrescaledLnConstructive(ConstructiveReal);
 
-impl ConstructiveRealApproximation for PrescaledLnConstructive {
+impl ConstructiveRealType for PrescaledLnConstructive {
     fn is_slow(&self) -> bool {
         true
     }
@@ -313,7 +313,7 @@ impl ConstructiveRealApproximation for PrescaledLnConstructive {
 #[derive(Debug)]
 struct PrescaledCosConstructive(ConstructiveReal);
 
-impl ConstructiveRealApproximation for PrescaledCosConstructive {
+impl ConstructiveRealType for PrescaledCosConstructive {
     fn is_slow(&self) -> bool {
         true
     }
@@ -359,7 +359,7 @@ impl ConstructiveRealApproximation for PrescaledCosConstructive {
 #[derive(Debug)]
 struct SquareRootConstructive(ConstructiveReal);
 
-impl ConstructiveRealApproximation for SquareRootConstructive {
+impl ConstructiveRealType for SquareRootConstructive {
     fn approximate(&self, precision: i32, ct: CancellationToken) -> NumResult<BigInt> {
         let mut op = self.0.clone();
         // Conservative estimate of number of
@@ -412,7 +412,7 @@ impl ConstructiveRealApproximation for SquareRootConstructive {
 #[derive(Debug)]
 struct InverseTanReciprocalConstructive(i32);
 
-impl ConstructiveRealApproximation for InverseTanReciprocalConstructive {
+impl ConstructiveRealType for InverseTanReciprocalConstructive {
     fn approximate(&self, precision: i32, ct: CancellationToken) -> NumResult<BigInt> {
         let op = self.0;
         if precision >= 1 {
@@ -454,13 +454,13 @@ impl ConstructiveRealApproximation for InverseTanReciprocalConstructive {
 
 #[derive(Clone, Debug)]
 pub struct ConstructiveReal {
-    t: Rc<dyn ConstructiveRealApproximation>,
-    current_approximation: Rc<RefCell<Option<ConstructableRealApproximation>>>,
+    t: Rc<dyn ConstructiveRealType>,
+    current_approximation: Rc<RefCell<Option<ConstructiveRealApproximation>>>,
     cancellation_token: CancellationToken,
 }
 
 #[derive(Debug)]
-pub struct ConstructableRealApproximation {
+pub struct ConstructiveRealApproximation {
     pub min_prec: i32,
     pub max_appr: BigInt,
 }
@@ -501,7 +501,7 @@ impl ConstructiveReal {
                     current_approximation.max_appr = result.clone();
                 } else {
                     self.current_approximation
-                        .replace(Some(ConstructableRealApproximation {
+                        .replace(Some(ConstructiveRealApproximation {
                             min_prec: precision,
                             max_appr: result.clone(),
                         }));
@@ -526,7 +526,7 @@ impl ConstructiveReal {
                 current_approximation.max_appr = result.clone();
             } else {
                 self.current_approximation
-                    .replace(Some(ConstructableRealApproximation {
+                    .replace(Some(ConstructiveRealApproximation {
                         min_prec: precision,
                         max_appr: result.clone(),
                     }));
@@ -761,7 +761,7 @@ impl ConstructiveReal {
     }
 
     /// The multiplicative inverse of a constructive real.
-    /// x.inverse() is equivalent to ConstructableReal::from(1).divide(x).
+    /// x.inverse() is equivalent to ConstructiveReal::from(1).divide(x).
     pub fn inverse(self) -> ConstructiveReal {
         ConstructiveReal {
             cancellation_token: self.cancellation_token.clone(),
@@ -966,10 +966,10 @@ impl TryFrom<f64> for ConstructiveReal {
 
     fn try_from(value: f64) -> Result<Self, Self::Error> {
         if value.is_nan() {
-            return Err(InternalError(ConstructableRealFromNan));
+            return Err(InternalError(ConstructiveRealFromNan));
         }
         if value.is_infinite() {
-            return Err(InternalError(ConstructableRealFromInf));
+            return Err(InternalError(ConstructiveRealFromInf));
         }
         let negative = value < 0.0;
         let bits = value.abs().to_bits();
