@@ -15,13 +15,11 @@ use std::rc::Rc;
 
 // https://android.googlesource.com/platform/external/crcalc/+/6db978c639e9bd5ac63fd88cbf3765d8c0fb3271/src/com/hp/creals/CR.java
 
-trait ConstructiveRealType
+trait ConstructiveRealApproximation
 where
     Self: Debug,
 {
-    ///  Must be defined in implementors of ConstructiveReal
-    ///  Most users can ignore the existence of this method, and will
-    ///  not ever need to implement ConstructiveReal.
+    ///  Must be defined in implementors of ConstructiveRealApproximation
     ///  Returns value / 2 ** precision rounded to an integer.
     ///  The error in the result is strictly < 1.
     ///  Informally, approximate(n) gives a scaled approximation
@@ -29,6 +27,15 @@ where
     ///  Implementations may safely assume that precision is
     ///  at least a factor of 8 away from overflow.
     fn approximate(&self, precision: i32, ct: CancellationToken) -> NumResult<BigInt>;
+
+    // Should be true for implementations for which approximate calls are
+    // somewhat expensive.
+    // If we need to (re)evaluate, we speculatively evaluate to slightly
+    // higher precision, miminimizing reevaluations.
+    // Note that this requires any arguments to be evaluated to higher
+    // precision than absolutely necessary.  It can thus potentially
+    // result in lots of wasted effort, and should be used judiciously.
+    // This assumes that the order of magnitude of the number is roughly one.
     fn is_slow(&self) -> bool {
         false
     }
@@ -37,7 +44,7 @@ where
 #[derive(Debug)]
 struct InvalidConstructive();
 
-impl ConstructiveRealType for InvalidConstructive {
+impl ConstructiveRealApproximation for InvalidConstructive {
     fn approximate(&self, _precision: i32, _: CancellationToken) -> NumResult<BigInt> {
         panic!("Tried to approximate an invalid constructable real.")
     }
@@ -46,7 +53,7 @@ impl ConstructiveRealType for InvalidConstructive {
 #[derive(Debug)]
 struct BigIntegerConstructive(BigInt);
 
-impl ConstructiveRealType for BigIntegerConstructive {
+impl ConstructiveRealApproximation for BigIntegerConstructive {
     fn approximate(&self, precision: i32, _: CancellationToken) -> NumResult<BigInt> {
         Ok(scale(self.0.clone(), -precision))
     }
@@ -58,7 +65,7 @@ struct AddConstructive {
     op2: ConstructiveReal,
 }
 
-impl ConstructiveRealType for AddConstructive {
+impl ConstructiveRealApproximation for AddConstructive {
     fn approximate(&self, precision: i32, _: CancellationToken) -> NumResult<BigInt> {
         // Args need to be evaluated so that each error is < 1/4 ulp.
         // Rounding error from the cale call is <= 1/2 ulp, so that
@@ -76,7 +83,7 @@ struct ShiftConstructive {
     count: i32,
 }
 
-impl ConstructiveRealType for ShiftConstructive {
+impl ConstructiveRealApproximation for ShiftConstructive {
     fn approximate(&self, precision: i32, _: CancellationToken) -> NumResult<BigInt> {
         self.op.clone().get_appr(precision - self.count)
     }
@@ -85,7 +92,7 @@ impl ConstructiveRealType for ShiftConstructive {
 #[derive(Debug)]
 struct AssumedIntConstructive(ConstructiveReal);
 
-impl ConstructiveRealType for AssumedIntConstructive {
+impl ConstructiveRealApproximation for AssumedIntConstructive {
     fn approximate(&self, precision: i32, _: CancellationToken) -> NumResult<BigInt> {
         if precision >= 0 {
             self.0.clone().get_appr(precision)
@@ -98,7 +105,7 @@ impl ConstructiveRealType for AssumedIntConstructive {
 #[derive(Debug)]
 struct NegatedConstructive(ConstructiveReal);
 
-impl ConstructiveRealType for NegatedConstructive {
+impl ConstructiveRealApproximation for NegatedConstructive {
     fn approximate(&self, precision: i32, _: CancellationToken) -> NumResult<BigInt> {
         Ok(self.0.clone().get_appr(precision)?.neg())
     }
@@ -110,7 +117,7 @@ struct MultiplyConstructive {
     op2: ConstructiveReal,
 }
 
-impl ConstructiveRealType for MultiplyConstructive {
+impl ConstructiveRealApproximation for MultiplyConstructive {
     fn approximate(&self, precision: i32, _: CancellationToken) -> NumResult<BigInt> {
         let mut op1 = self.op1.clone();
         let mut op2 = self.op2.clone();
@@ -154,7 +161,7 @@ impl ConstructiveRealType for MultiplyConstructive {
 #[derive(Debug)]
 struct InvertedConstructive(ConstructiveReal);
 
-impl ConstructiveRealType for InvertedConstructive {
+impl ConstructiveRealApproximation for InvertedConstructive {
     fn approximate(&self, precision: i32, _: CancellationToken) -> NumResult<BigInt> {
         let mut op = self.0.clone();
         let msd = op.msd()?;
@@ -199,7 +206,7 @@ struct SelectConstructive {
     op2: ConstructiveReal,
 }
 
-impl ConstructiveRealType for SelectConstructive {
+impl ConstructiveRealApproximation for SelectConstructive {
     fn approximate(&self, precision: i32, _: CancellationToken) -> NumResult<BigInt> {
         let selector_sign = self.selector.clone().get_appr(-20)?.sign();
         match selector_sign {
@@ -227,7 +234,7 @@ impl ConstructiveRealType for SelectConstructive {
 #[derive(Debug)]
 struct PrescaledExpConstructive(ConstructiveReal);
 
-impl ConstructiveRealType for PrescaledExpConstructive {
+impl ConstructiveRealApproximation for PrescaledExpConstructive {
     fn approximate(&self, precision: i32, ct: CancellationToken) -> NumResult<BigInt> {
         if precision >= 1 {
             return Ok(BigInt::zero());
@@ -256,8 +263,8 @@ impl ConstructiveRealType for PrescaledExpConstructive {
             n += 1;
             /* current_term = current_term * op / n */
             current_term = scale(current_term * op_appr.clone(), op_prec);
-            current_term = current_term / (BigInt::from(n));
-            current_sum = current_sum + current_term.clone()
+            current_term /= BigInt::from(n);
+            current_sum += current_term.clone()
         }
         Ok(scale(current_sum, calc_precision - precision))
     }
@@ -266,7 +273,7 @@ impl ConstructiveRealType for PrescaledExpConstructive {
 #[derive(Debug)]
 struct PrescaledLnConstructive(ConstructiveReal);
 
-impl ConstructiveRealType for PrescaledLnConstructive {
+impl ConstructiveRealApproximation for PrescaledLnConstructive {
     fn is_slow(&self) -> bool {
         true
     }
@@ -284,7 +291,6 @@ impl ConstructiveRealType for PrescaledLnConstructive {
         let op_prec = precision - 3;
         let op_appr = self.0.clone().get_appr(op_prec)?;
         // Error analysis as for exponential.
-        let scaled_1 = BigInt::one() << -calc_precision;
         let mut x_nth = scale(op_appr.clone(), op_prec - calc_precision);
         let mut current_term = x_nth.clone(); // x**n
         let mut current_sum = current_term.clone();
@@ -307,7 +313,7 @@ impl ConstructiveRealType for PrescaledLnConstructive {
 #[derive(Debug)]
 struct PrescaledCosConstructive(ConstructiveReal);
 
-impl ConstructiveRealType for PrescaledCosConstructive {
+impl ConstructiveRealApproximation for PrescaledCosConstructive {
     fn is_slow(&self) -> bool {
         true
     }
@@ -343,7 +349,7 @@ impl ConstructiveRealType for PrescaledCosConstructive {
             current_term = scale(current_term * op_appr.clone(), op_prec);
             current_term = scale(current_term * op_appr.clone(), op_prec);
             let divisor = BigInt::from(-n) * BigInt::from(n - 1);
-            current_term = current_term / divisor;
+            current_term /= divisor;
             current_sum = current_sum.add(current_term.clone());
         }
         Ok(scale(current_sum, calc_precision - precision))
@@ -353,103 +359,102 @@ impl ConstructiveRealType for PrescaledCosConstructive {
 #[derive(Debug)]
 struct SquareRootConstructive(ConstructiveReal);
 
-impl ConstructiveRealType for SquareRootConstructive {
+impl ConstructiveRealApproximation for SquareRootConstructive {
     fn approximate(&self, precision: i32, ct: CancellationToken) -> NumResult<BigInt> {
-         let mut op = self.0.clone();
-                // Conservative estimate of number of
-                // significant bits in double precision
-                // computation.
-                const FP_PREC: i32 = 50;
-                const FP_OP_PREC: i32 = 60;
+        let mut op = self.0.clone();
+        // Conservative estimate of number of
+        // significant bits in double precision
+        // computation.
+        const FP_PREC: i32 = 50;
+        const FP_OP_PREC: i32 = 60;
 
-                let max_prec_needed = 2 * precision - 1;
-                let msd = op.msd_n(max_prec_needed)?;
-                if msd <= max_prec_needed {
-                    return Ok(BigInt::zero());
-                };
-                let result_msd = msd / 2; // +- 1
-                let result_digits = result_msd - precision; // +- 2
-                if result_digits > FP_PREC {
-                    // Compute less precise approximation and use a Newton iter.
-                    let appr_digits = result_digits / 2 + 6;
-                    // This should be conservative.  Is fewer enough?
-                    let appr_prec = result_msd - appr_digits;
-                    let last_appr = self.clone().approximate(appr_prec, ct)?; // TODO: changed from get_appr.
-                    let prod_prec = 2 * appr_prec;
-                    let op_appr = op.get_appr(prod_prec)?;
-                    // Slightly fewer might be enough;
-                    // Compute (last_appr * last_appr + op_appr)/(last_appr/2)
-                    // while adjusting the scaling to make everything work
-                    let prod_prec_scaled_numerator =
-                        last_appr.clone() * last_appr.clone() + op_appr;
-                    let scaled_numerator = scale(prod_prec_scaled_numerator, appr_prec - precision);
-                    let shifted_result = scaled_numerator / last_appr;
-                    Ok((shifted_result + BigInt::one()) >> 1)
-                } else {
-                    // Use a double precision floating point approximation.
-                    // Make sure all precisions are even
-                    let op_prec = (msd - FP_OP_PREC) & !1;
-                    let working_prec = op_prec - FP_OP_PREC;
-                    let scaled_bi_appr = op.get_appr(op_prec)? << FP_OP_PREC;
-                    let scaled_appr = scaled_bi_appr.to_f64().unwrap();
-                    if scaled_appr < 0. {
-                        return Err(DomainViolation(SquareRootOfNegative));
-                    }
-                    let scaled_fp_sqrt = scaled_appr.sqrt();
-                    let scaled_sqrt = BigInt::from(scaled_fp_sqrt as i64);
-                    let shift_count = working_prec / 2 - precision;
-                    Ok(shift(scaled_sqrt, shift_count))
-                }
+        let max_prec_needed = 2 * precision - 1;
+        let msd = op.msd_n(max_prec_needed)?;
+        if msd <= max_prec_needed {
+            return Ok(BigInt::zero());
+        };
+        let result_msd = msd / 2; // +- 1
+        let result_digits = result_msd - precision; // +- 2
+        if result_digits > FP_PREC {
+            // Compute less precise approximation and use a Newton iter.
+            let appr_digits = result_digits / 2 + 6;
+            // This should be conservative.  Is fewer enough?
+            let appr_prec = result_msd - appr_digits;
+            ct.stop_if_cancelled()?;
+            let last_appr = self.approximate(appr_prec, ct)?; // TODO: changed from get_appr.
+            let prod_prec = 2 * appr_prec;
+            let op_appr = op.get_appr(prod_prec)?;
+            // Slightly fewer might be enough;
+            // Compute (last_appr * last_appr + op_appr)/(last_appr/2)
+            // while adjusting the scaling to make everything work
+            let prod_prec_scaled_numerator = last_appr.clone() * last_appr.clone() + op_appr;
+            let scaled_numerator = scale(prod_prec_scaled_numerator, appr_prec - precision);
+            let shifted_result = scaled_numerator / last_appr;
+            Ok((shifted_result + BigInt::one()) >> 1)
+        } else {
+            // Use a double precision floating point approximation.
+            // Make sure all precisions are even
+            let op_prec = (msd - FP_OP_PREC) & !1;
+            let working_prec = op_prec - FP_OP_PREC;
+            let scaled_bi_appr = op.get_appr(op_prec)? << FP_OP_PREC;
+            let scaled_appr = scaled_bi_appr.to_f64().unwrap();
+            if scaled_appr < 0. {
+                return Err(DomainViolation(SquareRootOfNegative));
+            }
+            let scaled_fp_sqrt = scaled_appr.sqrt();
+            let scaled_sqrt = BigInt::from(scaled_fp_sqrt as i64);
+            let shift_count = working_prec / 2 - precision;
+            Ok(shift(scaled_sqrt, shift_count))
+        }
     }
 }
 
 #[derive(Debug)]
 struct InverseTanReciprocalConstructive(i32);
 
-impl ConstructiveRealType for InverseTanReciprocalConstructive {
+impl ConstructiveRealApproximation for InverseTanReciprocalConstructive {
     fn approximate(&self, precision: i32, ct: CancellationToken) -> NumResult<BigInt> {
-         let op = self.0;
-                if precision >= 1 {
-                    return Ok(BigInt::zero());
-                };
-                let iterations_needed = -precision / 2 + 2; // conservative estimate > 0.
-                //  Claim: each intermediate term is accurate
-                //  to 2*base^calc_precision.
-                //  Total rounding error in series computation is
-                //  2*iterations_needed*base^calc_precision,
-                //  exclusive of error in op.
-                let calc_precision = precision - bound_log2(2 * iterations_needed) - 2; // for error in op, truncation.
-                // Error in argument results in error of < 3/8 ulp.
-                // Cumulative arithmetic rounding error is < 1/4 ulp.
-                // Series truncation error < 1/4 ulp.
-                // Final rounding error is <= 1/2 ulp.
-                // Thus final error is < 1 ulp.
-                let scaled_1 = BigInt::one() << -calc_precision;
-                let big_op = BigInt::from(op);
-                let big_op_squared = BigInt::from(op * op);
-                let op_inverse = scaled_1 / big_op;
-                let mut current_power = op_inverse.clone();
-                let mut current_term = op_inverse.clone();
-                let mut current_sum = op_inverse.clone();
-                let mut current_sign = 1;
-                let mut n = 1;
-                let max_trunc_error = BigInt::one() << (precision - 2 - calc_precision);
-                while current_term.abs() >= max_trunc_error {
-                    ct.stop_if_cancelled()?;
-                    n += 2;
-                    current_power = current_power / big_op_squared.clone();
-                    current_sign = -current_sign;
-                    current_term = current_power.clone() / BigInt::from(current_sign * n);
-                    current_sum = current_sum.add(current_term.clone());
-                }
-                Ok(scale(current_sum, calc_precision - precision))
+        let op = self.0;
+        if precision >= 1 {
+            return Ok(BigInt::zero());
+        };
+        let iterations_needed = -precision / 2 + 2; // conservative estimate > 0.
+        //  Claim: each intermediate term is accurate
+        //  to 2*base^calc_precision.
+        //  Total rounding error in series computation is
+        //  2*iterations_needed*base^calc_precision,
+        //  exclusive of error in op.
+        let calc_precision = precision - bound_log2(2 * iterations_needed) - 2; // for error in op, truncation.
+        // Error in argument results in error of < 3/8 ulp.
+        // Cumulative arithmetic rounding error is < 1/4 ulp.
+        // Series truncation error < 1/4 ulp.
+        // Final rounding error is <= 1/2 ulp.
+        // Thus final error is < 1 ulp.
+        let scaled_1 = BigInt::one() << -calc_precision;
+        let big_op = BigInt::from(op);
+        let big_op_squared = BigInt::from(op * op);
+        let op_inverse = scaled_1 / big_op;
+        let mut current_power = op_inverse.clone();
+        let mut current_term = op_inverse.clone();
+        let mut current_sum = op_inverse.clone();
+        let mut current_sign = 1;
+        let mut n = 1;
+        let max_trunc_error = BigInt::one() << (precision - 2 - calc_precision);
+        while current_term.abs() >= max_trunc_error {
+            ct.stop_if_cancelled()?;
+            n += 2;
+            current_power /= big_op_squared.clone();
+            current_sign = -current_sign;
+            current_term = current_power.clone() / BigInt::from(current_sign * n);
+            current_sum = current_sum.add(current_term.clone());
+        }
+        Ok(scale(current_sum, calc_precision - precision))
     }
 }
 
-
 #[derive(Clone, Debug)]
 pub struct ConstructiveReal {
-    t: Rc<dyn ConstructiveRealType>,
+    t: Rc<dyn ConstructiveRealApproximation>,
     current_approximation: Rc<RefCell<Option<ConstructableRealApproximation>>>,
     cancellation_token: CancellationToken,
 }
@@ -486,7 +491,9 @@ impl ConstructiveReal {
                 } else {
                     (precision - prec_incr + 1) & !(prec_incr - 1)
                 };
-                let result = self.t.approximate(eval_prec, self.cancellation_token.clone())?;
+                let result = self
+                    .t
+                    .approximate(eval_prec, self.cancellation_token.clone())?;
                 if let Some(current_approximation) =
                     self.current_approximation.borrow_mut().as_mut()
                 {
@@ -501,32 +508,30 @@ impl ConstructiveReal {
                 }
                 Ok(scale(result, eval_prec - precision))
             }
+        } else if let Some(current_approximation) = current_approximation
+            && precision >= current_approximation.min_prec
+        {
+            Ok(scale(
+                current_approximation.max_appr.clone(),
+                current_approximation.min_prec - precision,
+            ))
         } else {
-            if let Some(current_approximation) = current_approximation
-                && precision >= current_approximation.min_prec
-            {
-                Ok(scale(
-                    current_approximation.max_appr.clone(),
-                    current_approximation.min_prec - precision,
-                ))
-            } else {
-                drop(current_approximation_borrow);
+            drop(current_approximation_borrow);
 
-                let result = self.t.approximate(precision, self.cancellation_token.clone())?;
-                if let Some(current_approximation) =
-                    self.current_approximation.borrow_mut().as_mut()
-                {
-                    current_approximation.min_prec = precision;
-                    current_approximation.max_appr = result.clone();
-                } else {
-                    self.current_approximation
-                        .replace(Some(ConstructableRealApproximation {
-                            min_prec: precision,
-                            max_appr: result.clone(),
-                        }));
-                }
-                Ok(result)
+            let result = self
+                .t
+                .approximate(precision, self.cancellation_token.clone())?;
+            if let Some(current_approximation) = self.current_approximation.borrow_mut().as_mut() {
+                current_approximation.min_prec = precision;
+                current_approximation.max_appr = result.clone();
+            } else {
+                self.current_approximation
+                    .replace(Some(ConstructableRealApproximation {
+                        min_prec: precision,
+                        max_appr: result.clone(),
+                    }));
             }
+            Ok(result)
         }
     }
 
@@ -545,8 +550,8 @@ impl ConstructiveReal {
         } else {
             current_approximation.max_appr.abs().bits()
         } as i32;
-        let first_digit = current_approximation.min_prec + length - 1;
-        first_digit
+
+        current_approximation.min_prec + length - 1
     }
 
     /// This version may return i32::MIN if the correct
@@ -708,7 +713,7 @@ impl ConstructiveReal {
     /// - n: Number of digits (>= 0) included to the right of decimal point
     /// - radix: Base ( >= 2, <= 16) for the resulting representation
     pub fn to_string(&self, n: u32, radix: u32) -> NumResult<String> {
-        let mut scaled_cr: ConstructiveReal = if radix == 16 {
+        let scaled_cr: ConstructiveReal = if radix == 16 {
             (self.clone() << (4 * n) as i32)?
         } else {
             let scale_factor = BigInt::from(radix).pow(n);
@@ -772,7 +777,11 @@ impl ConstructiveReal {
     pub fn select(self, x: Self, y: Self) -> ConstructiveReal {
         ConstructiveReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Rc::new(SelectConstructive { selector: self, op1: x, op2: y }),
+            t: Rc::new(SelectConstructive {
+                selector: self,
+                op1: x,
+                op2: y,
+            }),
             ..ConstructiveReal::default()
         }
     }
@@ -849,9 +858,7 @@ impl ConstructiveReal {
     pub fn simple_ln(self) -> ConstructiveReal {
         ConstructiveReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Rc::new(PrescaledLnConstructive(
-                self - ConstructiveReal::from(1),
-            )),
+            t: Rc::new(PrescaledLnConstructive(self - ConstructiveReal::from(1))),
             ..ConstructiveReal::default()
         }
     }
@@ -1004,7 +1011,10 @@ impl Add for ConstructiveReal {
     fn add(self, rhs: Self) -> Self::Output {
         ConstructiveReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Rc::new(AddConstructive { op1: self, op2: rhs }),
+            t: Rc::new(AddConstructive {
+                op1: self,
+                op2: rhs,
+            }),
             ..ConstructiveReal::default()
         }
     }
@@ -1017,7 +1027,10 @@ impl Shl<i32> for ConstructiveReal {
         check_prec(rhs)?;
         Ok(ConstructiveReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Rc::new(ShiftConstructive { op: self, count: rhs }),
+            t: Rc::new(ShiftConstructive {
+                op: self,
+                count: rhs,
+            }),
             ..ConstructiveReal::default()
         })
     }
@@ -1030,7 +1043,10 @@ impl Shr<i32> for ConstructiveReal {
         check_prec(rhs)?;
         Ok(ConstructiveReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Rc::new(ShiftConstructive { op: self, count: -rhs }),
+            t: Rc::new(ShiftConstructive {
+                op: self,
+                count: -rhs,
+            }),
             ..ConstructiveReal::default()
         })
     }
@@ -1050,7 +1066,10 @@ impl Mul for ConstructiveReal {
     fn mul(self, rhs: Self) -> Self::Output {
         ConstructiveReal {
             cancellation_token: self.cancellation_token.clone(),
-            t: Rc::new(MultiplyConstructive { op1: self, op2: rhs }),
+            t: Rc::new(MultiplyConstructive {
+                op1: self,
+                op2: rhs,
+            }),
             ..ConstructiveReal::default()
         }
     }
@@ -1059,6 +1078,7 @@ impl Mul for ConstructiveReal {
 impl Div for ConstructiveReal {
     type Output = ConstructiveReal;
 
+    #[allow(clippy::suspicious_arithmetic_impl, reason = "This is the intended implementation.")]
     fn div(self, rhs: Self) -> Self::Output {
         self * rhs.inverse()
     }
@@ -1154,7 +1174,7 @@ fn shift(k: BigInt, n: i32) -> BigInt {
     if n == 0 {
         k
     } else if n < 0 {
-        k.div_floor(&BigInt::from(2).pow(n.abs() as u32))
+        k.div_floor(&BigInt::from(2).pow(n.unsigned_abs()))
     } else {
         k.mul(&BigInt::from(2).pow(n as u32))
     }
