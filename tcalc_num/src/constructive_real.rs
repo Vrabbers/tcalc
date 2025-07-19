@@ -40,6 +40,7 @@ mod prescaled_cos_constructive;
 mod square_root_constructive;
 mod inverse_tan_reciporical_constructive;
 
+pub mod constants;
 // https://android.googlesource.com/platform/external/crcalc/+/6db978c639e9bd5ac63fd88cbf3765d8c0fb3271/src/com/hp/creals/CR.java
 
 #[derive(Clone, Debug)]
