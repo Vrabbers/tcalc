@@ -376,6 +376,7 @@ pub trait OptionalCRProperty {
     fn is_one(&self) -> bool;
     fn is_nonzero(&self) -> bool;
     fn cr_symbolic(&self, ang: AngleUnit, subsuperscript: bool) -> Option<String>;
+    fn arg_for_kind(&self, kind: CRPropertyType) -> &Option<BigRational>;
 }
 
 impl OptionalCRProperty for Option<CRProperty> {
@@ -408,6 +409,14 @@ impl OptionalCRProperty for Option<CRProperty> {
             p.cr_symbolic(ang, subsuperscript)
         } else {
             None
+        }
+    }
+
+    fn arg_for_kind(&self, kind: CRPropertyType) -> &Option<BigRational> {
+        if let Some(p) = self {
+            p.arg_for_kind(kind)
+        } else {
+            &None
         }
     }
 }
