@@ -1,32 +1,80 @@
 pub mod constants;
 mod cr_property;
+mod signed_property;
 
 use crate::constructive_real::ConstructiveReal;
+use crate::constructive_real::constants::ONE;
+use crate::error::NumResult;
+use crate::real::cr_property::{CRProperty, CRPropertyType};
 use num::bigint::Sign;
 use num::{BigInt, BigRational, FromPrimitive, One, Signed};
+use std::cmp::Ordering;
 
 #[derive(Debug, Clone)]
 pub struct Real {
     rat: BigRational,
     cr: ConstructiveReal,
+    cr_property: CRProperty,
 }
 
 impl Real {
-    pub fn new(rat: BigRational, cr: ConstructiveReal) -> Self {
-        Self { rat, cr }
+    pub fn new(rat: BigRational, cr: ConstructiveReal, cr_property: CRProperty) -> Self {
+        Self {
+            rat,
+            cr,
+            cr_property,
+        }
     }
 
-    pub fn new_from_cr(cr: ConstructiveReal) -> Self {
+    /// Shorthand constructor; computes non-null property only for a few special cases.
+    pub fn new_from_rat_cr(rat: BigRational, cr: ConstructiveReal) -> Self {
         Self {
-            rat: BigRational::one(),
+            rat,
+            cr_property: Option::<CRProperty>::from(cr.clone()).unwrap(),
             cr,
         }
     }
 
+    pub fn new_from_cr(cr: ConstructiveReal) -> Self {
+        Self::new_from_rat_cr(BigRational::one(), cr)
+    }
+
+    pub fn new_from_cr_property(cr: ConstructiveReal, cr_property: CRProperty) -> Self {
+        Self::new(BigRational::one(), cr, cr_property)
+    }
+
+    pub fn new_from_rat_property(rat: BigRational, cr_property: CRProperty) -> Self {
+        Self::new(rat, cr_property.cr().unwrap().unwrap(), cr_property)
+    }
+
+    pub fn new_from_property(cr_property: CRProperty) -> Self {
+        Self::new_from_rat_property(BigRational::one(), cr_property)
+    }
+
     pub fn new_from_rational(rat: BigRational) -> Self {
-        Self {
-            rat,
-            cr: ConstructiveReal::from(1),
+        Self::new(rat, ONE.clone(), CRProperty::one())
+    }
+
+    /// Check that if crProperty uniquely defines a constructive real, then crProperty
+    /// and crFactor both describe approximately the same number.
+    pub fn property_correct(&self, prec: i32) -> NumResult<bool> {
+        let property_cr = self.cr_property.cr()?;
+        if let Some(property_cr) = property_cr {
+            let bound = self.cr_property.msb_bound();
+            if bound != i32::MIN
+                && property_cr
+                    .clone()
+                    .abs()
+                    .compare_to_absolute(&(ONE.clone() << bound)?, prec)?
+                    == Ordering::Less
+            {
+                // msb_bound produced incorrect result.
+                Ok(false)
+            } else {
+                Ok(self.cr.compare_to_absolute(&property_cr, prec)? == Ordering::Equal)
+            }
+        } else {
+            Ok(true)
         }
     }
 }
@@ -71,7 +119,8 @@ fn can_trig_be_reduced(arg: BigRational) -> bool {
 
 /// Reduce a SIN_PI or TAN_PI argument to the interval [-1/2, 1.5).
 fn reduced_arg(arg: BigRational) -> BigRational {
-    if arg >= BigRational::new((-1).into(), 2.into()) && arg < BigRational::new(3.into(), 2.into()) {
+    if arg >= BigRational::new((-1).into(), 2.into()) && arg < BigRational::new(3.into(), 2.into())
+    {
         return arg;
     }
 
