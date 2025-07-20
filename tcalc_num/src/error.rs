@@ -13,12 +13,13 @@ pub enum NumError {
 pub enum InternalError {
     ConstructiveRealFromNan,
     ConstructiveRealFromInf,
+    UnconstructableFloat
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum DomainViolation {
     LogarithmOfNegative,
-    SquareRootOfNegative,
+    NthRoot(f32),
 }
 
 pub type NumResult<T> = Result<T, NumError>;

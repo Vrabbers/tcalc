@@ -23,6 +23,7 @@ use std::clone::Clone;
 use std::cmp::Ordering;
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::{Add, Div, Mul, Neg, Shl, Shr, Sub};
+use std::ptr;
 use std::sync::{Arc, RwLock};
 
 mod add_constructive;
@@ -61,7 +62,7 @@ pub struct ConstructiveReal {
     pub known_value: Option<ConstructiveRealKnownValue>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ConstructiveRealApproximation {
     pub min_prec: i32,
     pub max_appr: BigInt,
@@ -96,7 +97,7 @@ where
 }
 
 impl ConstructiveReal {
-    fn get_appr(&self, precision: i32) -> NumResult<BigInt> {
+    pub(crate) fn get_appr(&self, precision: i32) -> NumResult<BigInt> {
         check_prec(precision)?;
 
         let mut current_approximation_borrow = self.current_approximation.write().unwrap();
@@ -297,7 +298,7 @@ impl ConstructiveReal {
     }
 
     /// Equivalent to <TT>compareTo(CR.valueOf(0), a)</tt>
-    pub fn sign_precision(&mut self, a: i32) -> NumResult<Sign> {
+    pub fn sign_precision(&self, a: i32) -> NumResult<Sign> {
         if let Some(current_approximation) = self.current_approximation.read().unwrap().as_ref() {
             let quick_try = current_approximation.max_appr.sign();
             if quick_try != Sign::NoSign {
@@ -316,7 +317,7 @@ impl ConstructiveReal {
     /// will run until it exhausts memory.
     /// If the two constructive reals may be equal, the one or two argument
     /// version of sign should be used.
-    pub fn sign(&mut self) -> NumResult<Sign> {
+    pub fn sign(&self) -> NumResult<Sign> {
         let mut a = -20;
         loop {
             check_prec(a)?;
@@ -781,6 +782,12 @@ impl From<ConstructiveReal> for NumResult<f64> {
         } else {
             Ok(result)
         }
+    }
+}
+
+impl PartialEq for ConstructiveReal {
+    fn eq(&self, other: &Self) -> bool {
+        ptr::eq(self.current_approximation.data_ptr(), other.current_approximation.data_ptr())
     }
 }
 

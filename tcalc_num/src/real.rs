@@ -2,29 +2,53 @@ pub mod constants;
 mod cr_property;
 mod signed_property;
 
-use crate::constructive_real::ConstructiveReal;
-use crate::constructive_real::constants::ONE;
-use crate::error::NumResult;
-use crate::real::cr_property::{CRProperty, CRPropertyType};
-use num::bigint::Sign;
-use num::{BigInt, BigRational, FromPrimitive, Integer, One, Signed, Zero};
-use std::cmp::Ordering;
-use std::ops::Div;
-use num::traits::Inv;
 use crate::angle_unit::AngleUnit;
+use crate::constructive_real::ConstructiveReal;
+use crate::constructive_real::constants::{LN_10, ONE};
+use crate::error::InternalError::UnconstructableFloat;
+use crate::error::{NumError, NumResult};
 use crate::rational_extensions::RationalExtensions;
+use crate::real::constants::ZERO;
+use crate::real::cr_property::{CRProperty, CRPropertyType, OptionalCRProperty};
+use num::bigint::Sign;
+use num::traits::Inv;
+use num::{BigInt, BigRational, FromPrimitive, Integer, One, Signed, ToPrimitive, Zero};
+use std::cmp::Ordering;
+use std::fmt::{Debug, Display, Formatter};
+use std::ops::{Add, Div, Neg, Rem, Sub};
+use std::ptr::null;
 
 static COMMON_POWER_LENGTH_LIMIT: u64 = 200;
 
-#[derive(Debug, Clone)]
+/// Number of extra bits used in {@link toStringTruncated} evaluation to prefer truncation to
+/// rounding. Must be <= 30.
+static EXTRA_PREC: i32 = 10;
+
+/// Default comparison tolerances, in bits
+static DEFAULT_INITIAL_TOLERANCE: i32 = -100; // For rough comparison.
+static DEFAULT_RELATIVE_TOLERANCE: i32 = -1000; // Used only in is_comparable.
+static DEFAULT_COMPARISON_TOLERANCE: i32 = -3500; // Absolute tolerance.
+/// Roughly the number of leading zeroes we're willing to accept in comparisons.
+static ZERO_COMPARISON_TOLERANCE: i32 = -5000; // Absolute tolerance.
+
+/// Don't track ln() or log() arguments whose representation is larger than this.
+static LOG_ARG_BITS: i32 = 100;
+/// Don't even attempt to simplify ln() or log() arguments larger than this.
+static LOG_ARG_CANDIDATE_BITS: f64 = 2000.;
+
+/// Small integers for which we try to recognize ln(small_int^n), so we can simplify it to
+/// n*ln(small_int).
+static SMALL_NON_POWERS: [i32; 6] = [2, 3, 5, 6, 7, 10];
+
+#[derive(Clone)]
 pub struct Real {
     rat: BigRational,
     cr: ConstructiveReal,
-    cr_property: CRProperty,
+    cr_property: Option<CRProperty>,
 }
 
 impl Real {
-    pub fn new(rat: BigRational, cr: ConstructiveReal, cr_property: CRProperty) -> Self {
+    pub fn new(rat: BigRational, cr: ConstructiveReal, cr_property: Option<CRProperty>) -> Self {
         Self {
             rat,
             cr,
@@ -36,7 +60,7 @@ impl Real {
     pub fn new_from_rat_cr(rat: BigRational, cr: ConstructiveReal) -> Self {
         Self {
             rat,
-            cr_property: Option::<CRProperty>::from(cr.clone()).unwrap(),
+            cr_property: Option::<CRProperty>::from(cr.clone()),
             cr,
         }
     }
@@ -45,12 +69,12 @@ impl Real {
         Self::new_from_rat_cr(BigRational::one(), cr)
     }
 
-    pub fn new_from_cr_property(cr: ConstructiveReal, cr_property: CRProperty) -> Self {
+    pub fn new_from_cr_property(cr: ConstructiveReal, cr_property: Option<CRProperty>) -> Self {
         Self::new(BigRational::one(), cr, cr_property)
     }
 
     pub fn new_from_rat_property(rat: BigRational, cr_property: CRProperty) -> Self {
-        Self::new(rat, cr_property.cr().unwrap().unwrap(), cr_property)
+        Self::new(rat, cr_property.cr().unwrap().unwrap(), Some(cr_property))
     }
 
     pub fn new_from_property(cr_property: CRProperty) -> Self {
@@ -58,21 +82,25 @@ impl Real {
     }
 
     pub fn new_from_rational(rat: BigRational) -> Self {
-        Self::new(rat, ONE.clone(), CRProperty::one())
+        Self::new(rat, ONE.clone(), Some(CRProperty::one()))
     }
 
     /// Check that if crProperty uniquely defines a constructive real, then crProperty
     /// and crFactor both describe approximately the same number.
     pub fn property_correct(&self, prec: i32) -> NumResult<bool> {
-        let property_cr = self.cr_property.cr()?;
+        let Some(cr_property) = self.cr_property.clone() else {
+            return Ok(true);
+        };
+
+        let property_cr = cr_property.cr()?;
         if let Some(property_cr) = property_cr {
-            let bound = self.cr_property.msb_bound();
+            let bound = cr_property.msb_bound();
             if bound != i32::MIN
                 && property_cr
-                .clone()
-                .abs()
-                .compare_to_absolute(&(ONE.clone() << bound)?, prec)?
-                == Ordering::Less
+                    .clone()
+                    .abs()
+                    .compare_to_absolute(&(ONE.clone() << bound)?, prec)?
+                    == Ordering::Less
             {
                 // msb_bound produced incorrect result.
                 Ok(false)
@@ -101,7 +129,11 @@ impl Real {
             return false;
         }
 
-        match self.cr_property.kind {
+        let Some(cr_property) = self.cr_property.clone() else {
+            return false;
+        };
+
+        match cr_property.kind {
             CRPropertyType::Pi => true,
             CRPropertyType::Sqrt => false,
             CRPropertyType::Ln => {
@@ -134,7 +166,7 @@ impl Real {
                 // Not enough information to tell.
                 false
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 
@@ -144,8 +176,12 @@ impl Real {
     /// to compare them.
     pub fn definitely_independent(&self, other: &Self) -> bool {
         // We always return false if either crFactor might be zero.
-        let p1 = &self.cr_property;
-        let p2 = &other.cr_property;
+        let Some(p1) = &self.cr_property else {
+            return false;
+        };
+        let Some(p2) = &other.cr_property else {
+            return false;
+        };
         if p1 == p2 {
             return false;
         }
@@ -169,7 +205,9 @@ impl Real {
                     true
                 } else if p2.kind == CRPropertyType::Sqrt {
                     // The argument is not necessarily minimal.
-                    p1.arg.clone().unwrap().irreducible_sqrt() && p2.arg.clone().unwrap().irreducible_sqrt() && p1 != p2
+                    p1.arg.clone().unwrap().irreducible_sqrt()
+                        && p2.arg.clone().unwrap().irreducible_sqrt()
+                        && p1 != p2
                 } else {
                     false
                 }
@@ -225,7 +263,455 @@ impl Real {
                 // The case of other rational is handled above. Can we do better?
                 false
             }
-            CRPropertyType::Irrational => false
+            CRPropertyType::Irrational => false,
+        }
+    }
+
+    pub fn to_nice_string(&self, ang: AngleUnit, subsuperscript: bool) -> NumResult<String> {
+        if self.cr_property.is_one() || self.rat.is_zero() {
+            return Ok(self.rat.to_nice_string(subsuperscript));
+        }
+
+        let symbolic = self.cr_property.cr_symbolic(ang, subsuperscript);
+        if let Some(symbolic) = symbolic {
+            if self.rat.is_integer() {
+                if self.rat.is_one() {
+                    return Ok(symbolic);
+                } else if self.rat == BigRational::from_i32(-1).unwrap() {
+                    return Ok(format!("-{}", symbolic));
+                }
+                return Ok(format!("{}{}", self.rat.to_integer(), symbolic));
+            }
+            let bi_inverse = self.rat.clone().inv();
+            if bi_inverse.is_integer() {
+                let bi_inverse = bi_inverse.to_integer();
+                // Use spaces to reduce ambiguity with square roots.
+                return Ok(format!(
+                    "{}{} / {}",
+                    if bi_inverse.is_negative() { "-" } else { "" },
+                    symbolic,
+                    bi_inverse.abs()
+                ));
+            }
+            return if subsuperscript {
+                Ok(format!(
+                    "{}{}",
+                    self.rat.to_nice_string(subsuperscript),
+                    symbolic
+                ))
+            } else {
+                Ok(format!(
+                    "({}){}",
+                    self.rat.to_nice_string(subsuperscript),
+                    symbolic
+                ))
+            };
+        }
+        if self.rat.is_one() {
+            return self.cr.to_string(10, 10);
+        }
+        self.cr.to_string(10, 10)
+    }
+
+    pub fn exactly_displayable(&self) -> bool {
+        if let Some(cr_property) = &self.cr_property {
+            cr_property.determines_cr()
+        } else {
+            false
+        }
+    }
+
+    /// Returns a truncated representation of the result.
+    /// If exactlyTruncatable(), we round correctly towards zero. Otherwise the resulting digit
+    /// string may occasionally be rounded up instead.
+    /// Always includes a decimal point in the result.
+    /// The result includes n digits to the right of the decimal point.
+    ///
+    /// Parameters:
+    /// n: result precision, >= 0
+    pub fn to_string_truncated(&self, n: u32) -> NumResult<String> {
+        if self.cr_property.is_one() || self.rat.is_zero() {
+            return Ok(self.rat.to_string_truncated(n));
+        }
+
+        let scaled = ConstructiveReal::from(BigInt::from_i32(10).unwrap().pow(n)) * self.cr.clone();
+        let mut negative = false;
+        let mut int_scaled;
+        if self.exactly_truncatable() {
+            int_scaled = scaled.get_appr(0)?;
+            if int_scaled.is_negative() {
+                negative = true;
+                int_scaled = -int_scaled;
+            }
+
+            if ConstructiveReal::from(int_scaled.clone()).compare_to(&scaled.clone().abs())?
+                == Ordering::Greater
+            {
+                int_scaled = int_scaled - BigInt::one();
+            }
+
+            assert_eq!(
+                ConstructiveReal::from(int_scaled.clone()).compare_to(&scaled.abs())?,
+                Ordering::Less
+            );
+        } else {
+            // Approximate case.  Exact comparisons are impossible.
+            int_scaled = scaled.get_appr(-EXTRA_PREC)?;
+            if int_scaled.is_negative() {
+                negative = true;
+                int_scaled = -int_scaled;
+            }
+            int_scaled = int_scaled >> EXTRA_PREC;
+        }
+
+        let mut digits = int_scaled.to_string();
+        let mut len = digits.len();
+        if len < (n as usize) + 1 {
+            digits = format!("{}{}", "0".repeat((n as usize) + 1 - len), digits).to_string();
+            len = (n as usize) + 1;
+        }
+
+        Ok(format!(
+            "{}{}.{}",
+            if negative { "-" } else { "" },
+            digits[0..len - (n as usize)].to_string(),
+            digits[len - (n as usize)..].to_string()
+        ))
+    }
+
+    /// Can we compute correctly truncated approximations of this number?
+    pub fn exactly_truncatable(&self) -> bool {
+        // If the value is known rational, we can do exact comparisons.
+        // If the value is known irrational, then we can safely compare to rational approximations;
+        // equality is impossible; hence the comparison must converge.
+        // The only problem cases are the ones in which we don't know.
+        self.cr_property.is_one() || self.rat.is_zero() || self.definitely_irrational()
+    }
+
+    pub fn cr_value(&self) -> ConstructiveReal {
+        if self.rat == BigRational::one() {
+            self.cr.clone()
+        } else {
+            ConstructiveReal::from(self.rat.clone()) * self.cr.clone()
+        }
+    }
+
+    pub fn same_cr_factor(&self, other: &Self) -> bool {
+        self.cr == other.cr || {
+            if let Some(cr_property) = &self.cr_property {
+                cr_property.determines_cr() && self.cr_property == other.cr_property
+            } else {
+                false
+            }
+        }
+    }
+
+    /// Do both numbers have properties of the same kind describing either a constant or
+    /// a strictly monotonic function?
+    pub fn same_monotonic_cr_kind(&self, other: &Self) -> bool {
+        if let Some(self_cr_property) = &self.cr_property
+            && let Some(other_cr_property) = &other.cr_property
+            && self_cr_property.kind == other_cr_property.kind
+            && self_cr_property.determines_cr()
+        {
+            // All of our kinds other than IS_IRRATIONAL currently qualify.
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Are this and other exactly comparable?
+    pub fn is_comparable(&self, other: &Self) -> NumResult<bool> {
+        // We check for ONE only to speed up the common case.
+        // The use of a tolerance here means we can spuriously return false, not true.
+        Ok(
+            (self.same_cr_factor(other) && self.cr_property.is_nonzero())
+                || self.rat.is_zero() && other.rat.is_zero()
+                || (self.definitely_independent(other)
+                // One of the operands also needs to be non-tiny for the comparison to be practical.
+                && (self.leading_binary_zeros() < -ZERO_COMPARISON_TOLERANCE
+                || other.leading_binary_zeros() < -ZERO_COMPARISON_TOLERANCE
+                || self.cr_value().sign_precision(DEFAULT_INITIAL_TOLERANCE)? != Sign::NoSign  // Try cheaper test first.
+                || other.cr_value().sign_precision(DEFAULT_INITIAL_TOLERANCE)? != Sign::NoSign
+                || self.cr_value().sign_precision(ZERO_COMPARISON_TOLERANCE)? != Sign::NoSign
+                || other.cr_value().sign_precision(ZERO_COMPARISON_TOLERANCE)? != Sign::NoSign))
+                || (self.same_monotonic_cr_kind(other)
+                    && (self.rat == other.rat
+                        || self.cr_property.clone().unwrap().kind == CRPropertyType::Sqrt))
+                || self.cr_value().compare_to_relative(
+                    &other.cr_value(),
+                    DEFAULT_RELATIVE_TOLERANCE,
+                    DEFAULT_COMPARISON_TOLERANCE,
+                )? != Ordering::Equal,
+        )
+    }
+
+    /// Return an upper bound on the number of leading zero bits. These are the number of 0 bits to the
+    /// right of the binary point and to the left of the most significant digit. Return
+    /// i32::MAX if we cannot bound it based only on the rational factor and property.
+    pub fn leading_binary_zeros(&self) -> i32 {
+        let cr_bound = self.cr_property.clone().unwrap().msb_bound(); // lower bound on binary log.
+        if cr_bound != i32::MIN {
+            let whole_bits = self.rat.whole_number_bits();
+            if whole_bits == i32::MIN {
+                i32::MAX
+            } else {
+                if whole_bits + cr_bound >= 3 {
+                    0
+                } else {
+                    -(whole_bits + cr_bound) + 3
+                }
+            }
+        } else {
+            i32::MAX
+        }
+    }
+
+    /// Return Greater if this is greater than other, Less if this is less than r, or Equal if the two are known to be
+    /// equal. May diverge if the two are equal and !isComparable(r).
+    pub fn compare_to(&self, other: &Real) -> NumResult<Ordering> {
+        fn multiply_ordering(sign: Sign, ordering: Ordering) -> Ordering {
+            if sign == Sign::NoSign {
+                return Ordering::Equal;
+            }
+
+            match ordering {
+                Ordering::Less => match sign {
+                    Sign::Minus => Ordering::Greater,
+                    Sign::Plus => Ordering::Less,
+                    _ => unreachable!(),
+                },
+                Ordering::Equal => Ordering::Equal,
+                Ordering::Greater => match sign {
+                    Sign::Minus => Ordering::Less,
+                    Sign::Plus => Ordering::Greater,
+                    _ => unreachable!(),
+                },
+            }
+        }
+
+        if self.definitely_zero() && other.definitely_zero() {
+            return Ok(Ordering::Equal);
+        }
+
+        if self.same_cr_factor(other) {
+            let sign = self.cr.sign()?; // Can diverge if crFactor == 0.
+            if sign == Sign::NoSign {
+                return Ok(Ordering::Equal);
+            }
+
+            let other = self.rat.cmp(&other.rat);
+            return Ok(multiply_ordering(sign, other));
+        }
+
+        if self.same_monotonic_cr_kind(other) {
+            if self.rat == other.rat {
+                // kind cannot be IS_PI or IS_ONE, since same_cr_factor() would have been true.
+                // same_monotonic_cr_kind() precludes IS_IRRATIONAL.
+                // All other kinds represent monotonically increasing functions over the range we allow.
+                // Just compare the arguments.
+                return Ok(multiply_ordering(
+                    self.rat.sign(),
+                    self.cr_property
+                        .clone()
+                        .unwrap()
+                        .arg
+                        .clone()
+                        .unwrap()
+                        .cmp(&other.cr_property.clone().unwrap().arg.clone().unwrap()),
+                ));
+            }
+            if self.cr_property.clone().unwrap().kind == CRPropertyType::Sqrt {
+                // Compare the squares. We promise to compare these accrurately, so we force
+                // the multiplications to succeed by letting the result exceed BoundedRational
+                // size bounds.
+                let signum = self.rat.sign();
+                let other_signum = other.rat.sign();
+                if signum < other_signum {
+                    return Ok(Ordering::Less);
+                } else if signum > other_signum {
+                    return Ok(Ordering::Greater);
+                }
+
+                let squared = self.rat.clone()
+                    * self.rat.clone()
+                    * self.cr_property.clone().unwrap().arg.clone().unwrap();
+                let other_squared = other.rat.clone()
+                    * other.rat.clone()
+                    * other.cr_property.clone().unwrap().arg.clone().unwrap();
+
+                return Ok(multiply_ordering(signum, squared.cmp(&other_squared)));
+            }
+        }
+        self.cr_value().compare_to(&other.cr_value()) // Can also diverge.
+    }
+
+    /// Return Greater if this is greater than r, Less if this is less than r, Equal if the two are equal, or
+    /// possibly Equal if the two are within 2^a of each other, and not comparable.
+    pub fn compare_to_prec(&self, other: &Real, a: i32) -> NumResult<Ordering> {
+        if self.is_comparable(other)? {
+            self.compare_to(other)
+        } else {
+            // See if we can resolve comparison with lower precision first.
+            let mut prec = DEFAULT_INITIAL_TOLERANCE;
+            while prec * 2 <= a {
+                let result = self
+                    .cr_value()
+                    .compare_to_absolute(&other.cr_value(), prec)?;
+                if result != Ordering::Equal {
+                    return Ok(result);
+                }
+                prec *= 2;
+            }
+
+            self.cr_value().compare_to_absolute(&other.cr_value(), a)
+        }
+    }
+
+    pub fn sign_prec(&self, a: i32) -> NumResult<Sign> {
+        Ok(match self.compare_to_prec(&ZERO, a)? {
+            Ordering::Less => Sign::Minus,
+            Ordering::Equal => Sign::NoSign,
+            Ordering::Greater => Sign::Plus,
+        })
+    }
+
+    pub fn sign(&self) -> NumResult<Sign> {
+        Ok(match self.compare_to(&ZERO)? {
+            Ordering::Less => Sign::Minus,
+            Ordering::Equal => Sign::NoSign,
+            Ordering::Greater => Sign::Plus,
+        })
+    }
+
+    /// Equality comparison. May erroneously return true if values differ by less than 2^a, and
+    /// !is_comparable(other).
+    pub fn approx_equals(&self, other: &Real, a: i32) -> NumResult<bool> {
+        Ok(if self.is_comparable(other)? {
+            if self.definitely_independent(other) && (self.rat.is_zero() || other.rat.is_zero()) {
+                // No need to actually evaluate, though we don't know which is larger.
+                false
+            } else {
+                self.compare_to(other)? == Ordering::Equal
+            }
+        } else {
+            self.cr_value().compare_to_absolute(&other.cr_value(), a)? == Ordering::Equal
+        })
+    }
+
+    /// Returns true if values are definitely known to be equal, false in all other cases.
+    pub fn definitely_equals(&self, other: &Real) -> NumResult<bool> {
+        Ok(self.is_comparable(other)? && self.compare_to(other)? == Ordering::Equal)
+    }
+
+    pub fn definitely_not_equals(&self, other: &Real) -> bool {
+        if self.rat.is_zero() {
+            return other.cr_property.is_nonzero() && !other.rat.is_zero();
+        }
+
+        if other.rat.is_zero() {
+            return self.cr_property.is_nonzero() && !self.rat.is_zero();
+        }
+
+        if self.definitely_independent(other) {
+            return !self.rat.is_zero() || !other.rat.is_zero();
+        } else if self.same_cr_factor(other) && self.cr_property.is_nonzero() {
+            return self.rat.clone() != other.rat;
+        }
+
+        false
+    }
+
+    pub fn definitely_zero(&self) -> bool {
+        // If crFactor were known to be zero, we would have used a different representation.
+        self.rat.is_zero()
+    }
+
+    pub fn definitely_one(&self) -> bool {
+        self.cr_property.is_one() && self.rat == BigRational::one()
+    }
+
+    /// Can this number be determined to be definitely nonzero without performing approximate
+    /// evaluation?
+    pub fn definitely_nonzero(&self) -> bool {
+        self.cr_property.is_nonzero() && self.rat.sign() != Sign::NoSign
+    }
+
+    /// Returns a suitable representation of ln(arg) or log(arg). arg is positive and not one. kind is
+    /// IS_LN or IS_LOG.
+    pub fn log_rep(kind: CRPropertyType, arg: BigRational) -> NumResult<Self> {
+        if !matches!(kind, CRPropertyType::Ln | CRPropertyType::Log) {
+            panic!("log_rep called with invalid kind");
+        }
+
+        if arg < BigRational::one() {
+            // Convert to an argument larger than one. Normalizing arguments in this way increases the
+            // chance of repeat occurrences of the same argument, and makes them cleaner to display.
+
+            return Ok(-Self::log_rep(kind, arg.inv())?);
+        }
+
+        if arg.is_integer() {
+            if let Some(small_power_log) = Self::lg_small_power(kind, arg.to_integer())? {
+                return Ok(small_power_log);
+            }
+        }
+
+        Ok(if arg.bit_length() > LOG_ARG_BITS {
+            if kind == CRPropertyType::Ln {
+                Self::new_from_cr(ConstructiveReal::from(arg).ln()?)
+            } else {
+                Self::new_from_cr(ConstructiveReal::from(arg).ln()? / LN_10.clone())
+            }
+        } else {
+            Self::new_from_rat_property(BigRational::one(), CRProperty::new(kind, arg))
+        })
+    }
+
+    fn lg_small_power(kind: CRPropertyType, arg: BigInt) -> NumResult<Option<Self>> {
+        for m in SMALL_NON_POWERS {
+            let int_log = get_int_log(arg.clone(), m);
+            let new_cr_value;
+            if int_log != 0 {
+                if kind == CRPropertyType::Log {
+                    if m == 10 {
+                        return Ok(Some(Real::new_from_rational(
+                            BigRational::from_i64(int_log).unwrap(),
+                        )));
+                    }
+                    new_cr_value = ConstructiveReal::from(m).ln()? / LN_10.clone();
+                } else {
+                    new_cr_value = ConstructiveReal::from(m).ln()?;
+                }
+
+                return Ok(Some(Real::new(
+                    BigRational::from_i64(int_log).unwrap(),
+                    new_cr_value,
+                    Some(CRProperty::new(kind, BigRational::from_i32(m).unwrap())),
+                )));
+            }
+        }
+
+        Ok(None)
+    }
+
+    /// Return sqrt(x*y) as a Real
+    fn multiply_sqrts(x: BigRational, y: BigRational) -> Self {
+        if x == y {
+            Real::new_from_rational(x)
+        } else {
+            let product = x * y;
+            if product.is_zero() {
+                ZERO.clone()
+            } else {
+                let decomposed_product = product.extract_square_reduced();
+                Real::new(
+                    decomposed_product.0,
+                    ConstructiveReal::from(decomposed_product.1.clone()).sqrt(),
+                    Some(CRProperty::new(CRPropertyType::Sqrt, decomposed_product.1)),
+                )
+            }
         }
     }
 }
@@ -255,6 +741,168 @@ impl From<f64> for Real {
         } else {
             Self::new_from_rational(BigRational::from_f64(value).unwrap())
         }
+    }
+}
+
+impl TryFrom<Real> for f64 {
+    type Error = NumError;
+
+    /// Return a double approximation. Rational arguments are currently rounded to nearest, with ties
+    /// away from zero. TODO: Improve rounding.
+    fn try_from(value: Real) -> Result<Self, Self::Error> {
+        if value.cr_property.is_one() {
+            value
+                .rat
+                .to_f64()
+                .map(|f| Ok(f))
+                .unwrap_or(Err(NumError::InternalError(UnconstructableFloat))) // Hopefully correctly rounded
+        } else {
+            value.cr_value().into() // Approximately correctly rounded
+        }
+    }
+}
+
+impl TryFrom<Real> for BigRational {
+    type Error = ();
+
+    /// Return equivalent BigRational, if known to exist, Err otherwise
+    fn try_from(value: Real) -> Result<Self, Self::Error> {
+        if value.cr_property.is_one() || value.rat.is_zero() {
+            Ok(value.rat)
+        } else {
+            Err(())
+        }
+    }
+}
+
+impl TryFrom<Real> for BigInt {
+    type Error = ();
+
+    /// Returns equivalent BigInt result if it exists, null if not
+    fn try_from(value: Real) -> Result<Self, Self::Error> {
+        let r = BigRational::try_from(value)?;
+        if r.is_integer() {
+            Ok(r.to_integer())
+        } else {
+            Err(())
+        }
+    }
+}
+
+impl Debug for Real {
+    /// Convert to String reflecting raw representation.
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}*{}", self.rat, self.cr)
+    }
+}
+
+impl Display for Real {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.to_nice_string(AngleUnit::Radians, false)
+                .unwrap_or("Error".to_string())
+        )
+    }
+}
+
+impl Add for Real {
+    type Output = NumResult<Self>;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        if self.same_cr_factor(&rhs) {
+            let n_rat_factor = self.rat + rhs.rat;
+            return Ok(Self::new(n_rat_factor, self.cr, self.cr_property));
+        }
+
+        if self.definitely_zero() {
+            // Avoid creating new crFactor, even if they don't currently match.
+            return Ok(rhs);
+        }
+        if rhs.definitely_zero() {
+            return Ok(self);
+        }
+
+        // Consider "simplifying" sums of logs.
+        if let Some(self_cr_property) = &self.cr_property
+            && let Some(rhs_cr_property) = &rhs.cr_property
+            && self_cr_property.kind == rhs_cr_property.kind
+            && matches!(
+                self_cr_property.kind,
+                CRPropertyType::Ln | CRPropertyType::Log
+            )
+        {
+            // a ln(b) + c ln(d) = ln(b^a * d^c)
+            // a log(b) + c log(d) = log(b^a * d^c)
+            // If the resulting ln argument is reasonably compact, compute the sum as the right side
+            // instead, since that preserves the symbolic representation.
+
+            if let Some(ratAsInt) = self.rat.try_as_integer()
+                && let Some(uRatAsInt) = rhs.rat.try_as_integer()
+            {
+                let rat_as_double = ratAsInt.to_f64().unwrap();
+                let u_rat_as_double = uRatAsInt.to_f64().unwrap();
+
+                // Estimate size of resulting argument.
+                let estimated_size = rat_as_double.abs()
+                    * (self_cr_property.arg.clone().unwrap().bit_length() as f64)
+                    + u_rat_as_double.abs()
+                        * (rhs_cr_property.arg.clone().unwrap().bit_length() as f64);
+                if estimated_size <= LOG_ARG_CANDIDATE_BITS {
+                    let term1 = self_cr_property
+                        .clone()
+                        .arg
+                        .unwrap()
+                        .pow(ratAsInt.to_i32().unwrap());
+                    let term2 = rhs_cr_property
+                        .clone()
+                        .arg
+                        .unwrap()
+                        .pow(uRatAsInt.to_i32().unwrap());
+                    let new_arg = term1 * term2;
+                    return Self::log_rep(self_cr_property.kind, new_arg);
+                }
+            }
+        }
+
+        // Since we got here, neither ratFactor is zero.
+        // We can still conclude that the result is irrational, so long as the two arguments
+        // are independent. But it can be counter-productive to track this if the arguments
+        // are of greatly differing magnitude. We know that 1 + e^(-e^10000) is irrational,
+        // but we still don't want to evaluate it sufficiently to distinguish it from 1.
+        // Thus we want to treat 1 + e^(-e^10000) as not comparable to rationals.
+        // We in fact don't track this if either argument might be ridiculously small, where
+        // ridiculously small is < 10^-1000, and thus also way outside of IEEE exponent range.
+        let result_prop = if self.definitely_independent(&rhs)
+            && self.leading_binary_zeros() < -DEFAULT_COMPARISON_TOLERANCE
+            && rhs.leading_binary_zeros() < -DEFAULT_COMPARISON_TOLERANCE
+        {
+            Some(CRProperty::irrational())
+        } else {
+            None
+        };
+
+        Ok(Real::new_from_cr_property(
+            self.cr_value().add(rhs.cr_value()),
+            result_prop,
+        ))
+    }
+}
+
+impl Neg for Real {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        Self::new(-self.rat, self.cr, self.cr_property)
+    }
+}
+
+impl Sub for Real {
+    type Output = NumResult<Self>;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        self + (-rhs)
     }
 }
 
@@ -321,4 +969,80 @@ pub fn have_common_power(a: &BigRational, b: &BigRational) -> bool {
     }
 
     false
+}
+
+/// Return the integral log with respect to the given base if it exists, 0 otherwise. n is presumed
+/// positive. base is presumed to be at least 2.
+fn get_int_log(n: BigInt, base: i32) -> i64 {
+    let n_as_double = n.to_f64().unwrap();
+    let approx = n_as_double.log(base as f64);
+
+    // A relatively quick test first.
+    // Try something else for values too big for a double.
+    if n_as_double.is_infinite() {
+        // Floating point test doesn't help. Try another quick test.
+        if base % 2 != 0 && !n.bit(0) {
+            // Has a divisor of 2. Can't be a power of an odd number.
+            return 0;
+        }
+        if base % 3 != 0 && n.clone().rem(BigInt::from_i32(3).unwrap()).is_zero() {
+            return 0;
+        }
+        if base % 5 != 0 && n.clone().rem(BigInt::from_i32(5).unwrap()).is_zero() {
+            return 0;
+        }
+    } else if (approx - approx.round_ties_even()).abs() > 1.0e-6 {
+        return 0;
+    }
+
+    // It's important to avoid allocating large numbers of large BigIntegers here.
+    // In particular, we need to avoid e.g. repeatedly dividing by base.
+    // Otherwise computations like log(100,000!) can behave very badly.
+    // This algorithm performs worst case O(log(log n)) BigInteger operations.
+    // We build a set of powers of base by repeated squaring, with powers[i] == base^(2^i).
+    let mut result = 0;
+    let mut powers = Vec::new();
+    powers.push(BigInt::from_i32(base).unwrap());
+    let mut n_reduced = n; // always equal to n/base^result .
+    let mut i = 1;
+    loop {
+        let last = powers.get(i - 1).unwrap();
+        let next = last * last; // base^(2^i)
+        if next.bits() > n_reduced.bits() {
+            break;
+        }
+
+        let q_and_r = n_reduced.div_mod_floor(&next.clone());
+        if !q_and_r.1.is_zero() {
+            // A power of base smaller than 2 * n_reduced didn't divide n_reduced.
+            // n_reduced, and thus n, are clearly not a power of base.
+            return 0;
+        }
+        powers.push(next);
+
+        // Since we have the quotient, opportunistically reduce n.
+        result += 1 << i;
+        n_reduced = q_and_r.0;
+        i += 1;
+    }
+
+    // We've computed all repeated squaring powers <= n_reduced.
+    // Use those to divide repeatedly until we get to one, or determine it's not
+    // a power of base.
+    let mut i = powers.len() - 1;
+    while !n_reduced.is_one() {
+        let power = powers.get(i).unwrap();
+        if power.bits() <= n_reduced.bits() {
+            let q_and_r = n_reduced.div_mod_floor(power);
+            if !q_and_r.1.is_zero() {
+                return 0;
+            }
+            result += 1 << i;
+            n_reduced = q_and_r.0;
+            // Now power.bitLength() > n_reduced.bitLength() .
+            // Otherwise we would have divided by the next bigger power, which is power^2.
+        }
+        i -= 1;
+    }
+    result
 }

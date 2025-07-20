@@ -1,7 +1,7 @@
 use cancellation_token::CancellationToken;
 use num::{BigInt, One, ToPrimitive, Zero};
 use crate::constructive_real::{scale, shift, ConstructiveReal, ConstructiveRealType};
-use crate::error::DomainViolation::SquareRootOfNegative;
+use crate::error::DomainViolation::{NthRoot};
 use crate::error::NumError::DomainViolation;
 use crate::error::{CancelCheckable, NumResult};
 
@@ -48,7 +48,7 @@ impl ConstructiveRealType for SquareRootConstructive {
             let scaled_bi_appr = op.get_appr(op_prec)? << FP_OP_PREC;
             let scaled_appr = scaled_bi_appr.to_f64().unwrap();
             if scaled_appr < 0. {
-                return Err(DomainViolation(SquareRootOfNegative));
+                return Err(DomainViolation(NthRoot(2.)));
             }
             let scaled_fp_sqrt = scaled_appr.sqrt();
             let scaled_sqrt = BigInt::from(scaled_fp_sqrt as i64);
