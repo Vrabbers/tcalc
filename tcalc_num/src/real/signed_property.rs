@@ -1,6 +1,6 @@
 use num::{BigRational, One, Signed};
 use crate::rational_extensions::RationalExtensions;
-use crate::real::cr_property::{CRProperty, CRPropertyType};
+use crate::real::cr_property::CRProperty;
 use crate::real::cr_property::CRPropertyType::SinPi;
 
 /// Pair returned by trig normalization routines.
@@ -19,7 +19,7 @@ impl SignedProperty {
         let mut n_arg = arg.reduced_arg();
         let mut neg = false;
         if n_arg >= BigRational::new(1.into(), 2.into()) {
-            n_arg = n_arg - BigRational::one();
+            n_arg -= BigRational::one();
         }
         if n_arg.is_negative() {
             n_arg = n_arg.abs();

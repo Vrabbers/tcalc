@@ -10,7 +10,7 @@ pub(crate) struct SquareRootConstructive(pub ConstructiveReal);
 
 impl ConstructiveRealType for SquareRootConstructive {
     fn approximate(&self, precision: i32, ct: CancellationToken) -> NumResult<BigInt> {
-        let mut op = self.0.clone();
+        let op = self.0.clone();
         // Conservative estimate of number of
         // significant bits in double precision
         // computation.

@@ -162,11 +162,10 @@ impl Parser {
             });
         }
 
-        if self.current.kind == TokenKind::Equal && lhs_parse.len() == 1 {
-            if let Op::VarRef(var) = lhs_parse.pop().unwrap().op {
+        if self.current.kind == TokenKind::Equal && lhs_parse.len() == 1
+            && let Op::VarRef(var) = lhs_parse.pop().unwrap().op {
                 return self.parse_variable_assignment(lhs_start, var);
             }
-        }
 
         match self.current.kind {
             TokenKind::Equal

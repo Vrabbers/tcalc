@@ -32,7 +32,7 @@ fn check_appr_eq(x: f64, y: f64) {
 
 #[test]
 fn test_constructive_real() {
-    let mut zero = ConstructiveReal::from(0);
+    let zero = ConstructiveReal::from(0);
     let mut one = ConstructiveReal::from(1);
     let mut two = ConstructiveReal::from(2);
 
@@ -44,7 +44,7 @@ fn test_constructive_real() {
         "sign(0) failed"
     );
     assert_eq!(
-        one.compare_to_absolute(&mut two, -10),
+        one.compare_to_absolute(&two, -10),
         Ok(Ordering::Less),
         "comparison failed"
     );

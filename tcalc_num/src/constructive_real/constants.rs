@@ -3,7 +3,7 @@ use std::sync::LazyLock;
 use crate::constructive_real::{ConstructiveReal, ConstructiveRealKnownValue};
 
 pub static ONE: LazyLock<ConstructiveReal> = LazyLock::new(|| ConstructiveReal::from(1).with_known_value(ConstructiveRealKnownValue::One));
-pub static PI: LazyLock<ConstructiveReal> = LazyLock::new(|| ConstructiveReal::pi());
+pub static PI: LazyLock<ConstructiveReal> = LazyLock::new(ConstructiveReal::pi);
 pub static E: LazyLock<ConstructiveReal> = LazyLock::new(|| ONE.clone().exp().unwrap().with_known_value(ConstructiveRealKnownValue::E));
 pub static SQRT_2: LazyLock<ConstructiveReal> = LazyLock::new(|| ConstructiveReal::from(2).sqrt().with_known_value(ConstructiveRealKnownValue::Sqrt2));
 pub static SQRT_3: LazyLock<ConstructiveReal> = LazyLock::new(|| ConstructiveReal::from(3).sqrt().with_known_value(ConstructiveRealKnownValue::Sqrt3));
