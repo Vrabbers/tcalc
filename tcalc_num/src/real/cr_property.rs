@@ -1,21 +1,24 @@
 use num::{BigRational, FromPrimitive, One, Signed, ToPrimitive, Zero};
+use crate::angle_unit::AngleUnit;
 use crate::constructive_real::constants::{LN_10, ONE, PI};
 use crate::constructive_real::{ConstructiveReal, ConstructiveRealKnownValue};
 use crate::error::NumResult;
+use crate::maths_symbols::MathsSymbols;
+use crate::rational_extensions::RationalExtensions;
 
-#[derive(Eq, PartialEq, Debug, Clone)]
+#[derive(Eq, PartialEq, PartialOrd, Debug, Clone)]
 pub enum CRPropertyType {
-    One,
-    Pi,
-    Sqrt,
-    Exp,
-    Ln,
-    Log,
-    SinPi,
-    TanPi,
-    Asin,
-    Atan,
-    Irrational,
+    One = 1,
+    Pi = 2,
+    Sqrt = 3,
+    Exp = 4,
+    Ln = 5,
+    Log = 6,
+    SinPi = 7,
+    TanPi = 8,
+    Asin = 9,
+    Atan = 10,
+    Irrational = 11,
 }
 
 #[derive(Eq, PartialEq, Debug, Clone)]
@@ -273,6 +276,83 @@ impl CRProperty {
             }
         }
     }
+
+    /// Return the argument if the property p has the given kind
+    pub fn arg_for_kind(&self, kind: CRPropertyType) -> &Option<BigRational> {
+        if self.kind == kind {
+            &self.arg
+        } else {
+            &None
+        }
+    }
+
+    /// If the property indicates the constructive real has a simple symbolic representation, return
+    /// it. The name is intended to be appended to the rational multiplier, so the name of one is the
+    /// empty string. If subsuperscript is true, use subscripts and superscripts to render the
+    /// embedded rational.
+    pub fn cr_symbolic(&self, ang: AngleUnit, subsuperscript: bool) -> Option<String> {
+        // TODO: This currently ignores translation issues.
+        if self.is_unknown_irrational() {
+            return None;
+        }
+
+        if self.is_one() {
+            return Some("".to_string());
+        }
+
+        if self.is_pi() {
+            return Some(MathsSymbols::Pi.to_string());
+        }
+
+        if let Some(exp_arg) = self.arg_for_kind(CRPropertyType::Exp) {
+            if exp_arg.is_one() {
+                return Some("e".to_string());
+            } else {
+                return Some(format!("exp({})", exp_arg.to_nice_string(subsuperscript)));
+            }
+        }
+
+        if let Some(sqrt_arg) = self.arg_for_kind(CRPropertyType::Sqrt)
+        {
+            if sqrt_arg.is_integer() {
+                return Some(format!("{}{}", MathsSymbols::Sqrt, sqrt_arg.to_integer()));
+            } else {
+                return Some(format!("{}({})", MathsSymbols::Sqrt, sqrt_arg.to_nice_string(subsuperscript)));
+            }
+        }
+
+        if let Some(ln_arg) = self.arg_for_kind(CRPropertyType::Ln) {
+            return Some(format!("ln({})", ln_arg.to_nice_string(subsuperscript)));
+        }
+
+        if let Some(log_arg) = self.arg_for_kind(CRPropertyType::Log) {
+            return Some(format!("log({})", log_arg.to_nice_string(subsuperscript)));
+        }
+
+        if let Some(sin_arg) = self.arg_for_kind(CRPropertyType::SinPi) {
+            return Some(format!("sin({})", sin_arg.symbolic_pi_multiple(ang, subsuperscript)));
+        }
+
+        if let Some(tan_arg) = self.arg_for_kind(CRPropertyType::TanPi) {
+            return Some(format!("tan({})", tan_arg.symbolic_pi_multiple(ang, subsuperscript)));
+        }
+
+        if let Some(asin_arg) = self.arg_for_kind(CRPropertyType::Asin) {
+            return Some(format!("asin({}){}", asin_arg.to_nice_string(subsuperscript), ang));
+        }
+
+        if let Some(atan_arg) = self.arg_for_kind(CRPropertyType::Atan) {
+            return Some(format!("atan({}){}", atan_arg.to_nice_string(subsuperscript), ang));
+        }
+
+        None
+    }
+
+    /// Is self known to be algebraic (as opposed to transcendental)? Currently only produces meaningful
+    /// results for the above known special constructive reals.
+    pub fn definitely_algebraic(&self) -> bool {
+        matches!(self.kind, CRPropertyType::One | CRPropertyType::Sqrt | CRPropertyType::SinPi | CRPropertyType::TanPi)
+    }
 }
 
 impl From<ConstructiveReal> for Option<CRProperty> {
@@ -288,24 +368,5 @@ impl From<ConstructiveReal> for Option<CRProperty> {
             Some(ConstructiveRealKnownValue::Ln10) => Some(CRProperty::ln_10()),
             _ => None,
         }
-    }
-}
-
-trait RationalExtensions {
-    fn whole_number_bits(&self) -> i32;
-    fn bit_length(&self) -> i32;
-}
-
-impl RationalExtensions for BigRational {
-    fn whole_number_bits(&self) -> i32 {
-        if self.is_zero() {
-            i32::MIN
-        } else {
-            (self.numer().bits() - self.denom().bits()) as i32
-        }
-    }
-
-    fn bit_length(&self) -> i32 {
-        (self.numer().bits() + self.denom().bits()) as i32
     }
 }
