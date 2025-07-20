@@ -6,7 +6,7 @@ use crate::error::NumResult;
 use crate::maths_symbols::MathsSymbols;
 use crate::rational_extensions::RationalExtensions;
 
-#[derive(Eq, PartialEq, PartialOrd, Debug, Clone)]
+#[derive(Eq, PartialEq, PartialOrd, Debug, Clone, Copy)]
 pub enum CRPropertyType {
     One = 1,
     Pi = 2,
@@ -367,6 +367,47 @@ impl From<ConstructiveReal> for Option<CRProperty> {
             Some(ConstructiveRealKnownValue::E) => Some(CRProperty::e()),
             Some(ConstructiveRealKnownValue::Ln10) => Some(CRProperty::ln_10()),
             _ => None,
+        }
+    }
+}
+
+pub trait OptionalCRProperty {
+    fn definitely_algebraic(&self) -> bool;
+    fn is_one(&self) -> bool;
+    fn is_nonzero(&self) -> bool;
+    fn cr_symbolic(&self, ang: AngleUnit, subsuperscript: bool) -> Option<String>;
+}
+
+impl OptionalCRProperty for Option<CRProperty> {
+    fn definitely_algebraic(&self) -> bool {
+        if let Some(p) = self {
+            p.definitely_algebraic()
+        } else {
+            false
+        }
+    }
+
+    fn is_one(&self) -> bool {
+        if let Some(p) = self {
+            p.is_one()
+        } else {
+            false
+        }
+    }
+
+    fn is_nonzero(&self) -> bool {
+        if let Some(p) = self {
+            p.is_nonzero()
+        } else {
+            false
+        }
+    }
+
+    fn cr_symbolic(&self, ang: AngleUnit, subsuperscript: bool) -> Option<String> {
+        if let Some(p) = self {
+            p.cr_symbolic(ang, subsuperscript)
+        } else {
+            None
         }
     }
 }
