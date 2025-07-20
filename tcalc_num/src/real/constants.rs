@@ -23,7 +23,7 @@ pub static M_HALF: LazyLock<Real> =
 pub static TEN: LazyLock<Real> =
     LazyLock::new(|| Real::new_from_rational(BigRational::from_i32(10).unwrap()));
 pub static RADIANS_PER_DEGREE: LazyLock<Real> = LazyLock::new(|| {
-    Real::new(
+    Real::new_from_rat_cr(
         BigRational::new(1.into(), 180.into()),
         constructive_real::constants::PI.clone(),
     )
@@ -31,7 +31,7 @@ pub static RADIANS_PER_DEGREE: LazyLock<Real> = LazyLock::new(|| {
 pub static LN_10: LazyLock<Real> =
     LazyLock::new(|| Real::new_from_cr(constructive_real::constants::LN_10.clone()));
 pub static HALF_SQRT_2: LazyLock<Real> = LazyLock::new(|| {
-    Real::new(
+    Real::new_from_rat_cr(
         BigRational::new(1.into(), 2.into()),
         constructive_real::constants::SQRT_2.clone(),
     )
@@ -42,38 +42,38 @@ pub static SQRT_3: LazyLock<Real> = LazyLock::new(|| {
     )
 });
 pub static HALF_SQRT_3: LazyLock<Real> = LazyLock::new(|| {
-    Real::new(
+    Real::new_from_rat_cr(
         BigRational::new(1.into(), 2.into()),
         constructive_real::constants::SQRT_3.clone(),
     )
 });
 pub static THIRD_SQRT_3: LazyLock<Real> = LazyLock::new(|| {
-    Real::new(
+    Real::new_from_rat_cr(
         BigRational::new(1.into(), 3.into()),
         constructive_real::constants::SQRT_3.clone(),
     )
 });
 pub static PI_OVER_2: LazyLock<Real> = LazyLock::new(|| {
-    Real::new(
+    Real::new_from_rat_cr(
         BigRational::new(1.into(), 2.into()),
         constructive_real::constants::PI.clone(),
     )
 });
 
 pub static PI_OVER_3: LazyLock<Real> = LazyLock::new(|| {
-    Real::new(
+    Real::new_from_rat_cr(
         BigRational::new(1.into(), 3.into()),
         constructive_real::constants::PI.clone(),
     )
 });
 pub static PI_OVER_4: LazyLock<Real> = LazyLock::new(|| {
-    Real::new(
+    Real::new_from_rat_cr(
         BigRational::new(1.into(), 4.into()),
         constructive_real::constants::PI.clone(),
     )
 });
 pub static PI_OVER_6: LazyLock<Real> = LazyLock::new(|| {
-    Real::new(
+    Real::new_from_rat_cr(
         BigRational::new(1.into(), 6.into()),
         constructive_real::constants::PI.clone(),
     )

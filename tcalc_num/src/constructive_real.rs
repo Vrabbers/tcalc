@@ -1,15 +1,3 @@
-use crate::error::DomainViolation::LogarithmOfNegative;
-use crate::error::InternalError::{ConstructiveRealFromInf, ConstructiveRealFromNan};
-use crate::error::NumError::{DomainViolation, InternalError, PrecisionOverflow};
-use crate::error::{CancelCheckable, NumError, NumResult};
-use cancellation_token::CancellationToken;
-use num::bigint::Sign;
-use num::{BigInt, Integer, One, Signed, ToPrimitive, Zero};
-use std::clone::Clone;
-use std::cmp::Ordering;
-use std::fmt::{Debug, Display, Formatter};
-use std::ops::{Add, Div, Mul, Neg, Shl, Shr, Sub};
-use std::sync::{Arc, RwLock};
 use crate::constructive_real::add_constructive::AddConstructive;
 use crate::constructive_real::assumed_int_constructive::AssumedIntConstructive;
 use crate::constructive_real::big_integer_constructive::BigIntegerConstructive;
@@ -24,30 +12,53 @@ use crate::constructive_real::prescaled_ln_constructive::PrescaledLnConstructive
 use crate::constructive_real::select_constructive::SelectConstructive;
 use crate::constructive_real::shift_constructive::ShiftConstructive;
 use crate::constructive_real::square_root_constructive::SquareRootConstructive;
+use crate::error::DomainViolation::LogarithmOfNegative;
+use crate::error::InternalError::{ConstructiveRealFromInf, ConstructiveRealFromNan};
+use crate::error::NumError::{DomainViolation, InternalError, PrecisionOverflow};
+use crate::error::{CancelCheckable, NumError, NumResult};
+use cancellation_token::CancellationToken;
+use num::bigint::Sign;
+use num::{BigInt, BigRational, Integer, One, Signed, ToPrimitive, Zero};
+use std::clone::Clone;
+use std::cmp::Ordering;
+use std::fmt::{Debug, Display, Formatter};
+use std::ops::{Add, Div, Mul, Neg, Shl, Shr, Sub};
+use std::sync::{Arc, RwLock};
 
-mod invalid_constructive;
-mod big_integer_constructive;
 mod add_constructive;
-mod shift_constructive;
 mod assumed_int_constructive;
-mod negated_constructive;
-mod multiply_constructive;
+mod big_integer_constructive;
+mod invalid_constructive;
+mod inverse_tan_reciporical_constructive;
 mod inverted_constructive;
-mod select_constructive;
+mod multiply_constructive;
+mod negated_constructive;
+mod prescaled_cos_constructive;
 mod prescaled_exp_constructive;
 mod prescaled_ln_constructive;
-mod prescaled_cos_constructive;
+mod select_constructive;
+mod shift_constructive;
 mod square_root_constructive;
-mod inverse_tan_reciporical_constructive;
 
 pub mod constants;
 // https://android.googlesource.com/platform/external/crcalc/+/6db978c639e9bd5ac63fd88cbf3765d8c0fb3271/src/com/hp/creals/CR.java
+
+#[derive(Copy, Clone, Debug)]
+pub enum ConstructiveRealKnownValue {
+    One,
+    Pi,
+    Sqrt2,
+    Sqrt3,
+    E,
+    Ln10,
+}
 
 #[derive(Clone, Debug)]
 pub struct ConstructiveReal {
     t: Arc<dyn ConstructiveRealType>,
     current_approximation: Arc<RwLock<Option<ConstructiveRealApproximation>>>,
     cancellation_token: CancellationToken,
+    pub known_value: Option<ConstructiveRealKnownValue>,
 }
 
 #[derive(Debug)]
@@ -60,7 +71,7 @@ trait ConstructiveRealType
 where
     Self: Debug,
     Self: Send,
-    Self: Sync
+    Self: Sync,
 {
     /// Should be true for implementations for which approximate calls are
     /// somewhat expensive. Default implementation just returns false.
@@ -168,7 +179,7 @@ impl ConstructiveReal {
 
     /// This version may return i32::MIN if the correct
     /// answer is < n.
-    fn msd_n(&mut self, n: i32) -> NumResult<i32> {
+    fn msd_n(&self, n: i32) -> NumResult<i32> {
         let current_approximation_borrow = self.current_approximation.read().unwrap();
         let current_approximation = current_approximation_borrow.as_ref();
         if current_approximation.is_none() || {
@@ -177,7 +188,7 @@ impl ConstructiveReal {
                 && current_approximation.max_appr >= BigInt::one().mul(-1)
         } {
             drop(current_approximation_borrow);
-            self.get_appr(n - 1)?; 
+            self.get_appr(n - 1)?;
 
             if self
                 .current_approximation
@@ -198,7 +209,7 @@ impl ConstructiveReal {
 
     /// Functionally equivalent, but iteratively evaluates to higher
     /// precision.
-    fn iter_msd(&mut self, n: i32) -> NumResult<i32> {
+    fn iter_msd(&self, n: i32) -> NumResult<i32> {
         let mut prec = 0;
         while prec > n + 30 {
             let msd = self.msd_n(prec)?;
@@ -230,7 +241,7 @@ impl ConstructiveReal {
     /// - x: The other constructive real
     /// - r: Relative tolerance in bits
     /// - a: Absolute tolerance in bits
-    pub fn compare_to_relative(&mut self, x: &mut Self, r: i32, a: i32) -> NumResult<Ordering> {
+    pub fn compare_to_relative(&self, x: &Self, r: i32, a: i32) -> NumResult<Ordering> {
         let this_msd = self.iter_msd(a)?;
         let x_msd = x.iter_msd(if this_msd > a { this_msd } else { a })?;
         let max_msd = if x_msd > this_msd { x_msd } else { this_msd };
@@ -252,7 +263,7 @@ impl ConstructiveReal {
     /// - x: The other constructive real
     /// - r: Relative tolerance in bits
     /// - a: Absolute tolerance in bits
-    pub fn compare_to_absolute(&mut self, x: &mut Self, a: i32) -> NumResult<Ordering> {
+    pub fn compare_to_absolute(&self, x: &Self, a: i32) -> NumResult<Ordering> {
         let needed_prec = a - 1;
         let this_appr = self.get_appr(needed_prec)?;
         let x_appr = x.get_appr(needed_prec)?;
@@ -273,7 +284,7 @@ impl ConstructiveReal {
     /// will run until it exhausts memory.
     /// If the two constructive reals may be equal, the two or 3 argument
     /// version of compare_to should be used.
-    pub fn compare_to(&mut self, x: &mut Self) -> NumResult<Ordering> {
+    pub fn compare_to(&self, x: &Self) -> NumResult<Ordering> {
         let mut a = -20;
         loop {
             check_prec(a)?;
@@ -491,7 +502,8 @@ impl ConstructiveReal {
 
     pub fn pi() -> ConstructiveReal {
         let four = Self::from(4);
-        four.clone() * (four.clone() * Self::atan_reciporical(5) - Self::atan_reciporical(239))
+        (four.clone() * (four.clone() * Self::atan_reciporical(5) - Self::atan_reciporical(239)))
+            .with_known_value(ConstructiveRealKnownValue::Pi)
     }
 
     pub fn sin(self) -> NumResult<ConstructiveReal> {
@@ -527,6 +539,11 @@ impl ConstructiveReal {
         self.cancellation_token = cancellation_token;
         self
     }
+
+    pub fn with_known_value(mut self, known_value: ConstructiveRealKnownValue) -> Self {
+        self.known_value = Some(known_value);
+        self
+    }
 }
 
 impl Default for ConstructiveReal {
@@ -535,6 +552,7 @@ impl Default for ConstructiveReal {
             t: Arc::new(InvalidConstructive()),
             current_approximation: Arc::new(RwLock::new(None)),
             cancellation_token: CancellationToken::new(false),
+            known_value: None,
         }
     }
 }
@@ -569,6 +587,13 @@ impl From<u32> for ConstructiveReal {
 impl From<u64> for ConstructiveReal {
     fn from(value: u64) -> Self {
         ConstructiveReal::from(BigInt::from(value))
+    }
+}
+
+impl From<BigRational> for ConstructiveReal {
+    fn from(value: BigRational) -> Self {
+        ConstructiveReal::from(value.numer().clone())
+            / ConstructiveReal::from(value.denom().clone())
     }
 }
 
