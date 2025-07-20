@@ -3,7 +3,9 @@ use std::fmt::Display;
 pub enum MathsSymbols {
     Pi,
     Sqrt,
-    Multiply
+    Minus,
+    Multiply,
+    SuperscriptMinus,
 }
 
 impl Display for MathsSymbols {
@@ -11,7 +13,9 @@ impl Display for MathsSymbols {
         write!(f, "{}", match self {
             MathsSymbols::Pi => "π".to_string(),
             MathsSymbols::Sqrt => "√".to_string(),
-            MathsSymbols::Multiply => "×".to_string()
+            MathsSymbols::Minus => "-".to_string(),
+            MathsSymbols::Multiply => "×".to_string(),
+            MathsSymbols::SuperscriptMinus => "-".to_string()
         })
     }
 }

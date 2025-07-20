@@ -1,7 +1,15 @@
 use num::{BigRational, FromPrimitive};
 use crate::angle_unit::AngleUnit;
 use crate::constructive_real::ConstructiveReal;
+use crate::real::constants::ONE;
 use crate::real::Real;
+
+#[test]
+fn test_basic() {
+    let one = ONE.clone();
+    let two = one.clone() + one.clone();
+    assert_eq!("2", two.unwrap().to_string());
+}
 
 #[test]
 fn test_real_pi() {

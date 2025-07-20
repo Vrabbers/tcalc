@@ -103,7 +103,42 @@ impl RationalExtensions for BigRational {
     }
 
     fn to_nice_string(&self, subsuperscript: bool) -> String {
-        "to nice string".into()
+        let nicer = self.clone().denom_positive();
+        let mut num = nicer.0.abs();
+        let den = nicer.1;
+        let negative = num.is_negative();
+        let mut whole = None;
+        if den == BigInt::one() {
+            whole = Some(num);
+            num = BigInt::zero();
+        }
+
+        let mut result = if negative {
+            if whole.is_none() && subsuperscript {
+                MathsSymbols::SuperscriptMinus.to_string()
+            } else {
+                MathsSymbols::Minus.to_string()
+            }
+        } else {
+            "".to_string()
+        };
+
+        if let Some(whole) = &whole {
+            result = format!("{}{}", result, whole);
+        }
+        // num == 0 ==> whole non-null.
+        if num.is_zero() {
+            return result;
+        }
+
+        let num_string = num.to_string();
+        let den_string = den.to_string();
+        if whole.is_some() {
+            // Need a separator.
+            result = format!("{} ", result);
+        }
+
+        format!("{result}{num_string}/{den_string}")
     }
 
     fn irreducible_sqrt(&self) -> bool {
