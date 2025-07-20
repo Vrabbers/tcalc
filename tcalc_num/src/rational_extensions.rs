@@ -1,16 +1,18 @@
 use crate::angle_unit::AngleUnit;
+use crate::bigint_extensions::BigIntExtensions;
+use crate::error::NumResult;
 use crate::maths_symbols::MathsSymbols;
-use num::{BigInt, BigRational, BigUint, FromPrimitive, One, Signed, Zero};
 use num::bigint::Sign;
 use num::integer::Roots;
 use num::traits::Inv;
-use crate::bigint_extensions::BigIntExtensions;
-use crate::error::NumResult;
+use num::{BigInt, BigRational, BigUint, FromPrimitive, One, Signed, Zero};
 
 /// Max integer for which extractSquare is guaranteed to be optimal.
 /// We currently fail to so for 44 = 11*4, but succeed for all perfect squares*n, with n <= 10
 /// and numerator and denominator size < EXTRACT_SQUARE_MAX_LEN.
 pub static EXTRACT_SQUARE_MAX_OPT: i32 = 43;
+
+static MAX_SIZE: u64 = 10000; // total, in bits
 
 pub trait RationalExtensions {
     fn whole_number_bits(&self) -> i32;
@@ -48,6 +50,9 @@ pub trait RationalExtensions {
     /// We try to maximize p[0]s numerator and denominator, but not very hard.
     /// This rational is assumed to be in reduced form.
     fn extract_square_reduced(&self) -> (BigRational, BigRational);
+    /// Is this number too big for us to continue with rational arithmetic? We return false for
+    /// integers on the assumption that we have no better fallback.
+    fn too_big(&self) -> bool;
 }
 
 impl RationalExtensions for BigRational {
@@ -197,7 +202,16 @@ impl RationalExtensions for BigRational {
                 num_result.1 = -num_result.1;
             }
 
-            (BigRational::new(num_result.0, den_result.0), BigRational::new(num_result.1, den_result.1))
+            (
+                BigRational::new(num_result.0, den_result.0),
+                BigRational::new(num_result.1, den_result.1),
+            )
         }
+    }
+
+    /// Is this number too big for us to continue with rational arithmetic? We return false for
+    /// integers on the assumption that we have no better fallback.
+    fn too_big(&self) -> bool {
+        !self.denom() == BigInt::one() && (self.numer().bits() + self.denom().bits() > MAX_SIZE)
     }
 }

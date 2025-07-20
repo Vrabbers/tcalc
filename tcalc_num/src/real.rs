@@ -15,7 +15,7 @@ use num::traits::Inv;
 use num::{BigInt, BigRational, FromPrimitive, Integer, One, Signed, ToPrimitive, Zero};
 use std::cmp::Ordering;
 use std::fmt::{Debug, Display, Formatter};
-use std::ops::{Add, Div, Neg, Rem, Sub};
+use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
 use std::ptr::null;
 
 static COMMON_POWER_LENGTH_LIMIT: u64 = 200;
@@ -334,7 +334,7 @@ impl Real {
             return Ok(self.rat.to_string_truncated(n));
         }
 
-        let scaled = ConstructiveReal::from(BigInt::from_i32(10).unwrap().pow(n)) * self.cr.clone();
+        let scaled = ConstructiveReal::from(BigInt::from_i32(10).unwrap().pow(n)) * self.cr_value().clone();
         let mut negative = false;
         let mut int_scaled;
         if self.exactly_truncatable() {
@@ -903,6 +903,130 @@ impl Sub for Real {
 
     fn sub(self, rhs: Self) -> Self::Output {
         self + (-rhs)
+    }
+}
+
+impl Mul for Real {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        // Preserve a preexisting crFactor when we can.
+        if self.cr_property.is_one() {
+            return Real::new(self.rat * rhs.rat, rhs.cr, rhs.cr_property);
+        }
+
+        if rhs.cr_property.is_one() {
+            return Real::new(self.rat * rhs.rat, self.cr, self.cr_property);
+        }
+
+        if self.definitely_zero() || rhs.definitely_zero() {
+            return ZERO.clone();
+        }
+
+        let mut result_prop = None; // Property for product of crFactors.
+        let n_rat_factor = self.rat.clone() * rhs.rat.clone();
+
+        if let Some(self_cr_property) = &self.cr_property
+            && let Some(rhs_cr_property) = &rhs.cr_property
+        {
+            if self_cr_property.kind == CRPropertyType::Sqrt
+                && rhs_cr_property.kind == CRPropertyType::Sqrt
+            {
+                let cr_part = Self::multiply_sqrts(
+                    self_cr_property.arg.clone().unwrap(),
+                    rhs_cr_property.clone().arg.unwrap(),
+                );
+                let rat_result = n_rat_factor * cr_part.rat;
+                return Real::new(rat_result, cr_part.cr, cr_part.cr_property);
+            }
+
+            if self_cr_property.kind == CRPropertyType::Exp
+                && rhs_cr_property.kind == CRPropertyType::Exp
+            {
+                // exp(a) * exp(b) is exp(a + b) .
+                let sum =
+                    self_cr_property.clone().arg.unwrap() + rhs_cr_property.clone().arg.unwrap();
+                // we use this only for the property, since crFactors may already have been evaluated.
+                result_prop = Some(CRProperty::new(CRPropertyType::Exp, sum));
+            }
+        }
+
+        // Probably a bit cheaper to multiply component-wise.
+        // TODO: We should often be able to determine that the result is irrational.
+        // But definitelyIndependent is not the right criterion. Consider e and e^-1.
+        if n_rat_factor.too_big() {
+            Real::new_from_cr(self.cr_value() * rhs.cr_value())
+        } else {
+            Real::new(n_rat_factor, self.cr * rhs.cr, result_prop)
+        }
+    }
+}
+
+impl Inv for Real {
+    type Output = NumResult<Self>;
+
+    fn inv(self) -> Self::Output {
+        if self.definitely_zero() {
+            return Err(NumError::DivisionByZero);
+        }
+
+        if self.cr_property.is_one() {
+            return Ok(Real::new_from_rational(self.rat.inv()));
+        }
+
+        let square = self.cr_property.arg_for_kind(CRPropertyType::Sqrt);
+        if let Some(square) = square {
+            if let Some(square) = square.try_as_integer() {
+                // Prefer square roots of integers. 1/sqrt(n) = sqrt(n)/n
+                let n_rat_factor = (self.rat.clone() * square).inv();
+                if !n_rat_factor.too_big() {
+                    return Ok(Real::new(n_rat_factor, self.cr, self.cr_property));
+                }
+            }
+        }
+
+        let mut new_property = None;
+        if let Some(cr_property) = &self.cr_property
+            && cr_property.kind == CRPropertyType::Exp
+        {
+            new_property = Some(CRProperty::new(
+                CRPropertyType::Exp,
+                -cr_property.arg.clone().unwrap(),
+            ));
+        } else if self.definitely_irrational() {
+            new_property = Some(CRProperty::irrational());
+        }
+
+        Ok(Real::new(self.rat.inv(), self.cr.inverse(), new_property))
+    }
+}
+
+impl Div for Real {
+    type Output = NumResult<Self>;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        if self.same_cr_factor(&rhs.clone()) {
+            if rhs.definitely_zero() {
+                return Err(NumError::DivisionByZero);
+            }
+
+            let n_rat_factor = self.rat.clone() / rhs.rat.clone();
+            if !n_rat_factor.too_big() {
+                return Ok(Real::new_from_rational(n_rat_factor));
+            }
+        }
+
+        // Try to reduce ln(x)/ln(10) to log(x) to keep symbolic representation.
+        if let Some(lnArg) = self.cr_property.arg_for_kind(CRPropertyType::Ln) {
+            if let Some(uLnArg) = rhs.cr_property.arg_for_kind(CRPropertyType::Ln) && uLnArg == &BigRational::from_i32(10).unwrap() {
+                let rat_quotient = self.rat.clone() / rhs.rat.clone();
+                if !rat_quotient.too_big() {
+                    return Ok(Real::new_from_rat_property(rat_quotient, CRProperty::new(CRPropertyType::Log, lnArg.clone())));
+                }
+            }
+        }
+
+        Ok(self * rhs.inv()?)
     }
 }
 
