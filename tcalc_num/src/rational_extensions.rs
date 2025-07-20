@@ -3,9 +3,8 @@ use crate::bigint_extensions::BigIntExtensions;
 use crate::error::NumResult;
 use crate::maths_symbols::MathsSymbols;
 use num::bigint::Sign;
-use num::integer::Roots;
 use num::traits::Inv;
-use num::{BigInt, BigRational, BigUint, FromPrimitive, One, Signed, Zero};
+use num::{BigInt, BigRational, FromPrimitive, One, Signed, Zero};
 
 /// Max integer for which extractSquare is guaranteed to be optimal.
 /// We currently fail to so for 44 = 11*4, but succeed for all perfect squares*n, with n <= 10
@@ -124,7 +123,7 @@ impl RationalExtensions for BigRational {
         };
 
         if let Some(whole) = &whole {
-            result = format!("{}{}", result, whole);
+            result = format!("{result}{whole}");
         }
         // num == 0 ==> whole non-null.
         if num.is_zero() {
@@ -135,7 +134,7 @@ impl RationalExtensions for BigRational {
         let den_string = den.to_string();
         if whole.is_some() {
             // Need a separator.
-            result = format!("{} ", result);
+            result = format!("{result} ");
         }
 
         format!("{result}{num_string}/{den_string}")
@@ -183,8 +182,8 @@ impl RationalExtensions for BigRational {
         format!(
             "{}{}.{}",
             if self.is_negative() { "-" } else { "" },
-            digits[0..len - (n as usize)].to_string(),
-            digits[len - (n as usize)..].to_string()
+            &digits[0..len - (n as usize)],
+            &digits[len - (n as usize)..]
         )
     }
 

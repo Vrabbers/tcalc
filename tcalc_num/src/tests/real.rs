@@ -1,3 +1,5 @@
+#![allow(dead_code, unused_macros, unused_imports)]
+
 use num::{BigRational, FromPrimitive};
 use crate::angle_unit::AngleUnit;
 use crate::constructive_real::ConstructiveReal;

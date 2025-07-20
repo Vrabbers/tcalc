@@ -16,7 +16,6 @@ use num::{BigInt, BigRational, FromPrimitive, Integer, One, Signed, ToPrimitive,
 use std::cmp::Ordering;
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
-use std::ptr::null;
 
 static COMMON_POWER_LENGTH_LIMIT: u64 = 200;
 
@@ -198,7 +197,7 @@ impl Real {
                 // If we were brave, we could say true, and hope for an infinite loop, which would
                 // probably prove an interesting theorem. But we are not ...
                 // IS_ONE case is already handled, since p1 <= p2.
-                return p2.kind == CRPropertyType::Sqrt;
+                p2.kind == CRPropertyType::Sqrt
             }
             CRPropertyType::Sqrt => {
                 if other.definitely_transcendental() {
@@ -278,7 +277,7 @@ impl Real {
                 if self.rat.is_one() {
                     return Ok(symbolic);
                 } else if self.rat == BigRational::from_i32(-1).unwrap() {
-                    return Ok(format!("-{}", symbolic));
+                    return Ok(format!("-{symbolic}"));
                 }
                 return Ok(format!("{}{}", self.rat.to_integer(), symbolic));
             }
@@ -334,7 +333,8 @@ impl Real {
             return Ok(self.rat.to_string_truncated(n));
         }
 
-        let scaled = ConstructiveReal::from(BigInt::from_i32(10).unwrap().pow(n)) * self.cr_value().clone();
+        let scaled =
+            ConstructiveReal::from(BigInt::from_i32(10).unwrap().pow(n)) * self.cr_value().clone();
         let mut negative = false;
         let mut int_scaled;
         if self.exactly_truncatable() {
@@ -347,7 +347,7 @@ impl Real {
             if ConstructiveReal::from(int_scaled.clone()).compare_to(&scaled.clone().abs())?
                 == Ordering::Greater
             {
-                int_scaled = int_scaled - BigInt::one();
+                int_scaled -= BigInt::one();
             }
 
             assert_eq!(
@@ -361,7 +361,7 @@ impl Real {
                 negative = true;
                 int_scaled = -int_scaled;
             }
-            int_scaled = int_scaled >> EXTRA_PREC;
+            int_scaled >>= EXTRA_PREC;
         }
 
         let mut digits = int_scaled.to_string();
@@ -374,8 +374,8 @@ impl Real {
         Ok(format!(
             "{}{}.{}",
             if negative { "-" } else { "" },
-            digits[0..len - (n as usize)].to_string(),
-            digits[len - (n as usize)..].to_string()
+            &digits[0..len - (n as usize)],
+            &digits[len - (n as usize)..]
         ))
     }
 
@@ -456,12 +456,10 @@ impl Real {
             let whole_bits = self.rat.whole_number_bits();
             if whole_bits == i32::MIN {
                 i32::MAX
+            } else if whole_bits + cr_bound >= 3 {
+                0
             } else {
-                if whole_bits + cr_bound >= 3 {
-                    0
-                } else {
-                    -(whole_bits + cr_bound) + 3
-                }
+                -(whole_bits + cr_bound) + 3
             }
         } else {
             i32::MAX
@@ -652,11 +650,10 @@ impl Real {
             return Ok(-Self::log_rep(kind, arg.inv())?);
         }
 
-        if arg.is_integer() {
-            if let Some(small_power_log) = Self::lg_small_power(kind, arg.to_integer())? {
+        if arg.is_integer()
+            && let Some(small_power_log) = Self::lg_small_power(kind, arg.to_integer())? {
                 return Ok(small_power_log);
             }
-        }
 
         Ok(if arg.bit_length() > LOG_ARG_BITS {
             if kind == CRPropertyType::Ln {
@@ -754,7 +751,7 @@ impl TryFrom<Real> for f64 {
             value
                 .rat
                 .to_f64()
-                .map(|f| Ok(f))
+                .map(Ok)
                 .unwrap_or(Err(NumError::InternalError(UnconstructableFloat))) // Hopefully correctly rounded
         } else {
             value.cr_value().into() // Approximately correctly rounded
@@ -838,11 +835,11 @@ impl Add for Real {
             // If the resulting ln argument is reasonably compact, compute the sum as the right side
             // instead, since that preserves the symbolic representation.
 
-            if let Some(ratAsInt) = self.rat.try_as_integer()
-                && let Some(uRatAsInt) = rhs.rat.try_as_integer()
+            if let Some(rat_as_int) = self.rat.try_as_integer()
+                && let Some(u_rat_as_int) = rhs.rat.try_as_integer()
             {
-                let rat_as_double = ratAsInt.to_f64().unwrap();
-                let u_rat_as_double = uRatAsInt.to_f64().unwrap();
+                let rat_as_double = rat_as_int.to_f64().unwrap();
+                let u_rat_as_double = u_rat_as_int.to_f64().unwrap();
 
                 // Estimate size of resulting argument.
                 let estimated_size = rat_as_double.abs()
@@ -854,12 +851,12 @@ impl Add for Real {
                         .clone()
                         .arg
                         .unwrap()
-                        .pow(ratAsInt.to_i32().unwrap());
+                        .pow(rat_as_int.to_i32().unwrap());
                     let term2 = rhs_cr_property
                         .clone()
                         .arg
                         .unwrap()
-                        .pow(uRatAsInt.to_i32().unwrap());
+                        .pow(u_rat_as_int.to_i32().unwrap());
                     let new_arg = term1 * term2;
                     return Self::log_rep(self_cr_property.kind, new_arg);
                 }
@@ -975,15 +972,14 @@ impl Inv for Real {
         }
 
         let square = self.cr_property.arg_for_kind(CRPropertyType::Sqrt);
-        if let Some(square) = square {
-            if let Some(square) = square.try_as_integer() {
+        if let Some(square) = square
+            && let Some(square) = square.try_as_integer() {
                 // Prefer square roots of integers. 1/sqrt(n) = sqrt(n)/n
                 let n_rat_factor = (self.rat.clone() * square).inv();
                 if !n_rat_factor.too_big() {
                     return Ok(Real::new(n_rat_factor, self.cr, self.cr_property));
                 }
             }
-        }
 
         let mut new_property = None;
         if let Some(cr_property) = &self.cr_property
@@ -1017,12 +1013,16 @@ impl Div for Real {
         }
 
         // Try to reduce ln(x)/ln(10) to log(x) to keep symbolic representation.
-        if let Some(lnArg) = self.cr_property.arg_for_kind(CRPropertyType::Ln) {
-            if let Some(uLnArg) = rhs.cr_property.arg_for_kind(CRPropertyType::Ln) && uLnArg == &BigRational::from_i32(10).unwrap() {
-                let rat_quotient = self.rat.clone() / rhs.rat.clone();
-                if !rat_quotient.too_big() {
-                    return Ok(Real::new_from_rat_property(rat_quotient, CRProperty::new(CRPropertyType::Log, lnArg.clone())));
-                }
+        if let Some(ln_arg) = self.cr_property.arg_for_kind(CRPropertyType::Ln)
+            && let Some(u_ln_arg) = rhs.cr_property.arg_for_kind(CRPropertyType::Ln)
+            && u_ln_arg == &BigRational::from_i32(10).unwrap()
+        {
+            let rat_quotient = self.rat.clone() / rhs.rat.clone();
+            if !rat_quotient.too_big() {
+                return Ok(Real::new_from_rat_property(
+                    rat_quotient,
+                    CRProperty::new(CRPropertyType::Log, ln_arg.clone()),
+                ));
             }
         }
 
@@ -1040,24 +1040,22 @@ pub fn common_power(a: &BigInt, b: &BigInt) -> Option<BigRational> {
         Some(BigRational::one())
     } else if compare_result == Ordering::Less {
         Some(common_power(b, a)?.inv())
+    } else if a.is_one() || b.is_one() {
+        None
+    } else if a.bits() > COMMON_POWER_LENGTH_LIMIT {
+        // punt
+        None
     } else {
-        if a.is_one() || b.is_one() {
-            None
-        } else if a.bits() > COMMON_POWER_LENGTH_LIMIT {
-            // punt
-            None
+        // We use a modified version of the Euclidean GCD algorithm, repeatedly dividing the larger
+        // number by the smaller. If a = b^r, then (a/b) = b^(r-1).
+        let (div, rem) = a.div_mod_floor(b);
+        if rem.is_zero() {
+            // If they're not divisible, there must be two primes, such that a is divisible by a larger
+            // power of one than b and vice-versa. That makes it impossible that a^n = b^m, m and n
+            // integers. thus we know r doesn't exist.
+            Some(BigRational::from(div))
         } else {
-            // We use a modified version of the Euclidean GCD algorithm, repeatedly dividing the larger
-            // number by the smaller. If a = b^r, then (a/b) = b^(r-1).
-            let (div, rem) = a.div_mod_floor(b);
-            if rem.is_zero() {
-                // If they're not divisible, there must be two primes, such that a is divisible by a larger
-                // power of one than b and vice-versa. That makes it impossible that a^n = b^m, m and n
-                // integers. thus we know r doesn't exist.
-                Some(BigRational::from(div))
-            } else {
-                Some(common_power(&div, b)? + BigRational::one())
-            }
+            Some(common_power(&div, b)? + BigRational::one())
         }
     }
 }

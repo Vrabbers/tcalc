@@ -88,18 +88,9 @@ impl CRProperty {
             CRPropertyType::One => Self::one(),
             CRPropertyType::Pi => Self::pi(),
             CRPropertyType::Irrational => Self::irrational(),
-            _ => {
-                if kind == CRPropertyType::Sqrt && arg.is_one() {
-                    Self::one()
-                } else if kind == CRPropertyType::Exp && arg.is_zero() {
-                    Self::one()
-                } else {
-                    Self {
-                        kind,
-                        arg: Some(arg),
-                    }
-                }
-            }
+            CRPropertyType::Sqrt if arg.is_one() => Self::one(),
+            CRPropertyType::Exp if arg.is_zero() => Self::one(),
+            _ => Self { kind, arg: Some(arg) },
         }
     }
 
@@ -258,7 +249,7 @@ impl CRProperty {
                     }
                 } else if result.is_positive() {
                     // Positive and takes > 30 bits to represent.
-                    return 100_000_000
+                    100_000_000
                 } else {
                     i32::MIN
                 }

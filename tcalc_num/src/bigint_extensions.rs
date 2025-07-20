@@ -1,7 +1,4 @@
-use std::ops::Div;
 use num::{BigInt, FromPrimitive, Integer, One, Signed, Zero};
-use num::bigint::Sign;
-use num::integer::{nth_root, Roots};
 use crate::error::DomainViolation::{NthRoot};
 use crate::error::NumError::DomainViolation;
 use crate::error::NumResult;
@@ -50,7 +47,7 @@ impl BigIntExtensions for BigInt {
                 let qr = rest.div_mod_floor(&this_prime_square);
                 if qr.1.is_zero() {
                     rest = qr.0;  // Remaining quotient.
-                    square = square * prime.clone();
+                    square *= prime.clone();
                 } else {
                     break;
                 }
@@ -62,7 +59,7 @@ impl BigIntExtensions for BigInt {
             if qr.1.is_zero() {
                 let root = qr.0.nth_root(2);
                 rest = BigInt::from_i32(i).unwrap();
-                square = square * root;
+                square *= root;
                 break;
             }
         }

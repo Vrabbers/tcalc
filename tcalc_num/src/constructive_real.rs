@@ -750,7 +750,7 @@ impl From<ConstructiveReal> for NumResult<i32> {
 
 impl From<ConstructiveReal> for NumResult<f64> {
     fn from(value: ConstructiveReal) -> Self {
-        let mut value = value.clone();
+        let value = value.clone();
         let my_msd = value.iter_msd(-1080 /* slightly > exp. range */)?;
         if my_msd == i32::MIN {
             return Ok(0.0);
