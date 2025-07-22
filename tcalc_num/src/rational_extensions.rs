@@ -11,6 +11,10 @@ use num::{BigInt, BigRational, FromPrimitive, One, Signed, Zero};
 /// and numerator and denominator size < EXTRACT_SQUARE_MAX_LEN.
 pub static EXTRACT_SQUARE_MAX_OPT: i32 = 43;
 
+/// Max bit length for attempting to extract square, so as to not take too much time.
+/// Large enough so that computations on floating point numbers cannot easily overflow this.
+pub static EXTRACT_SQUARE_MAX_LEN: u64 = 5000;
+
 static MAX_SIZE: u64 = 10000; // total, in bits
 
 pub trait RationalExtensions {
@@ -30,7 +34,7 @@ pub trait RationalExtensions {
     /// been reduced to the (0, 1/2) interval.
     fn can_trig_be_reduced(&self) -> bool;
     /// Reduce a SIN_PI or TAN_PI argument to the interval [-1/2, 1.5).
-    fn reduced_arg(&self) -> BigRational;
+    fn reduced_arg(&self) -> Option<BigRational>;
     /// Returns a truncated (rounded towards 0) representation of the result. Includes n digits to the
     /// right of the decimal point.
     ///
@@ -52,6 +56,9 @@ pub trait RationalExtensions {
     /// Is this number too big for us to continue with rational arithmetic? We return false for
     /// integers on the assumption that we have no better fallback.
     fn too_big(&self) -> bool;
+    /// Will extractSquareReduced guarantee that p[1] is not a perfect square?
+    /// This rational is assumed to be in reduced form.
+    fn extract_square_will_succeed(&self) -> bool;
 }
 
 impl RationalExtensions for BigRational {
@@ -155,17 +162,20 @@ impl RationalExtensions for BigRational {
             || self == &BigRational::new(1.into(), 6.into())
     }
 
-    fn reduced_arg(&self) -> BigRational {
+    fn reduced_arg(&self) -> Option<BigRational> {
         if self >= &BigRational::new((-1).into(), 2.into())
             && self < &BigRational::new(3.into(), 2.into())
         {
-            return self.clone();
+            return Some(self.clone());
         }
 
         let arg_plus_half = self.clone() + BigRational::new(1.into(), 2.into());
+        if arg_plus_half.too_big() {
+            return None;
+        }
         let arg_ph_floor = arg_plus_half.floor().to_integer();
         let result_offset = arg_ph_floor & !BigInt::one();
-        self - result_offset
+        Some(self - result_offset)
     }
 
     fn to_string_truncated(&self, n: u32) -> String {
@@ -243,9 +253,13 @@ impl RationalExtensions for BigRational {
         }
     }
 
-    /// Is this number too big for us to continue with rational arithmetic? We return false for
-    /// integers on the assumption that we have no better fallback.
     fn too_big(&self) -> bool {
         !self.denom() == BigInt::one() && (self.numer().bits() + self.denom().bits() > MAX_SIZE)
+    }
+
+    fn extract_square_will_succeed(&self) -> bool {
+        // We take the absolute value before extracting the square. That may increase the length by 1.
+        // Hence <, not <= .
+        self.numer().bits() < EXTRACT_SQUARE_MAX_LEN && self.denom().bits() < EXTRACT_SQUARE_MAX_LEN
     }
 }
