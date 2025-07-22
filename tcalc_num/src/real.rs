@@ -1,15 +1,22 @@
 pub mod constants;
 mod cr_property;
-mod signed_property;
 
 use crate::angle_unit::AngleUnit;
 use crate::constructive_real::ConstructiveReal;
-use crate::constructive_real::constants::{LN_10, ONE};
+use crate::constructive_real::constants::{LN_10, ONE, PI};
+use crate::error::DomainViolation::{
+    AsinDomainViolation, DivisionByZero, NthRoot, TanDomainViolation,
+};
 use crate::error::InternalError::UnconstructableFloat;
+use crate::error::NumError::DomainViolation;
 use crate::error::{NumError, NumResult};
 use crate::rational_extensions::RationalExtensions;
-use crate::real::constants::ZERO;
-use crate::real::cr_property::{CRProperty, CRPropertyType, OptionalCRProperty};
+use crate::real;
+use crate::real::constants::{
+    HALF, HALF_SQRT_2, HALF_SQRT_3, PI_OVER_2, PI_OVER_3, PI_OVER_4, PI_OVER_6, SQRT_3,
+    THIRD_SQRT_3, TWO, ZERO,
+};
+use crate::real::cr_property::{CRProperty, OptionalCRProperty};
 use num::bigint::Sign;
 use num::traits::Inv;
 use num::{BigInt, BigRational, FromPrimitive, Integer, One, Signed, ToPrimitive, Zero};
@@ -132,36 +139,36 @@ impl Real {
             return false;
         };
 
-        match cr_property.kind {
-            CRPropertyType::Pi => true,
-            CRPropertyType::Sqrt => false,
-            CRPropertyType::Ln => {
+        match cr_property {
+            CRProperty::Pi => true,
+            CRProperty::Sqrt(_) => false,
+            CRProperty::Ln(_) => {
                 // arg > 1
                 // Follows from Lindemann-Weierstrass theorem. If ln(r) = a, where r is rational, and a
                 // algebraic, then r = e^a. But if a is nonzero algebraic, then e^a is transcendental.
                 true
             }
-            CRPropertyType::Log => {
+            CRProperty::Log(_) => {
                 // If this is rational, then n ln(arg) = m ln(10), n and m integers.
                 // TODO: Can we do better?
                 false
             }
-            CRPropertyType::Exp => {
+            CRProperty::Exp(_) => {
                 // arg != 0
                 // Simple application of Lindemann-Weierstrass theorem.
                 true
             }
-            CRPropertyType::SinPi | CRPropertyType::TanPi => {
+            CRProperty::SinPi(_, _) | CRProperty::TanPi(_, _) => {
                 // Always algebraic for rational multiples of pi.
                 false
             }
-            CRPropertyType::Asin | CRPropertyType::Atan => {
+            CRProperty::Asin(_) | CRProperty::Atan(_) => {
                 // If asin(r) = a, r rational, a algebraic, then r = sin(a). It follows from
                 // Lindemann-Weierstrass that this can happen only if a is zero, i.e. if r is zero.
                 // We don't use this representation for asin(0). The atan argument is similar.
                 true
             }
-            CRPropertyType::Irrational => {
+            CRProperty::Irrational => {
                 // Not enough information to tell.
                 false
             }
@@ -186,36 +193,36 @@ impl Real {
         }
 
         // Halve the number of cases. ONE < PI < SQRT < EXP < LN.
-        if p1.kind > p2.kind {
+        if p1 > p2 {
             return other.definitely_independent(self);
         }
 
-        match p1.kind {
-            CRPropertyType::One => other.definitely_irrational(),
-            CRPropertyType::Pi => {
+        match p1 {
+            CRProperty::One => other.definitely_irrational(),
+            CRProperty::Pi => {
                 // It appears to be unknown whether pi is a rational multiple of an exponential or log.
                 // If we were brave, we could say true, and hope for an infinite loop, which would
                 // probably prove an interesting theorem. But we are not ...
                 // IS_ONE case is already handled, since p1 <= p2.
-                p2.kind == CRPropertyType::Sqrt
+                matches!(p2, CRProperty::Sqrt(_))
             }
-            CRPropertyType::Sqrt => {
+            CRProperty::Sqrt(p1_arg) => {
                 if other.definitely_transcendental() {
                     true
-                } else if p2.kind == CRPropertyType::Sqrt {
+                } else if let CRProperty::Sqrt(p2_arg) = p2 {
                     // The argument is not necessarily minimal.
-                    p1.arg.clone().unwrap().irreducible_sqrt()
-                        && p2.arg.clone().unwrap().irreducible_sqrt()
+                    p1_arg.clone().irreducible_sqrt()
+                        && p2_arg.clone().irreducible_sqrt()
                         && p1 != p2
                 } else {
                     false
                 }
             }
-            CRPropertyType::Exp => {
-                if p2.kind == CRPropertyType::Exp {
+            CRProperty::Exp(p1_arg) => {
+                if let CRProperty::Exp(p2_arg) = p2 {
                     // Lindemann-Weierstrass theorem gives us algebraic independence.
-                    p1.arg != p2.arg
-                } else if p2.kind == CRPropertyType::Ln {
+                    p1_arg != p2_arg
+                } else if let CRProperty::Ln(_) = p2 {
                     // If e^a = cln(b), then e^e^a = b^c. The r.h.s is an algebraic multiple of e^0.
                     // By Lindemann-Weierstrass, this can only happen if e^a = 0, which is impossible.
                     true
@@ -223,15 +230,15 @@ impl Real {
                     other.definitely_algebraic()
                 }
             }
-            CRPropertyType::Ln => {
-                if p2.kind == CRPropertyType::Irrational {
+            CRProperty::Ln(p1_arg) => {
+                if let CRProperty::Irrational = p2 {
                     false // Not enough information.
-                } else if p2.kind == CRPropertyType::Ln {
+                } else if let CRProperty::Ln(p2_arg) = p2 {
                     // If ln(a) = cln(b), then a = b^c, a, b, and c rational, or equivalently a^c1 = b^c2,
                     // with c1 and c2 integers. C must be nonzero, since a > 1.  A necessary condition for
                     // this is that the numerator and denominator separately have to have a common integral
                     // power.
-                    !have_common_power(&p1.arg.clone().unwrap(), &p2.arg.clone().unwrap())
+                    !have_common_power(&p1_arg.clone(), &p2_arg.clone())
                 } else {
                     // Assume ln(r) = a is algebraic. Then e^a is rational. By Lindemann-Weierstrass, this
                     // implies a = 0 and r = 1. We know that the argument is not one, so any algebraic
@@ -240,29 +247,29 @@ impl Real {
                     // TODO: Can we do better for IS_LOG?
                 }
             }
-            CRPropertyType::Log => {
+            CRProperty::Log(p1_arg) => {
                 // In the irrational case, with u rational, we would have checked in the other order.
-                if p2.kind == CRPropertyType::Log {
+                if let CRProperty::Log(p2_arg) = p2 {
                     // We're asking if ln(a)/ln(10) = r ln(b)/ln(10), which is true iff ln(a) = r ln(b).
                     // Use the same algorithm as for IS_LN.
-                    !have_common_power(&p1.arg.clone().unwrap(), &p2.arg.clone().unwrap())
+                    !have_common_power(&p1_arg.clone(), &p2_arg.clone())
                 } else {
                     false
                 }
             }
-            CRPropertyType::SinPi | CRPropertyType::TanPi => {
+            CRProperty::SinPi(_, _) | CRProperty::TanPi(_, _) => {
                 // Always algebraic. We already handled the other rational case above.
                 other.definitely_transcendental()
             }
-            CRPropertyType::Asin => {
+            CRProperty::Asin(_) => {
                 // As we argued above, this is transcendental.
                 other.definitely_algebraic()
             }
-            CRPropertyType::Atan => {
+            CRProperty::Atan(_) => {
                 // The case of other rational is handled above. Can we do better?
                 false
             }
-            CRPropertyType::Irrational => false,
+            CRProperty::Irrational => false,
         }
     }
 
@@ -411,7 +418,7 @@ impl Real {
     pub fn same_monotonic_cr_kind(&self, other: &Self) -> bool {
         if let Some(self_cr_property) = &self.cr_property
             && let Some(other_cr_property) = &other.cr_property
-            && self_cr_property.kind == other_cr_property.kind
+            && self_cr_property == other_cr_property
             && self_cr_property.determines_cr()
         {
             // All of our kinds other than IS_IRRATIONAL currently qualify.
@@ -438,7 +445,7 @@ impl Real {
                 || other.cr_value().sign_precision(ZERO_COMPARISON_TOLERANCE)? != Sign::NoSign))
                 || (self.same_monotonic_cr_kind(other)
                     && (self.rat == other.rat
-                        || self.cr_property.clone().unwrap().kind == CRPropertyType::Sqrt))
+                        || matches!(self.cr_property, Some(CRProperty::Sqrt(_)))))
                 || self.cr_value().compare_to_relative(
                     &other.cr_value(),
                     DEFAULT_RELATIVE_TOLERANCE,
@@ -514,13 +521,21 @@ impl Real {
                     self.cr_property
                         .clone()
                         .unwrap()
-                        .arg
+                        .get_arg()
                         .clone()
                         .unwrap()
-                        .cmp(&other.cr_property.clone().unwrap().arg.clone().unwrap()),
+                        .cmp(
+                            &other
+                                .cr_property
+                                .clone()
+                                .unwrap()
+                                .get_arg()
+                                .clone()
+                                .unwrap(),
+                        ),
                 ));
             }
-            if self.cr_property.clone().unwrap().kind == CRPropertyType::Sqrt {
+            if let Some(CRProperty::Sqrt(cr_property_arg)) = &self.cr_property {
                 // Compare the squares. We promise to compare these accrurately, so we force
                 // the multiplications to succeed by letting the result exceed BoundedRational
                 // size bounds.
@@ -532,12 +547,8 @@ impl Real {
                     return Ok(Ordering::Greater);
                 }
 
-                let squared = self.rat.clone()
-                    * self.rat.clone()
-                    * self.cr_property.clone().unwrap().arg.clone().unwrap();
-                let other_squared = other.rat.clone()
-                    * other.rat.clone()
-                    * other.cr_property.clone().unwrap().arg.clone().unwrap();
+                let squared = self.rat.clone() * self.rat.clone() * cr_property_arg.clone();
+                let other_squared = other.rat.clone() * other.rat.clone() * cr_property_arg.clone();
 
                 return Ok(multiply_ordering(signum, squared.cmp(&other_squared)));
             }
@@ -638,8 +649,8 @@ impl Real {
 
     /// Returns a suitable representation of ln(arg) or log(arg). arg is positive and not one. kind is
     /// IS_LN or IS_LOG.
-    pub fn log_rep(kind: CRPropertyType, arg: BigRational) -> NumResult<Self> {
-        if !matches!(kind, CRPropertyType::Ln | CRPropertyType::Log) {
+    pub fn log_rep(kind: CRProperty, arg: BigRational) -> NumResult<Self> {
+        if !matches!(kind, CRProperty::Ln(_) | CRProperty::Log(_)) {
             panic!("log_rep called with invalid kind");
         }
 
@@ -651,27 +662,35 @@ impl Real {
         }
 
         if arg.is_integer()
-            && let Some(small_power_log) = Self::lg_small_power(kind, arg.to_integer())? {
-                return Ok(small_power_log);
-            }
+            && let Some(small_power_log) = Self::lg_small_power(kind.clone(), arg.to_integer())?
+        {
+            return Ok(small_power_log);
+        }
 
         Ok(if arg.bit_length() > LOG_ARG_BITS {
-            if kind == CRPropertyType::Ln {
+            if matches!(kind, CRProperty::Ln(_)) {
                 Self::new_from_cr(ConstructiveReal::from(arg).ln()?)
             } else {
                 Self::new_from_cr(ConstructiveReal::from(arg).ln()? / LN_10.clone())
             }
         } else {
-            Self::new_from_rat_property(BigRational::one(), CRProperty::new(kind, arg))
+            Self::new_from_rat_property(
+                BigRational::one(),
+                CRProperty::new(match kind {
+                    CRProperty::Ln(_) => CRProperty::Ln(arg),
+                    CRProperty::Log(_) => CRProperty::Log(arg),
+                    _ => unreachable!(),
+                }),
+            )
         })
     }
 
-    fn lg_small_power(kind: CRPropertyType, arg: BigInt) -> NumResult<Option<Self>> {
+    fn lg_small_power(kind: CRProperty, arg: BigInt) -> NumResult<Option<Self>> {
         for m in SMALL_NON_POWERS {
             let int_log = get_int_log(arg.clone(), m);
             let new_cr_value;
             if int_log != 0 {
-                if kind == CRPropertyType::Log {
+                if matches!(kind, CRProperty::Log(_)) {
                     if m == 10 {
                         return Ok(Some(Real::new_from_rational(
                             BigRational::from_i64(int_log).unwrap(),
@@ -685,7 +704,11 @@ impl Real {
                 return Ok(Some(Real::new(
                     BigRational::from_i64(int_log).unwrap(),
                     new_cr_value,
-                    Some(CRProperty::new(kind, BigRational::from_i32(m).unwrap())),
+                    Some(CRProperty::new(match kind {
+                        CRProperty::Ln(_) => CRProperty::Ln(BigRational::from_i32(m).unwrap()),
+                        CRProperty::Log(_) => CRProperty::Log(BigRational::from_i32(m).unwrap()),
+                        _ => unreachable!(),
+                    })),
                 )));
             }
         }
@@ -706,10 +729,296 @@ impl Real {
                 Real::new(
                     decomposed_product.0,
                     ConstructiveReal::from(decomposed_product.1.clone()).sqrt(),
-                    Some(CRProperty::new(CRPropertyType::Sqrt, decomposed_product.1)),
+                    Some(CRProperty::new(CRProperty::Sqrt(decomposed_product.1))),
                 )
             }
         }
+    }
+
+    fn sqrt(self) -> NumResult<Self> {
+        if self.sign_prec(DEFAULT_COMPARISON_TOLERANCE)? == Sign::Minus {
+            return Err(DomainViolation(NthRoot(2.)));
+        }
+        if self.definitely_zero() {
+            return Ok(ZERO.clone());
+        }
+
+        let mut new_cr_property = None;
+        if self.cr_property.is_one() && self.rat.extract_square_will_succeed() {
+            // Avoid generating IS_SQRT property for rational values.
+            let decomposed_product = self.rat.extract_square_reduced();
+            if decomposed_product.1 == BigRational::one() {
+                new_cr_property = Some(CRProperty::one());
+            } else {
+                new_cr_property = Some(CRProperty::new(CRProperty::Sqrt(
+                    decomposed_product.1.clone(),
+                )));
+            }
+            return Ok(Real::new(
+                decomposed_product.0,
+                ConstructiveReal::from(decomposed_product.1).sqrt(),
+                new_cr_property,
+            ));
+        } // else don't track; we don't know if it's rational.
+
+        // If this is exp(a), result is exp(a/2). Track that.
+        if let Some(CRProperty::Exp(exp_arg)) = &self.cr_property {
+            let new_arg = exp_arg / BigRational::from_i32(2).unwrap();
+            if !new_arg.too_big() {
+                new_cr_property = Some(CRProperty::new(CRProperty::Exp(new_arg)));
+            }
+        }
+
+        Ok(Real::new_from_cr_property(
+            self.cr_value().sqrt(),
+            new_cr_property,
+        ))
+    }
+
+    /// Return (this mod 2pi)/(pi/6) as a BigInteger, or None if that isn't easily possible.
+    fn get_pi_twelfths(&self) -> Option<BigInt> {
+        if self.definitely_zero() {
+            Some(BigInt::zero())
+        } else if self.cr_property.is_pi() {
+            let quotient =
+                (self.rat.clone() * BigRational::from_i32(12).unwrap()).try_as_integer()?;
+            Some(quotient % BigInt::from_i32(24).unwrap())
+        } else {
+            None
+        }
+    }
+
+    pub fn sin(&self) -> NumResult<Self> {
+        if let Some(pi_twelfths) = self.get_pi_twelfths()
+            && let Some(result) = sin_pi_twelfths(pi_twelfths.to_i32().unwrap())
+        {
+            return Ok(result);
+        };
+
+        if self.cr_property.is_pi()
+            && let Some(new_cr_property) = CRProperty::new_sin_pi(self.rat.clone())
+        {
+            let CRProperty::SinPi(_, neg) = new_cr_property else {
+                panic!("new_sin_pi returned not CRProperty::SinPi")
+            };
+            return Ok(Real::new_from_rat_property(
+                if neg {
+                    -BigRational::one()
+                } else {
+                    BigRational::one()
+                },
+                new_cr_property,
+            ));
+        }
+
+        if let Some(CRProperty::Asin(arg)) = &self.cr_property
+            && self.rat == BigRational::one()
+        {
+            return Ok(Real::new_from_rational(arg.clone()));
+        }
+
+        Ok(Real::new_from_cr_property(
+            self.cr_value().sin()?,
+            if self.definitely_algebraic() && self.definitely_nonzero() {
+                Some(CRProperty::Irrational)
+            } else {
+                None
+            },
+        ))
+    }
+
+    /// Return a copy of the argument that is at least marked is irrational.
+    fn tag_irrational(&self) -> Self {
+        if self.cr_property.is_none() {
+            Real::new(
+                self.rat.clone(),
+                self.cr.clone(),
+                Some(CRProperty::irrational()),
+            )
+        } else {
+            self.clone()
+        }
+    }
+
+    pub fn cos(&self) -> NumResult<Self> {
+        if self.definitely_algebraic() && self.definitely_nonzero() {
+            // We know from Lindemann-Weierstrass that the result is transcendental, and therefore
+            // irrational.
+            Ok((self.clone() + PI_OVER_2.clone())?.sin()?.tag_irrational())
+        } else {
+            (self.clone() + PI_OVER_2.clone())?.sin()
+        }
+    }
+
+    pub fn tan(&self) -> NumResult<Self> {
+        if let Some(pi_twelfths) = self.get_pi_twelfths() {
+            let i = pi_twelfths.to_i32().unwrap();
+            if i == 6 || i == 18 {
+                return Err(DomainViolation(TanDomainViolation));
+            }
+
+            if let Some(top) = sin_pi_twelfths(i)
+                && let Some(bottom) = cos_pi_twelfths(i)
+            {
+                return top / bottom;
+            }
+        }
+
+        if let Some(CRProperty::Pi) = self.cr_property
+            && let Some(new_cr_property) = CRProperty::new_tan_pi(self.rat.clone())
+        {
+            let CRProperty::TanPi(_, neg) = new_cr_property else {
+                panic!("new_tan_pi returned not CRProperty::TanPi")
+            };
+            return Ok(Real::new_from_rat_property(
+                if neg {
+                    -BigRational::one()
+                } else {
+                    BigRational::one()
+                },
+                new_cr_property,
+            ));
+        }
+
+        if let Some(CRProperty::Atan(atan_arg)) = &self.cr_property
+            && self.rat == BigRational::one()
+        {
+            return Ok(Real::new_from_rational(atan_arg.clone()));
+        }
+
+        todo!()
+
+        // Ok(Real::new_from_cr_property(
+        //     self.cr_value().tan()?,
+        //     if self.definitely_algebraic() && self.definitely_nonzero() {
+        //         Some(CRProperty::Irrational)
+        //     } else {
+        //         None
+        //     },
+        // ))
+    }
+
+    pub fn check_asin_domain(&self) -> NumResult<()> {
+        if self.is_comparable(&constants::ONE)?
+            && self.compare_to(&constants::ONE)? == Ordering::Greater
+            && self.compare_to(&constants::M_ONE)? == Ordering::Less
+        {
+            Err(DomainViolation(AsinDomainViolation))
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Return asin(n/2). n is between -2 and 2.
+    pub fn asin_halves(n: i32) -> Real {
+        if n < 0 {
+            -Self::asin_halves(-n)
+        } else {
+            match n {
+                0 => ZERO.clone(),
+                1 => Real::new_from_rat_cr(BigRational::new(1.into(), 6.into()), PI.clone()),
+                2 => Real::new_from_rat_cr(BigRational::new(1.into(), 2.into()), PI.clone()),
+                _ => {
+                    panic!("asin_halves called with invalid argument");
+                }
+            }
+        }
+    }
+
+    pub fn asin(&self) -> NumResult<Self> {
+        self.check_asin_domain()?;
+        if let Ok(halves) = BigInt::try_from(self.clone() * TWO.clone()) {
+            let n = halves.to_i32().unwrap();
+            return Ok(Self::asin_halves(n));
+        }
+
+        if self.compare_to_prec(&ZERO, -10) == Ok(Ordering::Less) {
+            return Ok(self.clone().neg().asin()?.neg());
+        }
+
+        if self.definitely_equals(&HALF_SQRT_2)? {
+            return Ok(Real::new_from_rat_cr(
+                BigRational::new(1.into(), 4.into()),
+                PI.clone(),
+            ));
+        }
+
+        if self.definitely_equals(&HALF_SQRT_3)? {
+            return Ok(Real::new_from_rat_cr(
+                BigRational::new(1.into(), 3.into()),
+                PI.clone(),
+            ));
+        }
+
+        if let Some(CRProperty::SinPi(arg, _)) = &self.cr_property {
+            if self.rat == BigRational::one() {
+                return Ok(Real::new_from_rat_cr(arg.clone(), PI.clone()));
+            }
+
+            if self.rat == BigRational::from_i32(-1).unwrap() {
+                return Ok(Real::new(-arg.clone(), PI.clone(), Some(CRProperty::Pi)));
+            }
+        }
+
+        if let Some(CRProperty::One) = self.cr_property {
+            assert!(self.rat.is_positive());
+
+            return Ok(Real::new_from_property(CRProperty::new(CRProperty::Asin(
+                self.rat.clone(),
+            ))));
+        }
+
+        todo!()
+        // Real::new_from_cr(self.cr_value().asin())
+    }
+
+    pub fn acos(&self) -> NumResult<Self> {
+        PI_OVER_2.clone() - self.asin()?
+    }
+
+    pub fn atan(&self) -> NumResult<Self> {
+        if self.compare_to_prec(&ZERO, -10)? == Ordering::Less {
+            return Ok(self.clone().neg().atan()?.neg());
+        }
+
+        if let Ok(as_bi) = BigInt::try_from(self.clone())
+            && as_bi <= BigInt::one()
+        {
+            let as_int = as_bi.to_i32().unwrap();
+            // These seem to be all rational cases:
+            return Ok(match as_int {
+                0 => ZERO.clone(),
+                1 => PI_OVER_4.clone(),
+                _ => unreachable!(),
+            });
+        }
+
+        if self.definitely_equals(&THIRD_SQRT_3)? {
+            return Ok(PI_OVER_6.clone());
+        }
+        if self.definitely_equals(&SQRT_3)? {
+            return Ok(PI_OVER_3.clone());
+        }
+
+        if let Some(CRProperty::TanPi(tan_pi_arg, _)) = &self.cr_property {
+            if self.rat == BigRational::one() {
+                return Ok(Real::new_from_rat_cr(tan_pi_arg.clone(), PI.clone()));
+            }
+
+            if self.rat == BigRational::from_i32(-1).unwrap() {
+                return Ok(Real::new_from_rat_cr(-tan_pi_arg.clone(), PI.clone()));
+            }
+        }
+
+        if let Some(CRProperty::One) = &self.cr_property {
+            assert!(self.rat.is_positive());
+            return Ok(Real::new_from_property(CRProperty::new(CRProperty::Atan(
+                self.rat.clone(),
+            ))));
+        }
+
+        todo!()
+        // Ok(Real::new_from_cr(self.cr_value().atan()))
     }
 }
 
@@ -824,11 +1133,8 @@ impl Add for Real {
         // Consider "simplifying" sums of logs.
         if let Some(self_cr_property) = &self.cr_property
             && let Some(rhs_cr_property) = &rhs.cr_property
-            && self_cr_property.kind == rhs_cr_property.kind
-            && matches!(
-                self_cr_property.kind,
-                CRPropertyType::Ln | CRPropertyType::Log
-            )
+            && self_cr_property == rhs_cr_property
+            && matches!(self_cr_property, CRProperty::Ln(_) | CRProperty::Log(_))
         {
             // a ln(b) + c ln(d) = ln(b^a * d^c)
             // a log(b) + c log(d) = log(b^a * d^c)
@@ -843,22 +1149,22 @@ impl Add for Real {
 
                 // Estimate size of resulting argument.
                 let estimated_size = rat_as_double.abs()
-                    * (self_cr_property.arg.clone().unwrap().bit_length() as f64)
+                    * (self_cr_property.get_arg().clone().unwrap().bit_length() as f64)
                     + u_rat_as_double.abs()
-                        * (rhs_cr_property.arg.clone().unwrap().bit_length() as f64);
+                        * (rhs_cr_property.get_arg().clone().unwrap().bit_length() as f64);
                 if estimated_size <= LOG_ARG_CANDIDATE_BITS {
                     let term1 = self_cr_property
                         .clone()
-                        .arg
+                        .get_arg()
                         .unwrap()
                         .pow(rat_as_int.to_i32().unwrap());
                     let term2 = rhs_cr_property
                         .clone()
-                        .arg
+                        .get_arg()
                         .unwrap()
                         .pow(u_rat_as_int.to_i32().unwrap());
                     let new_arg = term1 * term2;
-                    return Self::log_rep(self_cr_property.kind, new_arg);
+                    return Self::log_rep(self_cr_property.clone(), new_arg);
                 }
             }
         }
@@ -926,25 +1232,22 @@ impl Mul for Real {
         if let Some(self_cr_property) = &self.cr_property
             && let Some(rhs_cr_property) = &rhs.cr_property
         {
-            if self_cr_property.kind == CRPropertyType::Sqrt
-                && rhs_cr_property.kind == CRPropertyType::Sqrt
+            if let CRProperty::Sqrt(self_cr_property_arg) = self_cr_property
+                && let CRProperty::Sqrt(rhs_cr_property_arg) = rhs_cr_property
             {
-                let cr_part = Self::multiply_sqrts(
-                    self_cr_property.arg.clone().unwrap(),
-                    rhs_cr_property.clone().arg.unwrap(),
-                );
+                let cr_part =
+                    Self::multiply_sqrts(self_cr_property_arg.clone(), rhs_cr_property_arg.clone());
                 let rat_result = n_rat_factor * cr_part.rat;
                 return Real::new(rat_result, cr_part.cr, cr_part.cr_property);
             }
 
-            if self_cr_property.kind == CRPropertyType::Exp
-                && rhs_cr_property.kind == CRPropertyType::Exp
+            if let CRProperty::Exp(self_cr_property_arg) = self_cr_property
+                && let CRProperty::Exp(rhs_cr_property_arg) = rhs_cr_property
             {
                 // exp(a) * exp(b) is exp(a + b) .
-                let sum =
-                    self_cr_property.clone().arg.unwrap() + rhs_cr_property.clone().arg.unwrap();
+                let sum = self_cr_property_arg + rhs_cr_property_arg;
                 // we use this only for the property, since crFactors may already have been evaluated.
-                result_prop = Some(CRProperty::new(CRPropertyType::Exp, sum));
+                result_prop = Some(CRProperty::new(CRProperty::Exp(sum)));
             }
         }
 
@@ -964,31 +1267,26 @@ impl Inv for Real {
 
     fn inv(self) -> Self::Output {
         if self.definitely_zero() {
-            return Err(NumError::DivisionByZero);
+            return Err(DomainViolation(DivisionByZero));
         }
 
         if self.cr_property.is_one() {
             return Ok(Real::new_from_rational(self.rat.inv()));
         }
 
-        let square = self.cr_property.arg_for_kind(CRPropertyType::Sqrt);
-        if let Some(square) = square
-            && let Some(square) = square.try_as_integer() {
-                // Prefer square roots of integers. 1/sqrt(n) = sqrt(n)/n
-                let n_rat_factor = (self.rat.clone() * square).inv();
-                if !n_rat_factor.too_big() {
-                    return Ok(Real::new(n_rat_factor, self.cr, self.cr_property));
-                }
+        if let Some(CRProperty::Sqrt(square)) = &self.cr_property
+            && let Some(square) = square.try_as_integer()
+        {
+            // Prefer square roots of integers. 1/sqrt(n) = sqrt(n)/n
+            let n_rat_factor = (self.rat.clone() * square).inv();
+            if !n_rat_factor.too_big() {
+                return Ok(Real::new(n_rat_factor, self.cr, self.cr_property));
             }
+        }
 
         let mut new_property = None;
-        if let Some(cr_property) = &self.cr_property
-            && cr_property.kind == CRPropertyType::Exp
-        {
-            new_property = Some(CRProperty::new(
-                CRPropertyType::Exp,
-                -cr_property.arg.clone().unwrap(),
-            ));
+        if let Some(CRProperty::Exp(cr_property)) = &self.cr_property {
+            new_property = Some(CRProperty::new(CRProperty::Exp(-cr_property.clone())));
         } else if self.definitely_irrational() {
             new_property = Some(CRProperty::irrational());
         }
@@ -1003,7 +1301,7 @@ impl Div for Real {
     fn div(self, rhs: Self) -> Self::Output {
         if self.same_cr_factor(&rhs.clone()) {
             if rhs.definitely_zero() {
-                return Err(NumError::DivisionByZero);
+                return Err(DomainViolation(DivisionByZero));
             }
 
             let n_rat_factor = self.rat.clone() / rhs.rat.clone();
@@ -1013,15 +1311,15 @@ impl Div for Real {
         }
 
         // Try to reduce ln(x)/ln(10) to log(x) to keep symbolic representation.
-        if let Some(ln_arg) = self.cr_property.arg_for_kind(CRPropertyType::Ln)
-            && let Some(u_ln_arg) = rhs.cr_property.arg_for_kind(CRPropertyType::Ln)
+        if let Some(CRProperty::Ln(ln_arg)) = &self.cr_property
+            && let Some(CRProperty::Ln(u_ln_arg)) = &rhs.cr_property
             && u_ln_arg == &BigRational::from_i32(10).unwrap()
         {
             let rat_quotient = self.rat.clone() / rhs.rat.clone();
             if !rat_quotient.too_big() {
                 return Ok(Real::new_from_rat_property(
                     rat_quotient,
-                    CRProperty::new(CRPropertyType::Log, ln_arg.clone()),
+                    CRProperty::new(CRProperty::Log(ln_arg.clone())),
                 ));
             }
         }
@@ -1167,4 +1465,35 @@ fn get_int_log(n: BigInt, base: i32) -> i64 {
         i -= 1;
     }
     result
+}
+
+/// Compute the sin of an integer multiple n of pi/12, if easily representable.
+///
+/// Parameters:
+/// n: value between 0 and 23 inclusive.
+fn sin_pi_twelfths(n: i32) -> Option<Real> {
+    if n >= 12 {
+        let neg_result = sin_pi_twelfths(n - 12)?;
+        return Some(-neg_result);
+    }
+
+    match n {
+        0 => Some(ZERO.clone()),
+        2 => Some(HALF.clone()),
+        3 => Some(HALF_SQRT_2.clone()),
+        4 => Some(HALF_SQRT_3.clone()),
+        6 => Some(constants::ONE.clone()),
+        8 => Some(HALF_SQRT_3.clone()),
+        9 => Some(HALF_SQRT_2.clone()),
+        10 => Some(HALF.clone()),
+        _ => None,
+    }
+}
+
+fn cos_pi_twelfths(n: i32) -> Option<Real> {
+    let mut sin_arg = n + 6;
+    if sin_arg >= 24 {
+        sin_arg -= 24;
+    }
+    sin_pi_twelfths(sin_arg)
 }

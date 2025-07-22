@@ -1,153 +1,176 @@
-use num::{BigRational, FromPrimitive, One, Signed, ToPrimitive, Zero};
 use crate::angle_unit::AngleUnit;
 use crate::constructive_real::constants::{LN_10, ONE, PI};
 use crate::constructive_real::{ConstructiveReal, ConstructiveRealKnownValue};
 use crate::error::NumResult;
 use crate::maths_symbols::MathsSymbols;
 use crate::rational_extensions::RationalExtensions;
+use num::bigint::Sign;
+use num::{BigRational, FromPrimitive, One, Signed, ToPrimitive, Zero};
 
-#[derive(Eq, PartialEq, PartialOrd, Debug, Clone, Copy)]
-pub enum CRPropertyType {
+#[derive(Eq, PartialEq, PartialOrd, Debug, Clone)]
+#[repr(u8)]
+pub enum CRProperty {
     One = 1,
     Pi = 2,
-    Sqrt = 3,
-    Exp = 4,
-    Ln = 5,
-    Log = 6,
-    SinPi = 7,
-    TanPi = 8,
-    Asin = 9,
-    Atan = 10,
+    Sqrt(BigRational) = 3,
+    Exp(BigRational) = 4,
+    Ln(BigRational) = 5,
+    Log(BigRational) = 6,
+    SinPi(BigRational, bool) = 7,
+    TanPi(BigRational, bool) = 8,
+    Asin(BigRational) = 9,
+    Atan(BigRational) = 10,
     Irrational = 11,
-}
-
-#[derive(Eq, PartialEq, Debug, Clone)]
-pub struct CRProperty {
-    pub kind: CRPropertyType,
-    pub arg: Option<BigRational>,
 }
 
 impl CRProperty {
     pub fn one() -> Self {
-        Self {
-            kind: CRPropertyType::One,
-            arg: None,
-        }
+        CRProperty::One
     }
 
     pub fn pi() -> Self {
-        Self {
-            kind: CRPropertyType::Pi,
-            arg: None,
-        }
+        CRProperty::Pi
     }
 
     pub fn irrational() -> Self {
-        Self {
-            kind: CRPropertyType::Irrational,
-            arg: None,
-        }
+        CRProperty::Irrational
     }
 
     pub fn sqrt_2() -> Self {
-        Self {
-            kind: CRPropertyType::Sqrt,
-            arg: Some(BigRational::from_i32(2).unwrap()),
-        }
+        CRProperty::Sqrt(BigRational::from_i32(2).unwrap())
     }
 
     pub fn sqrt_3() -> Self {
-        Self {
-            kind: CRPropertyType::Sqrt,
-            arg: Some(BigRational::from_i32(3).unwrap()),
-        }
+        CRProperty::Sqrt(BigRational::from_i32(3).unwrap())
     }
 
     pub fn e() -> Self {
-        Self {
-            kind: CRPropertyType::Exp,
-            arg: Some(BigRational::one()),
-        }
+        CRProperty::Exp(BigRational::one())
     }
 
     pub fn ln_10() -> Self {
-        Self {
-            kind: CRPropertyType::Ln,
-            arg: Some(BigRational::from_i32(10).unwrap()),
-        }
+        CRProperty::Ln(BigRational::from_i32(10).unwrap())
     }
 
     pub fn determines_cr(&self) -> bool {
-        self.kind != CRPropertyType::Irrational
+        self != &CRProperty::Irrational
     }
 
-    pub fn new(kind: CRPropertyType, arg: BigRational) -> Self {
+    pub fn new(kind: CRProperty) -> Self {
         // This enforces requirements on arg.
 
         match kind {
-            CRPropertyType::One => Self::one(),
-            CRPropertyType::Pi => Self::pi(),
-            CRPropertyType::Irrational => Self::irrational(),
-            CRPropertyType::Sqrt if arg.is_one() => Self::one(),
-            CRPropertyType::Exp if arg.is_zero() => Self::one(),
-            _ => Self { kind, arg: Some(arg) },
+            CRProperty::One => Self::one(),
+            CRProperty::Pi => Self::pi(),
+            CRProperty::Irrational => Self::irrational(),
+            CRProperty::Sqrt(arg) if arg.is_one() => Self::one(),
+            CRProperty::Exp(arg) if arg.is_zero() => Self::one(),
+            _ => kind,
+        }
+    }
+
+    /// Return a property corresponding to sin(pi*arg), normalizing arg to the correct range. Caller is
+    /// responsible for ensuring that the argument is not one that leads to a rational result.
+    /// The negate field of the result is set if the property corresponds to the negated argument,
+    /// rather than the argument itself.
+    /// Returns None if we can't normalize the argument.
+    pub fn new_sin_pi(arg: BigRational) -> Option<Self> {
+        let mut n_arg = arg.reduced_arg()?;
+        if n_arg.too_big() {
+            return None;
+        }
+
+        let mut neg = false;
+        if n_arg >= BigRational::new(1.into(), 2.into()) {
+            // sin(x) = sin(pi - x)
+            n_arg = BigRational::one() - n_arg;
+        }
+        if !n_arg.too_big() && n_arg.sign() == Sign::Minus {
+            n_arg = -n_arg;
+            neg = true;
+        }
+        if n_arg.too_big() {
+            None
+        } else {
+            Some(Self::new(CRProperty::SinPi(n_arg, neg)))
+        }
+    }
+
+    /// Return a property corresponding to tan(pi*arg), normalizing arg to the correct range. Caller is
+    /// responsible for ensuring that the argument is not one that leads to a rational result.
+    /// The negate field of the result is set if the property corresponds to the negated argument,
+    /// rather than the argument itself.
+    /// Returns None if we can't normalize the argument.
+    pub fn new_tan_pi(arg: BigRational) -> Option<Self> {
+        let mut n_arg = arg.reduced_arg()?;
+        if n_arg.too_big() {
+            return None;
+        }
+
+        let mut neg = false;
+        if n_arg >= BigRational::new(1.into(), 2.into()) {
+            // tan(x) = tan(x - pi)
+            n_arg = n_arg - BigRational::one();
+        }
+        if !n_arg.too_big() && n_arg.sign() == Sign::Minus {
+            n_arg = -n_arg;
+            neg = true;
+        }
+        if n_arg.too_big() {
+            None
+        } else {
+            Some(Self::new(CRProperty::TanPi(n_arg, neg)))
         }
     }
 
     pub fn is_one(&self) -> bool {
-        self.kind == CRPropertyType::One
+        self == &CRProperty::One
     }
 
     pub fn is_pi(&self) -> bool {
-        self.kind == CRPropertyType::Pi
+        self == &CRProperty::Pi
     }
 
     pub fn is_unknown_irrational(&self) -> bool {
-        self.kind == CRPropertyType::Irrational
+        self == &CRProperty::Irrational
     }
 
     pub fn is_nonzero(&self) -> bool {
-        match self.kind {
-            CRPropertyType::One => {
-                true
-            }
-            CRPropertyType::Pi => {
-                true
-            }
-            CRPropertyType::Irrational => {
-                true
-            }
-            CRPropertyType::Exp => {
+        match self {
+            CRProperty::One => true,
+            CRProperty::Pi => true,
+            CRProperty::Irrational => true,
+            CRProperty::Exp(arg) => {
                 // It would be correct to always answer true. But we intentionally fail to provide the
                 // guarantee for large negative arguments, since it would be expensive to actually
                 // distinguish the value from zero, and answering true often results in such an attempt.
-                self.arg >= BigRational::from_i32(-10000)
+                arg >= &BigRational::from_i32(-10000).unwrap()
             }
-            CRPropertyType::Ln => {
+            CRProperty::Ln(_) => {
                 // arg > 1
                 true
             }
-            CRPropertyType::Log => {
+            CRProperty::Log(_) => {
                 // arg > 1
                 true
             }
-            CRPropertyType::Sqrt => {
+            CRProperty::Sqrt(_) => {
                 // arg > 0
                 true
             }
-            CRPropertyType::SinPi => {
+            CRProperty::SinPi(_, _) => {
                 // arg != 0
                 true
             }
-            CRPropertyType::TanPi => {
+            CRProperty::TanPi(_, _) => {
                 // arg != 0
                 true
             }
-            CRPropertyType::Asin => {
+            CRProperty::Asin(_) => {
                 // arg != 0
                 true
             }
-            CRPropertyType::Atan => {
+            CRProperty::Atan(_) => {
                 // arg != 0
                 true
             }
@@ -158,78 +181,41 @@ impl CRProperty {
     /// value when we have a sufficiently descriptive property.  But that might hurt performance
     /// slightly, since we would sometimes lose the benefit of prior argument evaluations.
     pub fn cr(&self) -> NumResult<Option<ConstructiveReal>> {
-        match self.kind {
-            CRPropertyType::One => {
-                Ok(Some(ONE.clone()))
-            }
-            CRPropertyType::Pi => {
-                Ok(Some(PI.clone()))
-            }
-            CRPropertyType::Exp => {
-                if self.arg.is_none() {
-                    Ok(None)
-                } else {
-                    Ok(Some(ConstructiveReal::from(self.arg.clone().unwrap()).exp()?))
-                }
-            }
-            CRPropertyType::Ln => {
-                if self.arg.is_none() {
-                    Ok(None)
-                } else {
-                    Ok(Some(ConstructiveReal::from(self.arg.clone().unwrap()).ln()?))
-                }
-            }
-            CRPropertyType::Log => {
-                if self.arg.is_none() {
-                    Ok(None)
-                } else {
-
-                    Ok(Some(ConstructiveReal::from(self.arg.clone().unwrap()).ln()? / LN_10.clone()))
-                }
-            }
-            CRPropertyType::Sqrt => {
-                if self.arg.is_none() {
-                    Ok(None)
-                } else {
-                    Ok(Some(ConstructiveReal::from(self.arg.clone().unwrap()).sqrt()))
-                }
-            }
-            CRPropertyType::SinPi => {
-                if self.arg.is_none() {
-                    Ok(None)
-                } else {
-                    Ok(Some((ConstructiveReal::from(self.arg.clone().unwrap()) * PI.clone()).sin()?))
-                }
-            }
-            CRPropertyType::TanPi => {
+        match self {
+            CRProperty::One => Ok(Some(ONE.clone())),
+            CRProperty::Pi => Ok(Some(PI.clone())),
+            CRProperty::Exp(arg) => Ok(Some(ConstructiveReal::from(arg.clone()).exp()?)),
+            CRProperty::Ln(arg) => Ok(Some(ConstructiveReal::from(arg.clone()).ln()?)),
+            CRProperty::Log(arg) => Ok(Some(
+                ConstructiveReal::from(arg.clone()).ln()? / LN_10.clone(),
+            )),
+            CRProperty::Sqrt(arg) => Ok(Some(ConstructiveReal::from(arg.clone()).sqrt())),
+            CRProperty::SinPi(arg, _) => Ok(Some(
+                (ConstructiveReal::from(arg.clone()) * PI.clone()).sin()?,
+            )),
+            CRProperty::TanPi(arg, _) => {
                 todo!()
             }
-            CRPropertyType::Asin => {
+            CRProperty::Asin(arg) => {
                 todo!()
             }
-            CRPropertyType::Atan => {
+            CRProperty::Atan(arg) => {
                 todo!()
             }
-            CRPropertyType::Irrational => {
-                Ok(None)
-            }
+            CRProperty::Irrational => Ok(None),
         }
     }
 
     pub fn msb_bound(&self) -> i32 {
-        match self.kind {
-            CRPropertyType::One => {0}
-            CRPropertyType::Pi => {1}
-            CRPropertyType::Sqrt => {
-                let wnb = self.arg.clone().unwrap().whole_number_bits();
-                if wnb == i32::MIN {
-                    wnb
-                } else {
-                    (wnb >> 1) - 2
-                }
+        match self {
+            CRProperty::One => 0,
+            CRProperty::Pi => 1,
+            CRProperty::Sqrt(arg) => {
+                let wnb = arg.whole_number_bits();
+                if wnb == i32::MIN { wnb } else { (wnb >> 1) - 2 }
             }
-            CRPropertyType::Ln | CRPropertyType::Log => {
-                if self.arg >= BigRational::from_i32(2) {
+            CRProperty::Ln(arg) | CRProperty::Log(arg) => {
+                if arg >= &BigRational::from_i32(2).unwrap() {
                     // ln(2) > log(2) > 1/4
                     -2
                 } else {
@@ -237,8 +223,8 @@ impl CRProperty {
                     i32::MIN
                 }
             }
-            CRPropertyType::Exp => {
-                let result = self.arg.clone().unwrap().floor();
+            CRProperty::Exp(arg) => {
+                let result = arg.floor();
                 if result.bit_length() <= 30 {
                     if !result.is_negative() {
                         // multiply by a bit less than 1/ln(2).
@@ -254,26 +240,18 @@ impl CRProperty {
                     i32::MIN
                 }
             }
-            CRPropertyType::SinPi | CRPropertyType::TanPi | CRPropertyType::Asin | CRPropertyType::Atan => {
+            CRProperty::SinPi(arg, _)
+            | CRProperty::TanPi(arg, _)
+            | CRProperty::Asin(arg)
+            | CRProperty::Atan(arg) => {
                 // These all behave like x or <pi>x near zero. Thus the following very rough estimate holds.
-                if self.arg.clone().unwrap() > BigRational::new(1.into(), 1024.into()) {
+                if arg > &BigRational::new(1.into(), 1024.into()) {
                     -11
                 } else {
                     i32::MIN
                 }
             }
-            CRPropertyType::Irrational => {
-                i32::MIN
-            }
-        }
-    }
-
-    /// Return the argument if the property p has the given kind
-    pub fn arg_for_kind(&self, kind: CRPropertyType) -> &Option<BigRational> {
-        if self.kind == kind {
-            &self.arg
-        } else {
-            &None
+            CRProperty::Irrational => i32::MIN,
         }
     }
 
@@ -295,7 +273,7 @@ impl CRProperty {
             return Some(MathsSymbols::Pi.to_string());
         }
 
-        if let Some(exp_arg) = self.arg_for_kind(CRPropertyType::Exp) {
+        if let CRProperty::Exp(exp_arg) = self {
             if exp_arg.is_one() {
                 return Some("e".to_string());
             } else {
@@ -303,37 +281,54 @@ impl CRProperty {
             }
         }
 
-        if let Some(sqrt_arg) = self.arg_for_kind(CRPropertyType::Sqrt)
-        {
+        if let CRProperty::Sqrt(sqrt_arg) = self {
             if sqrt_arg.is_integer() {
                 return Some(format!("{}{}", MathsSymbols::Sqrt, sqrt_arg.to_integer()));
             } else {
-                return Some(format!("{}({})", MathsSymbols::Sqrt, sqrt_arg.to_nice_string(subsuperscript)));
+                return Some(format!(
+                    "{}({})",
+                    MathsSymbols::Sqrt,
+                    sqrt_arg.to_nice_string(subsuperscript)
+                ));
             }
         }
 
-        if let Some(ln_arg) = self.arg_for_kind(CRPropertyType::Ln) {
+        if let CRProperty::Ln(ln_arg) = self {
             return Some(format!("ln({})", ln_arg.to_nice_string(subsuperscript)));
         }
 
-        if let Some(log_arg) = self.arg_for_kind(CRPropertyType::Log) {
+        if let CRProperty::Log(log_arg) = self {
             return Some(format!("log({})", log_arg.to_nice_string(subsuperscript)));
         }
 
-        if let Some(sin_arg) = self.arg_for_kind(CRPropertyType::SinPi) {
-            return Some(format!("sin({})", sin_arg.symbolic_pi_multiple(ang, subsuperscript)));
+        if let CRProperty::SinPi(sin_arg, _) = self {
+            return Some(format!(
+                "sin({})",
+                sin_arg.symbolic_pi_multiple(ang, subsuperscript)
+            ));
         }
 
-        if let Some(tan_arg) = self.arg_for_kind(CRPropertyType::TanPi) {
-            return Some(format!("tan({})", tan_arg.symbolic_pi_multiple(ang, subsuperscript)));
+        if let CRProperty::TanPi(tan_arg, _) = self {
+            return Some(format!(
+                "tan({})",
+                tan_arg.symbolic_pi_multiple(ang, subsuperscript)
+            ));
         }
 
-        if let Some(asin_arg) = self.arg_for_kind(CRPropertyType::Asin) {
-            return Some(format!("asin({}){}", asin_arg.to_nice_string(subsuperscript), ang));
+        if let CRProperty::Asin(asin_arg) = self {
+            return Some(format!(
+                "asin({}){}",
+                asin_arg.to_nice_string(subsuperscript),
+                ang
+            ));
         }
 
-        if let Some(atan_arg) = self.arg_for_kind(CRPropertyType::Atan) {
-            return Some(format!("atan({}){}", atan_arg.to_nice_string(subsuperscript), ang));
+        if let CRProperty::Atan(atan_arg) = self {
+            return Some(format!(
+                "atan({}){}",
+                atan_arg.to_nice_string(subsuperscript),
+                ang
+            ));
         }
 
         None
@@ -342,7 +337,29 @@ impl CRProperty {
     /// Is self known to be algebraic (as opposed to transcendental)? Currently only produces meaningful
     /// results for the above known special constructive reals.
     pub fn definitely_algebraic(&self) -> bool {
-        matches!(self.kind, CRPropertyType::One | CRPropertyType::Sqrt | CRPropertyType::SinPi | CRPropertyType::TanPi)
+        matches!(
+            self,
+            CRProperty::One
+                | CRProperty::Sqrt(_)
+                | CRProperty::SinPi(_, _)
+                | CRProperty::TanPi(_, _)
+        )
+    }
+
+    pub fn get_arg(&self) -> Option<&BigRational> {
+        match self {
+            CRProperty::One => None,
+            CRProperty::Pi => None,
+            CRProperty::Sqrt(arg) => Some(arg),
+            CRProperty::Exp(arg) => Some(arg),
+            CRProperty::Ln(arg) => Some(arg),
+            CRProperty::Log(arg) => Some(arg),
+            CRProperty::SinPi(arg, _) => Some(arg),
+            CRProperty::TanPi(arg, _) => Some(arg),
+            CRProperty::Asin(arg) => Some(arg),
+            CRProperty::Atan(arg) => Some(arg),
+            CRProperty::Irrational => None,
+        }
     }
 }
 
@@ -365,9 +382,9 @@ impl From<ConstructiveReal> for Option<CRProperty> {
 pub trait OptionalCRProperty {
     fn definitely_algebraic(&self) -> bool;
     fn is_one(&self) -> bool;
+    fn is_pi(&self) -> bool;
     fn is_nonzero(&self) -> bool;
     fn cr_symbolic(&self, ang: AngleUnit, subsuperscript: bool) -> Option<String>;
-    fn arg_for_kind(&self, kind: CRPropertyType) -> &Option<BigRational>;
 }
 
 impl OptionalCRProperty for Option<CRProperty> {
@@ -387,6 +404,10 @@ impl OptionalCRProperty for Option<CRProperty> {
         }
     }
 
+    fn is_pi(&self) -> bool {
+        if let Some(p) = self { p.is_pi() } else { false }
+    }
+
     fn is_nonzero(&self) -> bool {
         if let Some(p) = self {
             p.is_nonzero()
@@ -400,14 +421,6 @@ impl OptionalCRProperty for Option<CRProperty> {
             p.cr_symbolic(ang, subsuperscript)
         } else {
             None
-        }
-    }
-
-    fn arg_for_kind(&self, kind: CRPropertyType) -> &Option<BigRational> {
-        if let Some(p) = self {
-            p.arg_for_kind(kind)
-        } else {
-            &None
         }
     }
 }

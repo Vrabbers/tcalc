@@ -5,7 +5,6 @@ pub enum NumError {
     InternalError(InternalError),
     OperationCancelledError,
     PrecisionOverflow,
-    DivisionByZero,
     DomainViolation(DomainViolation),
 }
 
@@ -18,8 +17,11 @@ pub enum InternalError {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum DomainViolation {
+    DivisionByZero,
     LogarithmOfNegative,
     NthRoot(f32),
+    TanDomainViolation,
+    AsinDomainViolation,
 }
 
 pub type NumResult<T> = Result<T, NumError>;
