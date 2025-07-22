@@ -58,7 +58,7 @@ pub enum ConstructiveRealKnownValue {
 pub struct ConstructiveReal {
     t: Arc<dyn ConstructiveRealType>,
     current_approximation: Arc<RwLock<Option<ConstructiveRealApproximation>>>,
-    cancellation_token: CancellationToken,
+    pub cancellation_token: CancellationToken,
     pub known_value: Option<ConstructiveRealKnownValue>,
 }
 

@@ -5,24 +5,29 @@ use crate::angle_unit::AngleUnit;
 use crate::constructive_real::ConstructiveReal;
 use crate::constructive_real::constants::{LN_10, ONE, PI};
 use crate::error::DomainViolation::{
-    AsinDomainViolation, DivisionByZero, NthRoot, TanDomainViolation,
+    AsinDomainViolation, DivisionByZero, NthRoot, OrdinalDomainViolation, TanDomainViolation,
 };
 use crate::error::InternalError::UnconstructableFloat;
-use crate::error::NumError::DomainViolation;
-use crate::error::{NumError, NumResult};
+use crate::error::NumError::{DomainViolation, Overflow};
+use crate::error::OrdinalDomainViolation::{
+    NegativeBaseNonIntegerOrder, ZeroBaseNegativeOrder, ZeroBaseZeroOrder,
+};
+use crate::error::{CancelCheckable, NumError, NumResult};
 use crate::rational_extensions::RationalExtensions;
 use crate::real;
 use crate::real::constants::{
-    HALF, HALF_SQRT_2, HALF_SQRT_3, PI_OVER_2, PI_OVER_3, PI_OVER_4, PI_OVER_6, SQRT_3,
+    E, HALF, HALF_SQRT_2, HALF_SQRT_3, PI_OVER_2, PI_OVER_3, PI_OVER_4, PI_OVER_6, SQRT_3,
     THIRD_SQRT_3, TWO, ZERO,
 };
 use crate::real::cr_property::{CRProperty, OptionalCRProperty};
 use num::bigint::Sign;
+use num::complex::ComplexFloat;
 use num::traits::Inv;
 use num::{BigInt, BigRational, FromPrimitive, Integer, One, Signed, ToPrimitive, Zero};
 use std::cmp::Ordering;
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
+use std::sync::LazyLock;
 
 static COMMON_POWER_LENGTH_LIMIT: u64 = 200;
 
@@ -45,6 +50,21 @@ static LOG_ARG_CANDIDATE_BITS: f64 = 2000.;
 /// Small integers for which we try to recognize ln(small_int^n), so we can simplify it to
 /// n*ln(small_int).
 static SMALL_NON_POWERS: [i32; 6] = [2, 3, 5, 6, 7, 10];
+
+/// The (in abs value) integral exponent for which we attempt to use a recursive
+/// algorithm for evaluating pow(). The recursive algorithm works independent of the sign of the
+/// base, and can produce rational results. But it can become slow for very large exponents.
+static RECURSIVE_POW_LIMIT: LazyLock<BigInt> = LazyLock::new(|| BigInt::from_i32(1000).unwrap());
+
+/// The corresponding limit when we're using rational arithmetic. This should fail fast
+/// anyway, but we avoid ridiculously deep recursion.
+static HARD_RECURSIVE_POW_LIMIT: LazyLock<BigInt> = LazyLock::new(|| BigInt::one() << 1000);
+
+/// In some cases we cowardly refuse to compute answers longer than BIT_LIMIT, normally because
+/// doing so is likely to cause us to run out of space in unpleasant ways.
+static BIT_LIMIT: i32 = 2_000_000;
+static BIT_LIMIT_AS_REAL: LazyLock<Real> =
+    LazyLock::new(|| Real::new_from_rational(BigRational::from_i32(BIT_LIMIT).unwrap()));
 
 #[derive(Clone)]
 pub struct Real {
@@ -1019,6 +1039,254 @@ impl Real {
 
         todo!()
         // Ok(Real::new_from_cr(self.cr_value().atan()))
+    }
+
+    /// Compute an integral power of a constructive real, using the standard recursive algorithm. exp
+    /// is known to be positive.
+    fn recursive_pow(base: ConstructiveReal, exp: BigInt) -> NumResult<ConstructiveReal> {
+        if exp == BigInt::one() {
+            return Ok(base);
+        }
+
+        if exp.bit(0) {
+            return Ok(base.clone() * Self::recursive_pow(base, exp - BigInt::one())?);
+        }
+
+        let tmp = Self::recursive_pow(base, exp >> 1)?;
+        tmp.cancellation_token.stop_if_cancelled()?;
+        Ok(tmp.clone() * tmp)
+    }
+
+    /// Compute an integral power of a constructive real, using the exp function when we safely can.
+    /// Use recursivePow when we can't. exp is known to be nozero.
+    fn exp_ln_pow(&self, exp: &BigInt) -> NumResult<Real> {
+        let sign = self.sign_prec(DEFAULT_COMPARISON_TOLERANCE)?;
+
+        match sign {
+            Sign::Plus => {
+                // Safe to take the log. This avoids deep recursion for huge exponents, which
+                // may actually make sense here.
+                Ok(Real::new_from_cr(
+                    (self.cr_value().ln()? * ConstructiveReal::from(exp.clone())).exp()?,
+                ))
+            }
+            Sign::Minus => {
+                let mut result =
+                    (self.cr_value().neg().ln()? * ConstructiveReal::from(exp.clone())).exp()?;
+                if exp.bit(0) {
+                    result = -result;
+                }
+                Ok(Real::new_from_cr(result))
+            }
+            Sign::NoSign => {
+                // Base of unknown sign with integer exponent. Use a recursive computation.
+                // (Another possible option would be to use the absolute value of the base, and then
+                // adjust the sign at the end.  But that would have to be done in the CR
+                // implementation.)
+                if exp.is_negative() {
+                    // This may be very expensive if exp.negate() is large.
+                    Ok(Real::new_from_cr(
+                        Self::recursive_pow(self.cr_value(), -exp)?.inverse(),
+                    ))
+                } else {
+                    Ok(Real::new_from_cr(Self::recursive_pow(
+                        self.cr_value(),
+                        exp.clone(),
+                    )?))
+                }
+            }
+        }
+    }
+
+    /// Compute an integral power of this. This recurses roughly as deeply as the number of bits in the
+    /// exponent, and can, in ridiculous cases, result in a stack overflow.
+    fn pow_int(&self, exp: &BigInt) -> NumResult<Self> {
+        if exp.is_one() {
+            return Ok(self.clone());
+        }
+
+        let exp_sign = exp.sign();
+        if exp_sign == Sign::NoSign {
+            // The following check may diverge, causing us to time out. This only happens
+            // if we try to raise something that is zero, but not obviously so, to the
+            // zeroth power.
+            if self.sign()? != Sign::NoSign {
+                return Ok(constants::ONE.clone());
+            }
+            // Base is known to be exactly zero.
+            return Err(DomainViolation(OrdinalDomainViolation(ZeroBaseZeroOrder)));
+        }
+
+        if self.definitely_zero() && exp_sign == Sign::Minus {
+            return Err(DomainViolation(OrdinalDomainViolation(
+                ZeroBaseNegativeOrder,
+            )));
+        }
+        let abs_exp = exp.abs();
+        if let Some(CRProperty::One) = &self.cr_property {
+            let result_len = exp.to_f64().unwrap() * self.rat.appr_log_2_abs();
+            // Both multiplicands may be negative. That still implies a huge answer.
+            if result_len > BIT_LIMIT as f64 {
+                return Err(Overflow);
+            }
+            if abs_exp <= HARD_RECURSIVE_POW_LIMIT.clone() {
+                // FIXME: Unwrapping here could be dangerous
+                let rat_pow = self.rat.pow(exp.to_i32().unwrap());
+                // We count on this to fail, e.g. for very large exponents, when it would
+                // otherwise be too expensive.
+                if !rat_pow.too_big() {
+                    return Ok(Real::new_from_rational(rat_pow));
+                }
+            }
+        }
+
+        if abs_exp > RECURSIVE_POW_LIMIT.clone() {
+            return self.exp_ln_pow(exp);
+        }
+
+        if let Some(CRProperty::Sqrt(square)) = &self.cr_property {
+            // Compute powers as UnifiedReals, so we get the limit checking above.
+            let result_factor1 = Real::new_from_rational(self.rat.clone()).pow_int(exp)?;
+            let square_as_ur = Real::new_from_rational(square.clone());
+            let result_factor2 = square_as_ur.pow_int(&(exp.clone() >> 1))?.clone();
+            let product = result_factor1 * result_factor2;
+            return if exp & BigInt::one() == BigInt::one() {
+                // Odd power: Multiply by remaining square root.
+                Ok(product * square_as_ur.sqrt()?)
+            } else {
+                Ok(product)
+            };
+        }
+        self.exp_ln_pow(exp)
+    }
+
+    /// Return this ^ expon. This is really only well-defined for a positive base, particularly since
+    /// 0^x is not continuous at zero. (0^0 = 1 (as is epsilon^0), but 0^epsilon is 0. We nonetheless
+    /// try to do reasonable things at zero, when we recognize that case.
+    pub fn pow(&self, expon: Self) -> NumResult<Self> {
+        match &self.cr_property {
+            Some(CRProperty::Exp(arg)) if arg == &BigRational::one() => {
+                return if self.rat == BigRational::one() {
+                    expon.exp()
+                } else {
+                    // (<ratFactor>e)^<expon> = <ratFactor>^<expon> * e^<expon>
+                    let rat_part = Real::new_from_rational(self.rat.clone()).pow(expon.clone())?;
+                    Ok(expon.exp()? * rat_part)
+                };
+            }
+            Some(CRProperty::One) if self.rat == BigRational::from_i32(10).unwrap() => {
+                if let Some(CRProperty::Log(expon_log_arg)) = expon.cr_property {
+                    // 10^(r * log(expon_log_arg)) = expon_log_arg^r
+                    return Real::new_from_rational(expon_log_arg)
+                        .pow(Real::new_from_rational(expon.rat));
+                }
+            }
+            _ => {}
+        }
+
+        let sign = self.sign_prec(DEFAULT_COMPARISON_TOLERANCE)?;
+        let mut known_irrational = false;
+        if let Ok(exp_as_br) = BigRational::try_from(expon.clone()) {
+            if exp_as_br.denom().is_one() {
+                return self.pow_int(exp_as_br.numer());
+            }
+            // Check for the case in which both arguments are rational, and there is an
+            // exact rational answer.
+            // We explicitly avoid returning a result for a negative base here,
+            // even when that would make sense, as in (-8)^(1/3).
+            // This is probably wrong if we're computing cube roots.
+            // But note that we could never return a meaningful result for
+            // (-8)^<1/3 computed so we can't recognize it as such>.
+            if sign != Sign::Minus
+                && let Some(CRProperty::One) = self.cr_property
+                && exp_as_br.denom().bits() <= 30
+            {
+                let exp_den = exp_as_br.denom().to_i32().unwrap(); // Doesn't lose information.
+                // Don't just use BigRational.pow(), since that would bypass above checks.
+                let rt = self.rat.nth_root(exp_den)?;
+                if !rt.too_big() {
+                    return Real::new_from_rational(rt).pow_int(exp_as_br.numer());
+                } else {
+                    // We know that the root is irrational. Raising it to a power relatively prime to exp_den
+                    // is not going to change that.
+                    known_irrational = true;
+                }
+            }
+            // Explicitly check for the square root case, in case the result is representable
+            // as an integer multiple of a small square root.
+            if exp_as_br.denom() == &BigInt::from_i32(2).unwrap() {
+                return self.pow_int(exp_as_br.numer())?.sqrt();
+            }
+        }
+        // If the exponent were known zero, we would have handled it above.
+        if sign == Sign::NoSign && self.definitely_zero() {
+            // Compute the exponent sign, at the risk of divergence. The result depends on it.
+            let expon_sign = expon.sign()?;
+            return if expon_sign == Sign::Plus {
+                Ok(ZERO.clone())
+            } else if expon_sign == Sign::Minus {
+                Err(DomainViolation(OrdinalDomainViolation(
+                    ZeroBaseNegativeOrder,
+                )))
+            } else {
+                // Unclear we can get here.
+                Err(DomainViolation(OrdinalDomainViolation(ZeroBaseZeroOrder)))
+            };
+        }
+        if sign == Sign::Minus {
+            return Err(DomainViolation(OrdinalDomainViolation(
+                NegativeBaseNonIntegerOrder,
+            )));
+        }
+        if known_irrational {
+            Ok(Real::new_from_cr_property(
+                (self.cr_value().ln()? * expon.cr_value()).exp()?,
+                Some(CRProperty::irrational()),
+            ))
+        } else {
+            Ok(Real::new_from_cr(
+                (self.cr_value().ln()? * expon.cr_value()).exp()?,
+            ))
+        }
+    }
+
+    pub fn exp(&self) -> NumResult<Self> {
+        if self.definitely_equals(&ZERO)? {
+            return Ok(constants::ONE.clone());
+        }
+        if self.definitely_equals(&constants::ONE)? {
+            // Avoid redundant computations, and ensure we recognize all instances as equal.
+            return Ok(E.clone());
+        }
+
+        if let Some(CRProperty::Ln(lnArg)) = &self.cr_property {
+            let mut need_sqrt = false;
+            let mut rat_exponent = self.rat.clone();
+            if rat_exponent.try_as_integer().is_some() {
+                // check for multiple of one half.
+                need_sqrt = true;
+                rat_exponent *= BigRational::from_i32(2).unwrap();
+            }
+
+            let n_rat_factor = lnArg.pow(rat_exponent.to_i32().unwrap());
+            if !n_rat_factor.too_big() {
+                let result = Real::new_from_rational(n_rat_factor);
+                return if need_sqrt { result.sqrt() } else { Ok(result) };
+            }
+        }
+
+        if self.compare_to_prec(&BIT_LIMIT_AS_REAL, 0)? == Ordering::Greater {
+            return Err(Overflow);
+        }
+
+        let mut new_cr_property = None;
+        if let Some(CRProperty::One) = self.cr_property {
+            new_cr_property = Some(CRProperty::new(CRProperty::Exp(self.rat.clone())));
+        }
+        Ok(Real::new_from_cr_property(
+            self.cr_value().exp()?,
+            new_cr_property,
+        ))
     }
 }
 

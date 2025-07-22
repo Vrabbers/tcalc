@@ -4,7 +4,7 @@ use crate::error::NumResult;
 use crate::maths_symbols::MathsSymbols;
 use num::bigint::Sign;
 use num::traits::Inv;
-use num::{BigInt, BigRational, FromPrimitive, One, Signed, Zero};
+use num::{BigInt, BigRational, FromPrimitive, One, Signed, ToPrimitive, Zero};
 
 /// Max integer for which extractSquare is guaranteed to be optimal.
 /// We currently fail to so for 44 = 11*4, but succeed for all perfect squares*n, with n <= 10
@@ -59,6 +59,11 @@ pub trait RationalExtensions {
     /// Will extractSquareReduced guarantee that p[1] is not a perfect square?
     /// This rational is assumed to be in reduced form.
     fn extract_square_will_succeed(&self) -> bool;
+    /// Return an approximation of the base 2 log of the absolute value.
+    /// We assume this is nonzero.
+    /// We try to be reasonably accurate around 1.  When in doubt we return 0.
+    /// The result is either 0 or within 20% of the truth.
+    fn appr_log_2_abs(&self) -> f64;
 }
 
 impl RationalExtensions for BigRational {
@@ -261,5 +266,23 @@ impl RationalExtensions for BigRational {
         // We take the absolute value before extracting the square. That may increase the length by 1.
         // Hence <, not <= .
         self.numer().bits() < EXTRACT_SQUARE_MAX_LEN && self.denom().bits() < EXTRACT_SQUARE_MAX_LEN
+    }
+
+    fn appr_log_2_abs(&self) -> f64 {
+        let whole_bits = self.whole_number_bits();
+        if whole_bits > 10 || whole_bits < -10 {
+            // Bit lengths suffice for our purposes.
+            whole_bits as f64
+        } else {
+            // Argument is in the vicinity of one. numerator and denominator are nonzero, but may be
+            // individually huge.
+            let quotient = (self.numer().to_f64().unwrap() / self.denom().to_f64().unwrap()).abs();
+            if quotient.is_infinite() || quotient.is_nan() || quotient == 0.0 {
+                // Zero quotient means denominator overflowed and is meaningless. Ignore.
+                0.0
+            } else {
+                quotient.log(2.)
+            }
+        }
     }
 }

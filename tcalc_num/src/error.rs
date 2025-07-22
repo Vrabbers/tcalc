@@ -6,6 +6,7 @@ pub enum NumError {
     OperationCancelledError,
     PrecisionOverflow,
     DomainViolation(DomainViolation),
+    Overflow
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -22,6 +23,17 @@ pub enum DomainViolation {
     NthRoot(f32),
     TanDomainViolation,
     AsinDomainViolation,
+    OrdinalDomainViolation(OrdinalDomainViolation),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum OrdinalDomainViolation {
+    ZeroBaseZeroOrder,
+    
+    /// Technically a division by zero but let's split this so we get more descriptive errors
+    ZeroBaseNegativeOrder,
+    
+    NegativeBaseNonIntegerOrder,
 }
 
 pub type NumResult<T> = Result<T, NumError>;
