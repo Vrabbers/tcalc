@@ -385,6 +385,7 @@ pub trait OptionalCRProperty {
     fn is_pi(&self) -> bool;
     fn is_nonzero(&self) -> bool;
     fn cr_symbolic(&self, ang: AngleUnit, subsuperscript: bool) -> Option<String>;
+    fn is_unknown_irrational(&self) -> bool;
 }
 
 impl OptionalCRProperty for Option<CRProperty> {
@@ -421,6 +422,14 @@ impl OptionalCRProperty for Option<CRProperty> {
             p.cr_symbolic(ang, subsuperscript)
         } else {
             None
+        }
+    }
+
+    fn is_unknown_irrational(&self) -> bool {
+        if let Some(p) = self {
+            p.is_unknown_irrational()
+        } else {
+            false
         }
     }
 }

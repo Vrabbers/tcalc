@@ -5,8 +5,10 @@ use crate::angle_unit::AngleUnit;
 use crate::constructive_real::ConstructiveReal;
 use crate::constructive_real::constants::{LN_10, ONE, PI};
 use crate::error::DomainViolation::{
-    AsinDomainViolation, DivisionByZero, NthRoot, OrdinalDomainViolation, TanDomainViolation,
+    AsinDomainViolation, DivisionByZero, FactorialDomainViolation, NthRoot, OrdinalDomainViolation,
+    TanDomainViolation,
 };
+use crate::error::FactorialDomainViolation::{NegativeBase, NonIntegerBase};
 use crate::error::InternalError::UnconstructableFloat;
 use crate::error::NumError::{DomainViolation, Overflow};
 use crate::error::OrdinalDomainViolation::{
@@ -20,6 +22,7 @@ use crate::real::constants::{
     THIRD_SQRT_3, TWO, ZERO,
 };
 use crate::real::cr_property::{CRProperty, OptionalCRProperty};
+use cancellation_token::CancellationToken;
 use num::bigint::Sign;
 use num::complex::ComplexFloat;
 use num::traits::Inv;
@@ -1288,6 +1291,82 @@ impl Real {
             new_cr_property,
         ))
     }
+
+    /// Absolute Value
+    pub fn abs(&self) -> NumResult<Self> {
+        if self.is_comparable(&ZERO)? {
+            if self.sign()? == Sign::Minus {
+                Ok(self.clone().neg())
+            } else {
+                Ok(self.clone())
+            }
+        } else {
+            Ok(Real::new_from_cr_property(
+                self.cr_value().abs(),
+                if self.cr_property.is_unknown_irrational() {
+                    Some(CRProperty::irrational())
+                } else {
+                    None
+                },
+            ))
+        }
+    }
+
+    /// Factorial function. Fails if argument is clearly not an integer. May round to nearest integer
+    /// if value is close.
+    pub fn fact(&self) -> NumResult<Self> {
+        let as_bi = match BigInt::try_from(self.clone()) {
+            Ok(as_bi) => as_bi,
+            _ => {
+                let as_bi = self.cr_value().get_appr(0)?; // Correct if it was an integer.
+                if !self.approx_equals(
+                    &Real::new_from_rational(as_bi.clone().into()),
+                    DEFAULT_COMPARISON_TOLERANCE,
+                )? {
+                    return Err(DomainViolation(FactorialDomainViolation(NonIntegerBase)));
+                } else {
+                    as_bi
+                }
+            }
+        };
+
+        if as_bi.is_negative() {
+            return Err(DomainViolation(FactorialDomainViolation(NegativeBase)));
+        }
+        if as_bi.bits() > 18 {
+            // Several million digits. Will fail.  LongValue() may not work. Punt now.
+            return Err(Overflow);
+        }
+
+        // TODO: Pass in cancellation token
+        let bi_result = gen_factorial(as_bi.to_i64().unwrap(), 1, CancellationToken::new(false))?;
+        let n_rat_factor = BigRational::from(bi_result);
+        Ok(Real::new_from_rational(n_rat_factor))
+    }
+
+    /// Return the number of decimal digits to the right of the decimal point required to represent
+    /// the argument exactly. Return usize::MAX if that's not possible. Never returns a value
+    /// less than zero, even if r is a power of ten.
+    pub fn digits_required(&self) -> usize {
+        if self.cr_property.is_one() || self.rat.is_zero() {
+            self.rat.digits_required()
+        } else {
+            usize::MAX
+        }
+    }
+
+    /// Is the number of bits to the left of the decimal point greater than bound? The result is
+    /// inexact: We roughly approximate the whole number bits. bound is non-negative.
+    pub fn approx_whole_number_bits_greater_than(&self, bound: i32) -> NumResult<bool> {
+        assert!(bound >= 0);
+        let cr_bound = self.cr_property.clone().unwrap().msb_bound();
+        let rat_bits = self.rat.whole_number_bits();
+        if cr_bound != i32::MIN && rat_bits != i32::MIN {
+            Ok(rat_bits + cr_bound > bound)
+        } else {
+            Ok(self.cr_value().get_appr(bound - 2)?.bits() > 2)
+        }
+    }
 }
 
 impl From<i32> for Real {
@@ -1764,4 +1843,28 @@ fn cos_pi_twelfths(n: i32) -> Option<Real> {
         sin_arg -= 24;
     }
     sin_pi_twelfths(sin_arg)
+}
+
+/// Generalized factorial. Compute n * (n - step) * (n - 2 * step) * etc. This can be used to
+/// compute factorial a bit faster, especially if BigInteger uses sub-quadratic multiplication.
+fn gen_factorial(n: i64, step: i64, cancellation_token: CancellationToken) -> NumResult<BigInt> {
+    if n > 4 * step {
+        let prod1 = gen_factorial(n, 2 * step, cancellation_token.clone())?;
+        cancellation_token.stop_if_cancelled()?;
+
+        let prod2 = gen_factorial(n - step, 2 * step, cancellation_token.clone())?;
+        cancellation_token.stop_if_cancelled()?;
+
+        Ok(prod1 * prod2)
+    } else if n == 0 {
+        Ok(BigInt::one())
+    } else {
+        let mut res = BigInt::from_i64(n).unwrap();
+        let mut i = n - step;
+        while i > 1 {
+            res *= BigInt::from_i64(i).unwrap();
+            i -= step
+        }
+        Ok(res)
+    }
 }

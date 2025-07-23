@@ -24,16 +24,23 @@ pub enum DomainViolation {
     TanDomainViolation,
     AsinDomainViolation,
     OrdinalDomainViolation(OrdinalDomainViolation),
+    FactorialDomainViolation(FactorialDomainViolation),
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum OrdinalDomainViolation {
     ZeroBaseZeroOrder,
-    
+
     /// Technically a division by zero but let's split this so we get more descriptive errors
     ZeroBaseNegativeOrder,
-    
+
     NegativeBaseNonIntegerOrder,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum FactorialDomainViolation {
+    NonIntegerBase,
+    NegativeBase
 }
 
 pub type NumResult<T> = Result<T, NumError>;
