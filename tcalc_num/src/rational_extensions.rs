@@ -5,6 +5,7 @@ use crate::maths_symbols::MathsSymbols;
 use num::bigint::Sign;
 use num::traits::Inv;
 use num::{BigInt, BigRational, FromPrimitive, One, Signed, ToPrimitive, Zero};
+use std::str::FromStr;
 
 /// Max integer for which extractSquare is guaranteed to be optimal.
 /// We currently fail to so for 44 = 11*4, but succeed for all perfect squares*n, with n <= 10
@@ -68,6 +69,10 @@ pub trait RationalExtensions {
     /// argument exactly. Return usize::MAX if that's not possible. Never returns a value less
     /// than zero, even if r is a power of ten.
     fn digits_required(&self) -> usize;
+    /// Create a BigRational from a string in decimal point form.
+    /// This function is not l10n friendly. The string must be converted to a string with
+    /// numerals 0-9 and possibly one decimal point.
+    fn from_decimal_string(s: &str) -> Option<BigRational>;
 }
 
 impl RationalExtensions for BigRational {
@@ -198,12 +203,21 @@ impl RationalExtensions for BigRational {
             len = (n as usize) + 1;
         }
 
-        format!(
-            "{}{}.{}",
-            if self.is_negative() { "-" } else { "" },
-            &digits[0..len - (n as usize)],
-            &digits[len - (n as usize)..]
-        )
+        // Elide the decimal point if not required
+        if n == 0 {
+            format!(
+                "{}{}",
+                if self.is_negative() { "-" } else { "" },
+                &digits[0..len - (n as usize)]
+            )
+        } else {
+            format!(
+                "{}{}.{}",
+                if self.is_negative() { "-" } else { "" },
+                &digits[0..len - (n as usize)],
+                &digits[len - (n as usize)..]
+            )
+        }
     }
 
     fn sign(&self) -> Sign {
@@ -293,7 +307,7 @@ impl RationalExtensions for BigRational {
     fn digits_required(&self) -> usize {
         let mut powers_of_two = 0; // Max power of 2 that divides denominator
         let mut powers_of_five = 0; // Max power of 5 that divides denominator
-        
+
         // Try the easy case first to speed things up.
         if self.denom().is_one() {
             return 0;
@@ -323,5 +337,37 @@ impl RationalExtensions for BigRational {
             return usize::MAX;
         }
         powers_of_two.max(powers_of_five)
+    }
+
+    fn from_decimal_string(s: &str) -> Option<BigRational> {
+        // Ensure that only digits and one decimal point are included
+        if s.is_empty() {
+            return None;
+        }
+
+        let mut have_decimal = false;
+        let mut is_first_char = true;
+        for c in s.chars() {
+            if !c.is_ascii_digit() && c != '.' && c != '-' && c != '+' {
+                return None;
+            } else if !is_first_char && (c == '-' || c == '+') {
+                return None;
+            } else if c == '.' {
+                if have_decimal {
+                    // Second decimal point
+                    return None;
+                }
+                have_decimal = true;
+            }
+            is_first_char = false;
+        }
+
+        let mut parts = s.split('.');
+        let before = parts.next().unwrap();
+        let after = parts.next().unwrap_or("0");
+        Some(BigRational::new(
+            BigInt::from_str(format!("{before}{after}").as_str()).ok()?,
+            BigInt::from_i32(10).unwrap().pow(after.len() as u32),
+        ))
     }
 }

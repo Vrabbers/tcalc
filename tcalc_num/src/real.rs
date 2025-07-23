@@ -18,8 +18,8 @@ use crate::error::{CancelCheckable, NumError, NumResult};
 use crate::rational_extensions::RationalExtensions;
 use crate::real;
 use crate::real::constants::{
-    E, HALF, HALF_SQRT_2, HALF_SQRT_3, PI_OVER_2, PI_OVER_3, PI_OVER_4, PI_OVER_6, SQRT_3,
-    THIRD_SQRT_3, TWO, ZERO,
+    E, HALF, HALF_SQRT_2, HALF_SQRT_3, PI_OVER_2, PI_OVER_3, PI_OVER_4, PI_OVER_6,
+    RADIANS_PER_DEGREE, SQRT_3, THIRD_SQRT_3, TWO, ZERO,
 };
 use crate::real::cr_property::{CRProperty, OptionalCRProperty};
 use cancellation_token::CancellationToken;
@@ -30,7 +30,9 @@ use num::{BigInt, BigRational, FromPrimitive, Integer, One, Signed, ToPrimitive,
 use std::cmp::Ordering;
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
+use std::str::FromStr;
 use std::sync::LazyLock;
+use crate::bigint_extensions::BigIntExtensions;
 
 static COMMON_POWER_LENGTH_LIMIT: u64 = 200;
 
@@ -351,9 +353,9 @@ impl Real {
     }
 
     /// Returns a truncated representation of the result.
-    /// If exactlyTruncatable(), we round correctly towards zero. Otherwise the resulting digit
+    /// If exactly_truncatable(), we round correctly towards zero. Otherwise the resulting digit
     /// string may occasionally be rounded up instead.
-    /// Always includes a decimal point in the result.
+    /// Includes a decimal point in the result if n > 0.
     /// The result includes n digits to the right of the decimal point.
     ///
     /// Parameters:
@@ -374,6 +376,7 @@ impl Real {
                 int_scaled = -int_scaled;
             }
 
+            // Figure out how to round the last number
             if ConstructiveReal::from(int_scaled.clone()).compare_to(&scaled.clone().abs())?
                 == Ordering::Greater
             {
@@ -401,12 +404,36 @@ impl Real {
             len = (n as usize) + 1;
         }
 
-        Ok(format!(
-            "{}{}.{}",
-            if negative { "-" } else { "" },
-            &digits[0..len - (n as usize)],
-            &digits[len - (n as usize)..]
-        ))
+        // Elide the decimal point if not requested
+        Ok(if n == 0 {
+            format!(
+                "{}{}",
+                if negative { "-" } else { "" },
+                &digits[0..len - (n as usize)]
+            )
+        } else {
+            format!(
+                "{}{}.{}",
+                if negative { "-" } else { "" },
+                &digits[0..len - (n as usize)],
+                &digits[len - (n as usize)..]
+            )
+        })
+    }
+
+    /// Returns a truncated representation of the result.
+    /// If exactly_truncatable(), we round correctly towards zero. Otherwise the resulting digit
+    /// string may occasionally be rounded up instead.
+    /// The string only includes as many characters as it needs, with a max of n.
+    ///
+    /// Parameters:
+    /// n: result precision, >= 0
+    pub fn to_string_truncated_or_less(&self, n: u32) -> NumResult<String> {
+        let mut prec = self.digits_required();
+        if prec == usize::MAX {
+            prec = n as usize;
+        }
+        self.to_string_truncated(prec as u32)
     }
 
     /// Can we compute correctly truncated approximations of this number?
@@ -805,7 +832,7 @@ impl Real {
         } else if self.cr_property.is_pi() {
             let quotient =
                 (self.rat.clone() * BigRational::from_i32(12).unwrap()).try_as_integer()?;
-            Some(quotient % BigInt::from_i32(24).unwrap())
+            Some(quotient.rem_wraparound(&BigInt::from_i32(24).unwrap()))
         } else {
             None
         }
@@ -1367,6 +1394,14 @@ impl Real {
             Ok(self.cr_value().get_appr(bound - 2)?.bits() > 2)
         }
     }
+
+    pub fn degrees_to_radians(&self) -> Self {
+        self.clone() * RADIANS_PER_DEGREE.clone()
+    }
+
+    pub fn radians_to_degrees(&self) -> Self {
+        (self.clone() / RADIANS_PER_DEGREE.clone()).unwrap()
+    }
 }
 
 impl From<i32> for Real {
@@ -1672,6 +1707,17 @@ impl Div for Real {
         }
 
         Ok(self * rhs.inv()?)
+    }
+}
+
+impl FromStr for Real {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let Some(rat) = BigRational::from_decimal_string(s) else {
+            return Err(());
+        };
+        Ok(Self::new_from_rational(rat))
     }
 }
 

@@ -1,3 +1,4 @@
+use std::ops::Rem;
 use num::{BigInt, FromPrimitive, Integer, One, Signed, Zero};
 use crate::error::DomainViolation::{NthRoot};
 use crate::error::NumError::DomainViolation;
@@ -11,6 +12,8 @@ pub trait BigIntExtensions {
     /// Return a pair p, such that p[0]^2 * p[1] = x.
     /// x is assumed positive. We try to maximize p[0], but not very hard.
     fn extract_square(self) -> (BigInt, BigInt);
+    /// Calculate the remainder when self is divided by other. Always returns a positive result.
+    fn rem_wraparound(self, other: &BigInt) -> BigInt;
 }
 
 impl BigIntExtensions for BigInt {
@@ -65,6 +68,16 @@ impl BigIntExtensions for BigInt {
         }
 
         (square, rest)
+    }
 
+    fn rem_wraparound(self, other: &BigInt) -> BigInt {
+        let rem = self % other;
+
+        // Ensure rem wraps around if it is negative
+        if rem.is_negative() {
+            rem + other
+        } else {
+            rem
+        }
     }
 }
