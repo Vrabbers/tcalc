@@ -1,8 +1,8 @@
-use std::ops::Rem;
-use num::{BigInt, FromPrimitive, Integer, One, Signed, Zero};
-use crate::error::DomainViolation::{NthRoot};
+use crate::error::DomainViolation::NthRoot;
 use crate::error::NumError::DomainViolation;
 use crate::error::NumResult;
+use num::{BigInt, FromPrimitive, Integer, One, Signed, Zero};
+use std::ops::Rem;
 
 static EXTRACT_SQUARE_MAX_LEN: u64 = 5000;
 
@@ -30,15 +30,20 @@ impl BigIntExtensions for BigInt {
     /// Return a pair p, such that p[0]^2 * p[1] = x.
     /// x is assumed positive. We try to maximize p[0], but not very hard.
     fn extract_square(self) -> (BigInt, BigInt) {
-        let some_primes = [BigInt::from_i32(2).unwrap(), BigInt::from_i32(3).unwrap(),
-            BigInt::from_i32(5).unwrap(), BigInt::from_i32(7).unwrap(), BigInt::from_i32(11).unwrap(),
-            BigInt::from_i32(13).unwrap()];
+        let some_primes = [
+            BigInt::from_i32(2).unwrap(),
+            BigInt::from_i32(3).unwrap(),
+            BigInt::from_i32(5).unwrap(),
+            BigInt::from_i32(7).unwrap(),
+            BigInt::from_i32(11).unwrap(),
+            BigInt::from_i32(13).unwrap(),
+        ];
 
         let mut square = BigInt::one();
-            let mut rest = self;
-            if rest.bits() > EXTRACT_SQUARE_MAX_LEN {
-                return (square, rest);
-            }
+        let mut rest = self;
+        if rest.bits() > EXTRACT_SQUARE_MAX_LEN {
+            return (square, rest);
+        }
 
         for prime in some_primes {
             if rest == BigInt::one() {
@@ -49,7 +54,7 @@ impl BigIntExtensions for BigInt {
                 let this_prime_square = prime.clone().pow(2);
                 let qr = rest.div_mod_floor(&this_prime_square);
                 if qr.1.is_zero() {
-                    rest = qr.0;  // Remaining quotient.
+                    rest = qr.0; // Remaining quotient.
                     square *= prime.clone();
                 } else {
                     break;
@@ -57,13 +62,16 @@ impl BigIntExtensions for BigInt {
             }
         }
 
+        // Check whether rest/<small int> is a perfect square
         for i in 1..10 {
             let qr = rest.div_mod_floor(&BigInt::from_i32(i).unwrap());
             if qr.1.is_zero() {
-                let root = qr.0.nth_root(2);
-                rest = BigInt::from_i32(i).unwrap();
-                square *= root;
-                break;
+                let supposed_root = qr.0.nth_root(2);
+                if supposed_root.pow(2) == qr.0 {
+                    rest = BigInt::from_i32(i).unwrap();
+                    square *= supposed_root;
+                    break;
+                }
             }
         }
 
@@ -74,10 +82,6 @@ impl BigIntExtensions for BigInt {
         let rem = self % other;
 
         // Ensure rem wraps around if it is negative
-        if rem.is_negative() {
-            rem + other
-        } else {
-            rem
-        }
+        if rem.is_negative() { rem + other } else { rem }
     }
 }

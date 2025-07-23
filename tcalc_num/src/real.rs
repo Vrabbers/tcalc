@@ -785,7 +785,9 @@ impl Real {
         }
     }
 
-    fn sqrt(self) -> NumResult<Self> {
+    /// Return the square root. This may return a value with no property, rather than a known
+    /// rational, even when the result is rational.
+    pub fn sqrt(self) -> NumResult<Self> {
         if self.sign_prec(DEFAULT_COMPARISON_TOLERANCE)? == Sign::Minus {
             return Err(DomainViolation(NthRoot(2.)));
         }
