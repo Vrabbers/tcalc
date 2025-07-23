@@ -1307,10 +1307,10 @@ impl Real {
             }
             if let Some(bi) = self.rat.try_as_integer() {
                 if self.cr_property.is_one() {
-                    if let Some(smallPowerLn) =
+                    if let Some(small_power_ln) =
                         Self::lg_small_power(CRProperty::Ln(BigRational::one()), bi)?
                     {
-                        return Ok(smallPowerLn);
+                        return Ok(small_power_ln);
                     }
                 } else {
                     // Check for n^k * sqrt(n), for which we can also return a more useful answer.
