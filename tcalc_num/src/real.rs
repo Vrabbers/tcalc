@@ -573,15 +573,13 @@ impl Real {
                         .clone()
                         .unwrap()
                         .get_arg()
-                        .clone()
                         .unwrap()
                         .cmp(
-                            &other
+                            other
                                 .cr_property
                                 .clone()
                                 .unwrap()
                                 .get_arg()
-                                .clone()
                                 .unwrap(),
                         ),
                 ));
