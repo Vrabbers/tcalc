@@ -19,7 +19,7 @@ pub enum InternalError {
 #[derive(Debug, PartialEq, Clone)]
 pub enum DomainViolation {
     DivisionByZero,
-    LogarithmOfNegative,
+    LogarithmDomainViolation(LogarithmDomainViolation),
     NthRoot(f32),
     TanDomainViolation,
     AsinDomainViolation,
@@ -35,6 +35,12 @@ pub enum OrdinalDomainViolation {
     ZeroBaseNegativeOrder,
 
     NegativeBaseNonIntegerOrder,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum LogarithmDomainViolation {
+    LogOfNegative,
+    LogOfZero
 }
 
 #[derive(Debug, PartialEq, Clone)]

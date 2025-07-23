@@ -12,7 +12,6 @@ use crate::constructive_real::prescaled_ln_constructive::PrescaledLnConstructive
 use crate::constructive_real::select_constructive::SelectConstructive;
 use crate::constructive_real::shift_constructive::ShiftConstructive;
 use crate::constructive_real::square_root_constructive::SquareRootConstructive;
-use crate::error::DomainViolation::LogarithmOfNegative;
 use crate::error::InternalError::{ConstructiveRealFromInf, ConstructiveRealFromNan};
 use crate::error::NumError::{DomainViolation, InternalError, PrecisionOverflow};
 use crate::error::{CancelCheckable, NumError, NumResult};
@@ -25,6 +24,8 @@ use std::fmt::{Debug, Display, Formatter};
 use std::ops::{Add, Div, Mul, Neg, Shl, Shr, Sub};
 use std::ptr;
 use std::sync::{Arc, RwLock};
+use crate::error::DomainViolation::LogarithmDomainViolation;
+use crate::error::LogarithmDomainViolation::LogOfNegative;
 
 mod add_constructive;
 mod assumed_int_constructive;
@@ -276,8 +277,6 @@ impl ConstructiveReal {
             return Ok(Ordering::Greater);
         }
         
-        println!("round: {:?} {:?}", this_appr, x_appr);
-        
         Ok(Ordering::Equal)
     }
 
@@ -462,7 +461,7 @@ impl ConstructiveReal {
         let low_prec = -4;
         let rough_appr = self.get_appr(low_prec)?; /* In sixteenths */
         if rough_appr < BigInt::zero() {
-            return Err(DomainViolation(LogarithmOfNegative));
+            return Err(DomainViolation(LogarithmDomainViolation(LogOfNegative)));
         };
         if rough_appr <= low_ln_limit {
             return Ok(-self.inverse().ln()?);
