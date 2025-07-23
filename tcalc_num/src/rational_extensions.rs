@@ -263,8 +263,8 @@ impl RationalExtensions for BigRational {
         if self.is_zero() {
             (BigRational::zero(), BigRational::one())
         } else {
-            let mut num_result = self.numer().clone().extract_square();
-            let den_result = self.denom().clone().extract_square();
+            let mut num_result = self.numer().abs().clone().extract_square();
+            let den_result = self.denom().abs().clone().extract_square();
             if self.sign() == Sign::Minus {
                 num_result.1 = -num_result.1;
             }
