@@ -344,6 +344,19 @@ fn test_sqrt() {
     let sqrt_exp_four = four.clone().exp().unwrap().sqrt().unwrap();
     let exp_two = sqrt_four.clone().exp().unwrap();
     assert!(sqrt_exp_four.definitely_equals(&exp_two).unwrap());
+
+    // sqrt(k^2) = abs(k)
+    for k in -1000..1000 {
+        let number = Real::new_from_rational(BigRational::from_i32(k).unwrap());
+        let sqrt_number_squared = number
+            .clone()
+            .pow(Real::new_from_rational(BigRational::from_i32(2).unwrap()))
+            .unwrap()
+            .sqrt()
+            .unwrap();
+        let abs_number = number.abs().unwrap();
+        assert!(sqrt_number_squared.definitely_equals(&abs_number).unwrap());
+    }
 }
 
 #[test]
@@ -390,7 +403,7 @@ fn test_ln() {
 
     // Test ln of negative number should fail
     let negative_one = -one.clone();
-    let ln_negative = negative_one.cr_value().ln();
+    let ln_negative = negative_one.ln();
     assert_eq!(
         ln_negative.unwrap_err(),
         DomainViolation(LogarithmDomainViolation(LogOfNegative))
@@ -413,26 +426,21 @@ fn test_log() {
 
     // Test log_10(1) = 0
     // log_10(x) = ln(x) / ln(10)
-    let ln_one = one.clone().ln().unwrap();
-    let ln_ten = ten.clone().ln().unwrap();
-    let log10_one = (ln_one / ln_ten.clone()).unwrap();
+    let log10_one = one.clone().log().unwrap();
     assert_eq!("0", log10_one.to_string_truncated_or_less(10).unwrap());
 
     // Test log_10(10) = 1
-    let ln_ten_again = ten.clone().ln().unwrap();
-    let log10_ten = (ln_ten_again / ln_ten.clone()).unwrap();
+    let log10_ten = ten.clone().log().unwrap();
     assert_eq!("1", log10_ten.to_string_truncated_or_less(10).unwrap());
 
     // Test log_10(100) = 2
     let hundred = Real::from_str("100").unwrap();
-    let ln_hundred = hundred.ln().unwrap();
-    let log10_hundred = (ln_hundred / ln_ten.clone()).unwrap();
+    let log10_hundred = hundred.log().unwrap();
     assert_eq!("2", log10_hundred.to_string_truncated_or_less(10).unwrap());
 
     // Test log_10(0.1) = -1
     let point_one = Real::from_str("0.1").unwrap();
-    let ln_point_one = point_one.ln().unwrap();
-    let log10_point_one = (ln_point_one / ln_ten.clone()).unwrap();
+    let log10_point_one = point_one.log().unwrap();
     assert_eq!(
         "-1",
         log10_point_one.to_string_truncated_or_less(10).unwrap()
@@ -451,26 +459,19 @@ fn test_log() {
     let log2_half = (ln_half / ln_two.clone()).unwrap();
     assert_eq!("-1", log2_half.to_string_truncated_or_less(10).unwrap());
 
-    // Test log_e(e) = 1 (natural logarithm)
-    let e = one.clone().exp().unwrap();
-    let ln_e = e.clone().ln().unwrap();
-    let ln_e_base = e.ln().unwrap();
-    let log_e_e = (ln_e / ln_e_base).unwrap();
-    assert_eq!("1", log_e_e.to_string_truncated_or_less(10).unwrap());
-
     // Test logarithm of negative number should fail
     let negative_two = -two.clone();
-    let ln_negative = negative_two.cr_value().ln();
+    let log_negative = negative_two.log();
     assert_eq!(
-        ln_negative.unwrap_err(),
+        log_negative.unwrap_err(),
         DomainViolation(LogarithmDomainViolation(LogOfNegative))
     );
 
     // Test logarithm of zero should fail
     let zero = Real::from_str("0").unwrap();
-    let ln_zero = zero.ln();
+    let log_zero = zero.log();
     assert_eq!(
-        ln_zero.unwrap_err(),
+        log_zero.unwrap_err(),
         DomainViolation(LogarithmDomainViolation(LogOfZero))
     );
 }
