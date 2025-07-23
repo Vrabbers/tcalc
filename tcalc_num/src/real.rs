@@ -2,14 +2,16 @@ pub mod constants;
 mod cr_property;
 
 use crate::angle_unit::AngleUnit;
+use crate::bigint_extensions::BigIntExtensions;
 use crate::constructive_real::ConstructiveReal;
 use crate::constructive_real::constants::{LN_10, ONE, PI};
 use crate::error::DomainViolation::{
-    AsinDomainViolation, DivisionByZero, FactorialDomainViolation, NthRoot, OrdinalDomainViolation,
-    TanDomainViolation,
+    AsinDomainViolation, DivisionByZero, FactorialDomainViolation, LogarithmDomainViolation,
+    NthRoot, OrdinalDomainViolation, TanDomainViolation,
 };
 use crate::error::FactorialDomainViolation::{NegativeBase, NonIntegerBase};
 use crate::error::InternalError::UnconstructableFloat;
+use crate::error::LogarithmDomainViolation::{LogOfNegative, LogOfZero};
 use crate::error::NumError::{DomainViolation, Overflow};
 use crate::error::OrdinalDomainViolation::{
     NegativeBaseNonIntegerOrder, ZeroBaseNegativeOrder, ZeroBaseZeroOrder,
@@ -32,7 +34,6 @@ use std::fmt::{Debug, Display, Formatter};
 use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
 use std::str::FromStr;
 use std::sync::LazyLock;
-use crate::bigint_extensions::BigIntExtensions;
 
 static COMMON_POWER_LENGTH_LIMIT: u64 = 200;
 
@@ -1282,6 +1283,78 @@ impl Real {
         }
     }
 
+    pub fn ln(&self) -> NumResult<Self> {
+        let new_cr_property = None;
+        if let Some(CRProperty::Exp(arg)) = &self.cr_property {
+            return Ok((Real::new_from_rational(self.rat.clone()).ln()?
+                + Real::new_from_rational(arg.clone()))?);
+        }
+
+        let sign = self.sign_prec(DEFAULT_COMPARISON_TOLERANCE)?;
+        if sign == Sign::Minus {
+            return Err(DomainViolation(LogarithmDomainViolation(LogOfNegative)));
+        }
+        if self.is_comparable(&ZERO)? {
+            if sign == Sign::NoSign {
+                return Err(DomainViolation(LogarithmDomainViolation(LogOfZero)));
+            }
+
+            let compare1 = self.compare_to_prec(&constants::ONE, DEFAULT_COMPARISON_TOLERANCE)?;
+            if compare1 == Ordering::Equal {
+                if self.definitely_equals(&constants::ONE)? {
+                    return Ok(ZERO.clone());
+                }
+            } else if compare1 == Ordering::Less {
+                return Ok(self.clone().inv()?.ln()?.neg());
+            }
+            if let Some(bi) = self.rat.try_as_integer() {
+                if self.cr_property.is_one() {
+                    if let Some(smallPowerLn) =
+                        Self::lg_small_power(CRProperty::Ln(BigRational::one()), bi)?
+                    {
+                        return Ok(smallPowerLn);
+                    }
+                } else {
+                    // Check for n^k * sqrt(n), for which we can also return a more useful answer.
+                    if let Some(CRProperty::Sqrt(square)) = &self.cr_property
+                        && let Some(square) = square.try_as_integer()
+                        && square.bits() < 30
+                    {
+                        let int_square = square.to_i32().unwrap();
+                        let int_log = get_int_log(bi, int_square);
+                        if int_log != 0 {
+                            let n_rat_factor = BigRational::from_i64(int_log).unwrap()
+                                + BigRational::new(1.into(), 2.into());
+                            if !n_rat_factor.too_big() {
+                                return Ok(Real::new(
+                                    n_rat_factor,
+                                    ConstructiveReal::from(square.clone()).ln()?,
+                                    Some(CRProperty::new(CRProperty::Ln(BigRational::from(
+                                        square.clone(),
+                                    )))),
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+            if self.cr_property.is_one() {
+                // Normalize to argument > 1, and remember symbolic representation.
+                return Self::log_rep(CRProperty::Ln(BigRational::one()), self.rat.clone());
+            }
+        }
+
+        Ok(Self::new_from_cr_property(
+            self.cr_value().ln()?,
+            new_cr_property,
+        ))
+    }
+
+    /// Base 10 Logarithm
+    pub fn log(&self) -> NumResult<Self> {
+        self.ln()? / constants::LN_10.clone()
+    }
+
     pub fn exp(&self) -> NumResult<Self> {
         if self.definitely_equals(&ZERO)? {
             return Ok(constants::ONE.clone());
@@ -1856,6 +1929,9 @@ fn get_int_log(n: BigInt, base: i32) -> i64 {
             n_reduced = q_and_r.0;
             // Now power.bitLength() > n_reduced.bitLength() .
             // Otherwise we would have divided by the next bigger power, which is power^2.
+        }
+        if n_reduced.is_one() {
+            break;
         }
         i -= 1;
     }
