@@ -1019,8 +1019,7 @@ impl Real {
             ))));
         }
 
-        todo!()
-        // Real::new_from_cr(self.cr_value().asin())
+        Ok(Real::new_from_cr(self.cr_value().asin()?))
     }
 
     pub fn acos(&self) -> NumResult<Self> {

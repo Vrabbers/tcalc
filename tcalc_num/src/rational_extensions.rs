@@ -80,7 +80,7 @@ impl RationalExtensions for BigRational {
         if self.is_zero() {
             i32::MIN
         } else {
-            (self.numer().bits() - self.denom().bits()) as i32
+            (self.numer().bits() as i64 - self.denom().bits() as i64) as i32
         }
     }
 
