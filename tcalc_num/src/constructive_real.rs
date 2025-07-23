@@ -1,31 +1,33 @@
 use crate::constructive_real::add_constructive::AddConstructive;
 use crate::constructive_real::assumed_int_constructive::AssumedIntConstructive;
 use crate::constructive_real::big_integer_constructive::BigIntegerConstructive;
+use crate::constructive_real::constants::ONE;
 use crate::constructive_real::invalid_constructive::InvalidConstructive;
 use crate::constructive_real::inverse_tan_reciporical_constructive::InverseTanReciprocalConstructive;
 use crate::constructive_real::inverted_constructive::InvertedConstructive;
 use crate::constructive_real::multiply_constructive::MultiplyConstructive;
 use crate::constructive_real::negated_constructive::NegatedConstructive;
+use crate::constructive_real::prescaled_asin_constructive::PrescaledAsinConstructive;
 use crate::constructive_real::prescaled_cos_constructive::PrescaledCosConstructive;
 use crate::constructive_real::prescaled_exp_constructive::PrescaledExpConstructive;
 use crate::constructive_real::prescaled_ln_constructive::PrescaledLnConstructive;
 use crate::constructive_real::select_constructive::SelectConstructive;
 use crate::constructive_real::shift_constructive::ShiftConstructive;
 use crate::constructive_real::square_root_constructive::SquareRootConstructive;
+use crate::error::DomainViolation::LogarithmDomainViolation;
 use crate::error::InternalError::{ConstructiveRealFromInf, ConstructiveRealFromNan};
+use crate::error::LogarithmDomainViolation::LogOfNegative;
 use crate::error::NumError::{DomainViolation, InternalError, PrecisionOverflow};
 use crate::error::{CancelCheckable, NumError, NumResult};
 use cancellation_token::CancellationToken;
 use num::bigint::Sign;
-use num::{BigInt, BigRational, Integer, One, Signed, ToPrimitive, Zero};
+use num::{BigInt, BigRational, FromPrimitive, Integer, One, Signed, ToPrimitive, Zero};
 use std::clone::Clone;
 use std::cmp::Ordering;
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::{Add, Div, Mul, Neg, Shl, Shr, Sub};
 use std::ptr;
 use std::sync::{Arc, RwLock};
-use crate::error::DomainViolation::LogarithmDomainViolation;
-use crate::error::LogarithmDomainViolation::LogOfNegative;
 
 mod add_constructive;
 mod assumed_int_constructive;
@@ -43,6 +45,7 @@ mod shift_constructive;
 mod square_root_constructive;
 
 pub mod constants;
+mod prescaled_asin_constructive;
 // https://android.googlesource.com/platform/external/crcalc/+/6db978c639e9bd5ac63fd88cbf3765d8c0fb3271/src/com/hp/creals/CR.java
 
 #[derive(Copy, Clone, Debug)]
@@ -538,6 +541,28 @@ impl ConstructiveReal {
         }
     }
 
+    /// The trigonometric arc (inverse) sine function.
+    pub fn asin(self) -> NumResult<ConstructiveReal> {
+        let rough_appr = self.get_appr(-10)?;
+        if rough_appr > (BigInt::from_i32(750).unwrap()) {
+            let new_arg = (ONE.clone() - self.clone() * self.clone()).sqrt();
+            new_arg.acos()
+        } else if rough_appr < BigInt::from_i32(-750).unwrap() {
+            Ok(self.clone().neg().asin()?.neg())
+        } else {
+            Ok(ConstructiveReal {
+                cancellation_token: self.cancellation_token.clone(),
+                t: Arc::new(PrescaledAsinConstructive(self)),
+                ..ConstructiveReal::default()
+            })
+        }
+    }
+
+    /// The trigonometric arc (inverse) cosine function.
+    pub fn acos(self) -> NumResult<ConstructiveReal> {
+        (Self::pi() / ConstructiveReal::from(2) - self).asin()
+    }
+
     pub fn with_cancellation_token(mut self, cancellation_token: CancellationToken) -> Self {
         self.cancellation_token = cancellation_token;
         self
@@ -789,7 +814,10 @@ impl From<ConstructiveReal> for NumResult<f64> {
 
 impl PartialEq for ConstructiveReal {
     fn eq(&self, other: &Self) -> bool {
-        ptr::eq(self.current_approximation.data_ptr(), other.current_approximation.data_ptr())
+        ptr::eq(
+            self.current_approximation.data_ptr(),
+            other.current_approximation.data_ptr(),
+        )
     }
 }
 

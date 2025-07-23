@@ -317,6 +317,50 @@ fn test_cos() {
 }
 
 #[test]
+fn test_asin() {
+    // asin(sin(k)) = k, -90 <= k <= 90
+    for k in -90..90 {
+        let number_1 = Real::new_from_rational(BigRational::from_i32(k).unwrap())
+            .degrees_to_radians()
+            .sin()
+            .unwrap()
+            .asin()
+            .unwrap();
+        let number_2 =
+            Real::new_from_rational(BigRational::from_i32(k % 360).unwrap()).degrees_to_radians();
+        assert!(
+            number_1.definitely_equals(&number_2).unwrap(),
+            "asin(sin({k} deg)) = {}, {} deg = {}",
+            number_1.to_string_truncated_or_less(10).unwrap(),
+            k % 360,
+            number_2.to_string_truncated_or_less(10).unwrap()
+        );
+    }
+}
+
+#[test]
+fn test_acos() {
+    // acos(cos(k)) = k, 0 <= k <= 180
+    for k in 0..180 {
+        let number_1 = Real::new_from_rational(BigRational::from_i32(k).unwrap())
+            .degrees_to_radians()
+            .cos()
+            .unwrap()
+            .acos()
+            .unwrap();
+        let number_2 =
+            Real::new_from_rational(BigRational::from_i32(k % 360).unwrap()).degrees_to_radians();
+        assert!(
+            number_1.definitely_equals(&number_2).unwrap(),
+            "acos(cos({k} deg)) = {}, {} deg = {}",
+            number_1.to_string_truncated_or_less(10).unwrap(),
+            k % 360,
+            number_2.to_string_truncated_or_less(10).unwrap()
+        );
+    }
+}
+
+#[test]
 fn test_sqrt() {
     // Test sqrt(4)
     let four = Real::from_str("4").unwrap();
