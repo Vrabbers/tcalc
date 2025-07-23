@@ -269,14 +269,14 @@ impl ConstructiveReal {
         let this_appr = self.get_appr(needed_prec)?;
         let x_appr = x.get_appr(needed_prec)?;
         let comp1 = this_appr.cmp(&x_appr.clone().add(&BigInt::one()));
-        if comp1 == Ordering::Less {
-            return Ok(Ordering::Less);
-        }
-        let comp2 = this_appr.cmp(&x_appr.clone().sub(&BigInt::one()));
-        if comp2 == Ordering::Greater {
+        if comp1 == Ordering::Greater {
             return Ok(Ordering::Greater);
         }
-        
+        let comp2 = this_appr.cmp(&x_appr.clone().sub(&BigInt::one()));
+        if comp2 == Ordering::Less {
+            return Ok(Ordering::Less);
+        }
+
         Ok(Ordering::Equal)
     }
 
