@@ -64,6 +64,10 @@ pub trait RationalExtensions {
     /// We try to be reasonably accurate around 1.  When in doubt we return 0.
     /// The result is either 0 or within 20% of the truth.
     fn appr_log_2_abs(&self) -> f64;
+    /// Return the number of decimal digits to the right of the decimal point required to represent the
+    /// argument exactly. Return usize::MAX if that's not possible. Never returns a value less
+    /// than zero, even if r is a power of ten.
+    fn digits_required(&self) -> usize;
 }
 
 impl RationalExtensions for BigRational {
@@ -284,5 +288,40 @@ impl RationalExtensions for BigRational {
                 quotient.log(2.)
             }
         }
+    }
+
+    fn digits_required(&self) -> usize {
+        let mut powers_of_two = 0; // Max power of 2 that divides denominator
+        let mut powers_of_five = 0; // Max power of 5 that divides denominator
+        
+        // Try the easy case first to speed things up.
+        if self.denom().is_one() {
+            return 0;
+        }
+
+        let big_five = BigInt::from_i32(5).unwrap();
+
+        let mut den = self.denom().clone();
+        if den.bits() > MAX_SIZE {
+            return usize::MAX;
+        }
+        while !den.bit(0) {
+            powers_of_two += 1;
+            den = den >> 1;
+        }
+        while (&den % &big_five).is_zero() {
+            powers_of_five += 1;
+            den = den.clone() / big_five.clone();
+        }
+
+        // If the denominator has a factor of other than 2 or 5 (the divisors of 10), the decimal
+        // expansion does not terminate.  Multiplying the fraction by any number of powers of 10
+        // will not cancel the denominator.  (Recall the fraction was in lowest terms to start
+        // with.) Otherwise the powers of 10 we need to cancel the denominator is the larger of
+        // powers_of_two and powers_of_five.
+        if !den.is_one() && den != BigInt::from_i32(-1).unwrap() {
+            return usize::MAX;
+        }
+        powers_of_two.max(powers_of_five)
     }
 }
