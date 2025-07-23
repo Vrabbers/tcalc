@@ -930,16 +930,14 @@ impl Real {
             return Ok(Real::new_from_rational(atan_arg.clone()));
         }
 
-        todo!()
-
-        // Ok(Real::new_from_cr_property(
-        //     self.cr_value().tan()?,
-        //     if self.definitely_algebraic() && self.definitely_nonzero() {
-        //         Some(CRProperty::Irrational)
-        //     } else {
-        //         None
-        //     },
-        // ))
+        Ok(Real::new_from_cr_property(
+            self.cr_value().tan()?,
+            if self.definitely_algebraic() && self.definitely_nonzero() {
+                Some(CRProperty::Irrational)
+            } else {
+                None
+            },
+        ))
     }
 
     pub fn check_asin_domain(&self) -> NumResult<()> {
@@ -1060,8 +1058,7 @@ impl Real {
             ))));
         }
 
-        todo!()
-        // Ok(Real::new_from_cr(self.cr_value().atan()))
+        Ok(Real::new_from_cr(self.cr_value().atan()?))
     }
 
     pub fn sinh(&self) -> NumResult<Self> {
