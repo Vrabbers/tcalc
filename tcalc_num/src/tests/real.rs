@@ -1,15 +1,15 @@
 #![allow(dead_code, unused_macros, unused_imports)]
 
-use std::str::FromStr;
-use num::{BigRational, FromPrimitive};
 use crate::angle_unit::AngleUnit;
 use crate::constructive_real::ConstructiveReal;
 use crate::error::DomainViolation::{LogarithmDomainViolation, NthRoot};
 use crate::error::LogarithmDomainViolation::{LogOfNegative, LogOfZero};
 use crate::error::NumError::DomainViolation;
 use crate::maths_symbols::MathsSymbols::Sqrt;
-use crate::real::constants::{ONE, PI};
 use crate::real::Real;
+use crate::real::constants::{ONE, PI, ZERO};
+use num::{BigRational, FromPrimitive};
+use std::str::FromStr;
 
 #[test]
 fn test_addition() {
@@ -160,34 +160,167 @@ fn test_division_by_zero() {
 fn test_real_pi() {
     let pi = Real::new_from_cr(ConstructiveReal::pi());
     let tau = pi.clone() * Real::new_from_rational(BigRational::from_i32(2).unwrap());
-    assert_eq!("3.1415926535897932384626433832795028841971", pi.to_string_truncated_or_less(40).unwrap());
-    assert_eq!("6.2831853071795864769252867665590057683943", tau.to_string_truncated_or_less(40).unwrap());
+    assert_eq!(
+        "3.1415926535897932384626433832795028841971",
+        pi.to_string_truncated_or_less(40).unwrap()
+    );
+    assert_eq!(
+        "6.2831853071795864769252867665590057683943",
+        tau.to_string_truncated_or_less(40).unwrap()
+    );
     assert_eq!("2π", tau.to_nice_string(AngleUnit::Degrees, false).unwrap());
 }
 
 #[test]
 fn test_sin() {
+    // Test sin(0 deg)
+    let sin_zero = ZERO.clone().sin();
+    assert_eq!(
+        "0",
+        sin_zero.unwrap().to_string_truncated_or_less(10).unwrap()
+    );
+
     // Test sin(90 deg)
     let ninety = Real::from_str("90").unwrap();
     let sin_ninety = ninety.degrees_to_radians().sin();
-    assert_eq!("1", sin_ninety.unwrap().to_string_truncated_or_less(10).unwrap());
+    assert_eq!(
+        "1",
+        sin_ninety.unwrap().to_string_truncated_or_less(10).unwrap()
+    );
 
     // Test sin(180 deg)
     let one_eighty = Real::from_str("180").unwrap();
     let sin_one_eighty = one_eighty.degrees_to_radians().sin();
-    assert_eq!("0", sin_one_eighty.unwrap().to_string_truncated_or_less(10).unwrap());
+    assert_eq!(
+        "0",
+        sin_one_eighty
+            .unwrap()
+            .to_string_truncated_or_less(10)
+            .unwrap()
+    );
 
     // Test sin(-90 deg)
     let neg_ninety = Real::from_str("-90").unwrap();
-    let sin_neg_ninety = neg_ninety.degrees_to_radians().sin();
-    assert_eq!("-1", sin_neg_ninety.unwrap().to_string_truncated_or_less(10).unwrap());
+    let sin_neg_ninety = neg_ninety.degrees_to_radians().sin().unwrap();
+    assert_eq!(
+        "-1",
+        sin_neg_ninety.to_string_truncated_or_less(10).unwrap()
+    );
+
+    // sin(270) = sin(-90)
+    let two_seventy = Real::from_str("270").unwrap();
+    let sin_two_seventy = two_seventy.degrees_to_radians().sin().unwrap();
+    assert!(sin_neg_ninety.definitely_equals(&sin_two_seventy).unwrap());
+
+    // sin(30) = 0.5
+    let thirty = Real::from_str("30").unwrap();
+    let sin_thirty = thirty.degrees_to_radians().sin().unwrap();
+    assert_eq!("0.5", sin_thirty.to_string_truncated_or_less(10).unwrap());
+
+    // sin(45) = sqrt(2)/2
+    let fourty_five = Real::from_str("45").unwrap();
+    let sin_fourty_five = fourty_five.degrees_to_radians().sin().unwrap();
+    let two = Real::from_str("2").unwrap();
+    let sqrt_two_on_two = (two.clone().sqrt().unwrap() / two.clone()).unwrap();
+    assert!(sin_fourty_five.definitely_equals(&sqrt_two_on_two).unwrap());
+
+    // sin(60) = sqrt(3)/2
+    let sixty = Real::from_str("60").unwrap();
+    let sin_sixty = sixty.degrees_to_radians().sin().unwrap();
+    let three = Real::from_str("3").unwrap();
+    let sqrt_three_on_two = (three.clone().sqrt().unwrap() / two.clone()).unwrap();
+    assert!(sin_sixty.definitely_equals(&sqrt_three_on_two).unwrap());
+
+    // sin(360 + k) = sin(k)
+    for k in 0..359 {
+        let number_1 = Real::new_from_rational(BigRational::from_i32(k).unwrap())
+            .degrees_to_radians()
+            .sin()
+            .unwrap();
+        let number_2 = Real::new_from_rational(BigRational::from_i32(k + 360).unwrap())
+            .degrees_to_radians()
+            .sin()
+            .unwrap();
+        assert!(number_1.definitely_equals(&number_2).unwrap());
+    }
+}
+
+#[test]
+fn test_cos() {
+    // Test cos(0 deg)
+    let cos_zero = ZERO.clone().cos();
+    assert_eq!(
+        "1",
+        cos_zero.unwrap().to_string_truncated_or_less(10).unwrap()
+    );
+
+    // Test cos(90 deg)
+    let ninety = Real::from_str("90").unwrap();
+    let cos_ninety = ninety.degrees_to_radians().cos();
+    assert_eq!(
+        "0",
+        cos_ninety.unwrap().to_string_truncated_or_less(10).unwrap()
+    );
+
+    // Test cos(180 deg)
+    let one_eighty = Real::from_str("180").unwrap();
+    let cos_one_eighty = one_eighty.degrees_to_radians().cos();
+    assert_eq!(
+        "-1",
+        cos_one_eighty
+            .unwrap()
+            .to_string_truncated_or_less(10)
+            .unwrap()
+    );
+
+    // Test cos(-90 deg)
+    let neg_ninety = Real::from_str("-90").unwrap();
+    let cos_neg_ninety = neg_ninety.degrees_to_radians().cos().unwrap();
+    assert_eq!("0", cos_neg_ninety.to_string_truncated_or_less(10).unwrap());
+
+    // cos(270) = cos(-90)
+    let two_seventy = Real::from_str("270").unwrap();
+    let cos_two_seventy = two_seventy.degrees_to_radians().cos().unwrap();
+    assert!(cos_neg_ninety.definitely_equals(&cos_two_seventy).unwrap());
+
+    // cos(60) = 0.5
+    let sixty = Real::from_str("60").unwrap();
+    let cos_sixty = sixty.degrees_to_radians().cos().unwrap();
+    assert_eq!("0.5", cos_sixty.to_string_truncated_or_less(10).unwrap());
+
+    // cos(45) = sqrt(2)/2
+    let fourty_five = Real::from_str("45").unwrap();
+    let cos_fourty_five = fourty_five.degrees_to_radians().cos().unwrap();
+    let two = Real::from_str("2").unwrap();
+    let sqrt_two_on_two = (two.clone().sqrt().unwrap() / two.clone()).unwrap();
+    assert!(cos_fourty_five.definitely_equals(&sqrt_two_on_two).unwrap());
+
+    // cos(30) = sqrt(3)/2
+    let thirty = Real::from_str("30").unwrap();
+    let cos_thirty = thirty.degrees_to_radians().cos().unwrap();
+    let three = Real::from_str("3").unwrap();
+    let sqrt_three_on_two = (three.clone().sqrt().unwrap() / two.clone()).unwrap();
+    assert!(cos_thirty.definitely_equals(&sqrt_three_on_two).unwrap());
+
+    // cos(360 + k) = cos(k)
+    for k in 0..359 {
+        let number_1 = Real::new_from_rational(BigRational::from_i32(k).unwrap())
+            .degrees_to_radians()
+            .cos()
+            .unwrap();
+        let number_2 = Real::new_from_rational(BigRational::from_i32(k + 360).unwrap())
+            .degrees_to_radians()
+            .cos()
+            .unwrap();
+        assert!(number_1.definitely_equals(&number_2).unwrap());
+    }
 }
 
 #[test]
 fn test_sqrt() {
     // Test sqrt(4)
     let four = Real::from_str("4").unwrap();
-    let sqrt_four = four.sqrt().unwrap();
+    let sqrt_four = four.clone().sqrt().unwrap();
     assert_eq!("2", sqrt_four.to_string_truncated_or_less(10).unwrap());
 
     // Test sqrt(9)
@@ -196,13 +329,21 @@ fn test_sqrt() {
     assert_eq!("3", sqrt_nine.to_string_truncated_or_less(10).unwrap());
 
     // Test sqrt(2)
-    let sqrt_two = sqrt_four.sqrt().unwrap();
-    assert_eq!("1.4142135623", sqrt_two.to_string_truncated_or_less(10).unwrap());
+    let sqrt_two = sqrt_four.clone().sqrt().unwrap();
+    assert_eq!(
+        "1.4142135623",
+        sqrt_two.to_string_truncated_or_less(10).unwrap()
+    );
 
     // Test sqrt(-2)
     let neg_two = Real::from_str("-2").unwrap();
     let sqrt_neg_two = neg_two.sqrt();
-    assert_eq!(sqrt_neg_two.unwrap_err(), DomainViolation(NthRoot(2.)))
+    assert_eq!(sqrt_neg_two.unwrap_err(), DomainViolation(NthRoot(2.)));
+
+    // Test sqrt(e^4) = e^2
+    let sqrt_exp_four = four.clone().exp().unwrap().sqrt().unwrap();
+    let exp_two = sqrt_four.clone().exp().unwrap();
+    assert!(sqrt_exp_four.definitely_equals(&exp_two).unwrap());
 }
 
 #[test]
@@ -226,12 +367,18 @@ fn test_ln() {
 
     // Test ln(2) ≈ 0.6931471805
     let ln_two = two.clone().ln().unwrap();
-    assert_eq!("0.6931471805", ln_two.to_string_truncated_or_less(10).unwrap());
+    assert_eq!(
+        "0.6931471805",
+        ln_two.to_string_truncated_or_less(10).unwrap()
+    );
 
     // Test ln(10) ≈ 2.3025850929
     let ten = Real::from_str("10").unwrap();
     let ln_ten = ten.ln().unwrap();
-    assert_eq!("2.3025850929", ln_ten.to_string_truncated_or_less(10).unwrap());
+    assert_eq!(
+        "2.3025850929",
+        ln_ten.to_string_truncated_or_less(10).unwrap()
+    );
 
     // Test ln(0.5) = -ln(2)
     let half = Real::from_str("0.5").unwrap();
@@ -244,12 +391,18 @@ fn test_ln() {
     // Test ln of negative number should fail
     let negative_one = -one.clone();
     let ln_negative = negative_one.cr_value().ln();
-    assert_eq!(ln_negative.unwrap_err(), DomainViolation(LogarithmDomainViolation(LogOfNegative)));
+    assert_eq!(
+        ln_negative.unwrap_err(),
+        DomainViolation(LogarithmDomainViolation(LogOfNegative))
+    );
 
     // Test ln(0) should fail (approaches negative infinity)
     let zero = Real::from_str("0").unwrap();
     let ln_zero = zero.ln();
-    assert_eq!(ln_zero.unwrap_err(), DomainViolation(LogarithmDomainViolation(LogOfZero)));
+    assert_eq!(
+        ln_zero.unwrap_err(),
+        DomainViolation(LogarithmDomainViolation(LogOfZero))
+    );
 }
 
 #[test]
@@ -280,7 +433,10 @@ fn test_log() {
     let point_one = Real::from_str("0.1").unwrap();
     let ln_point_one = point_one.ln().unwrap();
     let log10_point_one = (ln_point_one / ln_ten.clone()).unwrap();
-    assert_eq!("-1", log10_point_one.to_string_truncated_or_less(10).unwrap());
+    assert_eq!(
+        "-1",
+        log10_point_one.to_string_truncated_or_less(10).unwrap()
+    );
 
     // Test log_2(8) = 3 (since 2^3 = 8)
     let eight = Real::from_str("8").unwrap();
@@ -305,10 +461,16 @@ fn test_log() {
     // Test logarithm of negative number should fail
     let negative_two = -two.clone();
     let ln_negative = negative_two.cr_value().ln();
-    assert_eq!(ln_negative.unwrap_err(), DomainViolation(LogarithmDomainViolation(LogOfNegative)));
+    assert_eq!(
+        ln_negative.unwrap_err(),
+        DomainViolation(LogarithmDomainViolation(LogOfNegative))
+    );
 
     // Test logarithm of zero should fail
     let zero = Real::from_str("0").unwrap();
     let ln_zero = zero.ln();
-    assert_eq!(ln_zero.unwrap_err(), DomainViolation(LogarithmDomainViolation(LogOfZero)));
+    assert_eq!(
+        ln_zero.unwrap_err(),
+        DomainViolation(LogarithmDomainViolation(LogOfZero))
+    );
 }
