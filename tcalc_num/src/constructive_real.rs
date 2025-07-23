@@ -541,6 +541,10 @@ impl ConstructiveReal {
         }
     }
 
+    pub fn tan(self) -> NumResult<ConstructiveReal> {
+        Ok(self.clone().sin()? / self.clone().cos()?)
+    }
+
     /// The trigonometric arc (inverse) sine function.
     pub fn asin(self) -> NumResult<ConstructiveReal> {
         let rough_appr = self.get_appr(-10)?;
@@ -561,6 +565,18 @@ impl ConstructiveReal {
     /// The trigonometric arc (inverse) cosine function.
     pub fn acos(self) -> NumResult<ConstructiveReal> {
         (Self::pi() / ConstructiveReal::from(2) - self).asin()
+    }
+
+    /// The trigonometric arc (inverse) tan function
+    /// This uses the identity (sin x)^2 = (tan x)^2/(1 + (tan x)^2)
+    /// Since we know the tangent of the result, we can get its sine,
+    /// and then use the asin function.  Note that we don't always
+    /// want the positive square root when computing the sine.
+    pub fn atan(self) -> NumResult<ConstructiveReal> {
+        let double = self.clone() * self.clone();
+        let abs_sin_atan = (double.clone() / (ONE.clone() + double)).sqrt();
+        let sin_atan = self.select(-abs_sin_atan.clone(), abs_sin_atan);
+        sin_atan.asin()
     }
 
     pub fn with_cancellation_token(mut self, cancellation_token: CancellationToken) -> Self {
