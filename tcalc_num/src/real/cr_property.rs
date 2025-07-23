@@ -193,14 +193,14 @@ impl CRProperty {
             CRProperty::SinPi(arg, _) => Ok(Some(
                 (ConstructiveReal::from(arg.clone()) * PI.clone()).sin()?,
             )),
-            CRProperty::TanPi(arg, _) => {
-                todo!()
-            }
+            CRProperty::TanPi(arg, _) => Ok(Some(
+                (ConstructiveReal::from(arg.clone()) * PI.clone()).tan()?,
+            )),
             CRProperty::Asin(arg) => {
-                todo!()
+                Ok(Some(ConstructiveReal::from(arg.clone()).asin()?))
             }
             CRProperty::Atan(arg) => {
-                todo!()
+                Ok(Some(ConstructiveReal::from(arg.clone()).atan()?))
             }
             CRProperty::Irrational => Ok(None),
         }

@@ -574,14 +574,7 @@ impl Real {
                         .unwrap()
                         .get_arg()
                         .unwrap()
-                        .cmp(
-                            other
-                                .cr_property
-                                .clone()
-                                .unwrap()
-                                .get_arg()
-                                .unwrap(),
-                        ),
+                        .cmp(other.cr_property.clone().unwrap().get_arg().unwrap()),
                 ));
             }
             if let Some(CRProperty::Sqrt(cr_property_arg)) = &self.cr_property {
@@ -1069,6 +1062,23 @@ impl Real {
 
         todo!()
         // Ok(Real::new_from_cr(self.cr_value().atan()))
+    }
+
+    pub fn sinh(&self) -> NumResult<Self> {
+        // TODO: Try to detect special identities
+        (self.clone().exp()? - (-self.clone()).exp()?)?
+            / Real::new_from_rational(BigRational::from_i32(2).unwrap())
+    }
+
+    pub fn cosh(&self) -> NumResult<Self> {
+        // TODO: Try to detect special identities
+        (self.clone().exp()? + (-self.clone()).exp()?)?
+            / Real::new_from_rational(BigRational::from_i32(2).unwrap())
+    }
+
+    pub fn tanh(&self) -> NumResult<Self> {
+        // TODO: Try to detect special identities
+        self.clone().sinh()? / self.clone().cosh()?
     }
 
     /// Compute an integral power of a constructive real, using the standard recursive algorithm. exp
