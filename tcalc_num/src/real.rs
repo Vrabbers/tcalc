@@ -18,7 +18,6 @@ use crate::error::OrdinalDomainViolation::{
 };
 use crate::error::{CancelCheckable, NumError, NumResult};
 use crate::rational_extensions::RationalExtensions;
-use crate::real;
 use crate::real::constants::{
     E, HALF, HALF_SQRT_2, HALF_SQRT_3, PI_OVER_2, PI_OVER_3, PI_OVER_4, PI_OVER_6,
     RADIANS_PER_DEGREE, SQRT_3, THIRD_SQRT_3, TWO, ZERO,
@@ -26,7 +25,6 @@ use crate::real::constants::{
 use crate::real::cr_property::{CRProperty, OptionalCRProperty};
 use cancellation_token::CancellationToken;
 use num::bigint::Sign;
-use num::complex::ComplexFloat;
 use num::traits::Inv;
 use num::{BigInt, BigRational, FromPrimitive, Integer, One, Signed, ToPrimitive, Zero};
 use std::cmp::Ordering;
@@ -1290,8 +1288,8 @@ impl Real {
     pub fn ln(&self) -> NumResult<Self> {
         let new_cr_property = None;
         if let Some(CRProperty::Exp(arg)) = &self.cr_property {
-            return Ok((Real::new_from_rational(self.rat.clone()).ln()?
-                + Real::new_from_rational(arg.clone()))?);
+            return Real::new_from_rational(self.rat.clone()).ln()?
+                + Real::new_from_rational(arg.clone());
         }
 
         let sign = self.sign_prec(DEFAULT_COMPARISON_TOLERANCE)?;
@@ -1368,7 +1366,7 @@ impl Real {
             return Ok(E.clone());
         }
 
-        if let Some(CRProperty::Ln(lnArg)) = &self.cr_property {
+        if let Some(CRProperty::Ln(ln_arg)) = &self.cr_property {
             let mut need_sqrt = false;
             let mut rat_exponent = self.rat.clone();
             if rat_exponent.try_as_integer().is_some() {
@@ -1377,7 +1375,7 @@ impl Real {
                 rat_exponent *= BigRational::from_i32(2).unwrap();
             }
 
-            let n_rat_factor = lnArg.pow(rat_exponent.to_i32().unwrap());
+            let n_rat_factor = ln_arg.pow(rat_exponent.to_i32().unwrap());
             if !n_rat_factor.too_big() {
                 let result = Real::new_from_rational(n_rat_factor);
                 return if need_sqrt { result.sqrt() } else { Ok(result) };
@@ -1610,9 +1608,9 @@ impl Add for Real {
 
                 // Estimate size of resulting argument.
                 let estimated_size = rat_as_double.abs()
-                    * (self_cr_property.get_arg().clone().unwrap().bit_length() as f64)
+                    * (self_cr_property.get_arg().unwrap().bit_length() as f64)
                     + u_rat_as_double.abs()
-                        * (rhs_cr_property.get_arg().clone().unwrap().bit_length() as f64);
+                        * (rhs_cr_property.get_arg().unwrap().bit_length() as f64);
                 if estimated_size <= LOG_ARG_CANDIDATE_BITS {
                     let term1 = self_cr_property
                         .clone()
