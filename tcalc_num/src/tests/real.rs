@@ -172,6 +172,15 @@ fn test_real_pi() {
 }
 
 #[test]
+fn test_big_pi() {
+    let pi = Real::new_from_cr(ConstructiveReal::pi());
+    assert_eq!(
+        include_str!("pi-million.txt"),
+        pi.to_string_truncated_or_less(51_197).unwrap()
+    );
+}
+
+#[test]
 fn test_sin() {
     // Test sin(0 deg)
     let sin_zero = ZERO.clone().sin();
