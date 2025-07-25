@@ -48,9 +48,9 @@ impl ConstructiveRealType for PrescaledAsinConstructive {
         // 3/2 * current term.)
         // Final rounding error is <= 1/2 ulp.
         // Thus final error is < 1 ulp (relative to p).
-        let max_last_term = BigInt::one() << precision - 4 - calc_precision;
+        let max_last_term = BigInt::one() << (precision - 4 - calc_precision);
         let mut exp = 1; // Current exponent, = 2n+1 in above expression
-        let mut current_term = op_appr.clone() << op_prec - calc_precision;
+        let mut current_term = op_appr.clone() << (op_prec - calc_precision);
         let mut current_sum = current_term.clone();
         let mut current_factor = current_term.clone();
         // Current scaled Taylor series term

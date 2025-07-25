@@ -288,7 +288,7 @@ impl RationalExtensions for BigRational {
 
     fn appr_log_2_abs(&self) -> f64 {
         let whole_bits = self.whole_number_bits();
-        if whole_bits > 10 || whole_bits < -10 {
+        if !(-10..=10).contains(&whole_bits) {
             // Bit lengths suffice for our purposes.
             whole_bits as f64
         } else {
@@ -321,7 +321,7 @@ impl RationalExtensions for BigRational {
         }
         while !den.bit(0) {
             powers_of_two += 1;
-            den = den >> 1;
+            den >>= 1;
         }
         while (&den % &big_five).is_zero() {
             powers_of_five += 1;
@@ -348,9 +348,9 @@ impl RationalExtensions for BigRational {
         let mut have_decimal = false;
         let mut is_first_char = true;
         for c in s.chars() {
-            if !c.is_ascii_digit() && c != '.' && c != '-' && c != '+' {
-                return None;
-            } else if !is_first_char && (c == '-' || c == '+') {
+            if (!c.is_ascii_digit() && c != '.' && c != '-' && c != '+')
+                || (!is_first_char && (c == '-' || c == '+'))
+            {
                 return None;
             } else if c == '.' {
                 if have_decimal {

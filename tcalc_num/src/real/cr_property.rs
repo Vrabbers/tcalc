@@ -110,7 +110,7 @@ impl CRProperty {
         let mut neg = false;
         if n_arg >= BigRational::new(1.into(), 2.into()) {
             // tan(x) = tan(x - pi)
-            n_arg = n_arg - BigRational::one();
+            n_arg -= BigRational::one();
         }
         if !n_arg.too_big() && n_arg.sign() == Sign::Minus {
             n_arg = -n_arg;

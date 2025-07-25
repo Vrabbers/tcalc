@@ -1,3 +1,5 @@
+#![allow(dead_code, unused_macros, unused_imports)]
+
 use std::str::FromStr;
 use crate::rational_extensions::RationalExtensions;
 use num::{BigInt, BigRational, FromPrimitive, One};

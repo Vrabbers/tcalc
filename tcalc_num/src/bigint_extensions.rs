@@ -2,7 +2,6 @@ use crate::error::DomainViolation::NthRoot;
 use crate::error::NumError::DomainViolation;
 use crate::error::NumResult;
 use num::{BigInt, FromPrimitive, Integer, One, Signed, Zero};
-use std::ops::Rem;
 
 static EXTRACT_SQUARE_MAX_LEN: u64 = 5000;
 
