@@ -162,10 +162,12 @@ impl Parser {
             });
         }
 
-        if self.current.kind == TokenKind::Equal && lhs_parse.len() == 1
-            && let Op::VarRef(var) = lhs_parse.pop().unwrap().op {
-                return self.parse_variable_assignment(lhs_start, var);
-            }
+        if self.current.kind == TokenKind::Equal
+            && lhs_parse.len() == 1
+            && let Op::VarRef(var) = lhs_parse.pop().unwrap().op
+        {
+            return self.parse_variable_assignment(lhs_start, var);
+        }
 
         match self.current.kind {
             TokenKind::Equal
@@ -305,7 +307,11 @@ impl Parser {
                 }
             }
             TokenKind::NumericLiteral | TokenKind::BinaryLiteral | TokenKind::HexLiteral => {
-                let mut str = token.source.chars().filter(|c| !matches!(c, '\''|'_')).collect::<String>();
+                let mut str = token
+                    .source
+                    .chars()
+                    .filter(|c| !matches!(c, '\'' | '_'))
+                    .collect::<String>();
                 if !self.lexer.comma_is_arg_separator {
                     str = str.replace(',', ".");
                 }

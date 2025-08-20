@@ -6,14 +6,14 @@ pub enum NumError {
     OperationCancelledError,
     PrecisionOverflow,
     DomainViolation(DomainViolation),
-    Overflow
+    Overflow,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum InternalError {
     ConstructiveRealFromNan,
     ConstructiveRealFromInf,
-    UnconstructableFloat
+    UnconstructableFloat,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -40,13 +40,13 @@ pub enum OrdinalDomainViolation {
 #[derive(Debug, PartialEq, Clone)]
 pub enum LogarithmDomainViolation {
     LogOfNegative,
-    LogOfZero
+    LogOfZero,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum FactorialDomainViolation {
     NonIntegerBase,
-    NegativeBase
+    NegativeBase,
 }
 
 pub type NumResult<T> = Result<T, NumError>;

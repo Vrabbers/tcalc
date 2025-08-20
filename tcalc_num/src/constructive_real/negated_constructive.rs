@@ -1,8 +1,8 @@
-use std::ops::Neg;
-use cancellation_token::CancellationToken;
-use num::BigInt;
 use crate::constructive_real::{ConstructiveReal, ConstructiveRealType};
 use crate::error::NumResult;
+use cancellation_token::CancellationToken;
+use num::BigInt;
+use std::ops::Neg;
 
 #[derive(Debug)]
 pub(crate) struct NegatedConstructive(pub ConstructiveReal);

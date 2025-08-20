@@ -1,8 +1,8 @@
-use cancellation_token::CancellationToken;
-use num::{BigInt, One, Signed};
-use num::bigint::Sign;
-use crate::constructive_real::{scale, ConstructiveReal, ConstructiveRealType};
+use crate::constructive_real::{ConstructiveReal, ConstructiveRealType, scale};
 use crate::error::NumResult;
+use cancellation_token::CancellationToken;
+use num::bigint::Sign;
+use num::{BigInt, One, Signed};
 
 #[derive(Debug)]
 pub(crate) struct SelectConstructive {

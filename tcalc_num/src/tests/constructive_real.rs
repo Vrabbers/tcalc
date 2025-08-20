@@ -2,10 +2,10 @@
 
 use crate::constructive_real::ConstructiveReal;
 use crate::error::NumResult;
+use num::BigInt;
 use num::bigint::Sign;
 use std::cmp::Ordering;
 use std::ops::Add;
-use num::BigInt;
 
 macro_rules! check_eq {
     ($x:expr, $y:expr) => {
@@ -115,13 +115,17 @@ fn test_constructive_real() {
     let half_pi = ConstructiveReal::pi() / two.clone();
     let _half = one.clone() / two.clone();
 
-    let million = BigInt::from(1000*1000);
+    let million = BigInt::from(1000 * 1000);
     let thousand = BigInt::from(1000);
     let _huge = ConstructiveReal::from(million.clone() * million * thousand);
     check_eq!(half_pi.sin().unwrap(), &mut one, "sin(pi/2) failed");
 
     let sqrt13 = thirteen.clone().sqrt();
-    check_eq!(sqrt13.clone() * sqrt13.clone(), &mut thirteen, "sqrt(13)*sqrt(13) failed");
+    check_eq!(
+        sqrt13.clone() * sqrt13.clone(),
+        &mut thirteen,
+        "sqrt(13)*sqrt(13) failed"
+    );
 
     let tmp = ConstructiveReal::pi() + ConstructiveReal::from(-123).exp().unwrap();
     let tmp2 = tmp - ConstructiveReal::pi();

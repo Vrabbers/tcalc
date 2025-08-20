@@ -1,9 +1,9 @@
-use std::mem::swap;
-use cancellation_token::CancellationToken;
-use num::{BigInt, Zero};
-use num::bigint::Sign;
-use crate::constructive_real::{scale, ConstructiveReal, ConstructiveRealType};
+use crate::constructive_real::{ConstructiveReal, ConstructiveRealType, scale};
 use crate::error::NumResult;
+use cancellation_token::CancellationToken;
+use num::bigint::Sign;
+use num::{BigInt, Zero};
+use std::mem::swap;
 
 #[derive(Debug)]
 pub(crate) struct MultiplyConstructive {

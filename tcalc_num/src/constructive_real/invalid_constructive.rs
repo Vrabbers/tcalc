@@ -1,7 +1,7 @@
-use cancellation_token::CancellationToken;
-use num::BigInt;
 use crate::constructive_real::ConstructiveRealType;
 use crate::error::NumResult;
+use cancellation_token::CancellationToken;
+use num::BigInt;
 
 #[derive(Debug)]
 pub(crate) struct InvalidConstructive();

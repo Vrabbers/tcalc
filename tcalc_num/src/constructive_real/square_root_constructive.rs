@@ -1,9 +1,9 @@
-use cancellation_token::CancellationToken;
-use num::{BigInt, One, ToPrimitive, Zero};
-use crate::constructive_real::{scale, shift, ConstructiveReal, ConstructiveRealType};
-use crate::error::DomainViolation::{NthRoot};
+use crate::constructive_real::{ConstructiveReal, ConstructiveRealType, scale, shift};
+use crate::error::DomainViolation::NthRoot;
 use crate::error::NumError::DomainViolation;
 use crate::error::{CancelCheckable, NumResult};
+use cancellation_token::CancellationToken;
+use num::{BigInt, One, ToPrimitive, Zero};
 
 #[derive(Debug)]
 pub(crate) struct SquareRootConstructive(pub ConstructiveReal);

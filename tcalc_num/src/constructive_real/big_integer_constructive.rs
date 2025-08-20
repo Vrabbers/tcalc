@@ -1,7 +1,7 @@
+use crate::constructive_real::{ConstructiveRealType, scale};
+use crate::error::NumResult;
 use cancellation_token::CancellationToken;
 use num::BigInt;
-use crate::constructive_real::{scale, ConstructiveRealType};
-use crate::error::NumResult;
 
 #[derive(Debug)]
 pub(crate) struct BigIntegerConstructive(pub BigInt);

@@ -1,8 +1,8 @@
 #![allow(dead_code, unused_macros, unused_imports)]
 
-use std::str::FromStr;
 use crate::rational_extensions::RationalExtensions;
 use num::{BigInt, BigRational, FromPrimitive, One};
+use std::str::FromStr;
 
 #[test]
 pub fn test_rational_creation() {
@@ -13,7 +13,11 @@ pub fn test_rational_creation() {
         ("3", "3", "1"),
         ("3.5", "7", "2"),
         ("6.00000000000000000", "6", "1"),
-        ("6.00000000000000001", "600000000000000001", "100000000000000000")
+        (
+            "6.00000000000000001",
+            "600000000000000001",
+            "100000000000000000",
+        ),
     ];
 
     for (input, numerator, denominator) in tests {
@@ -39,6 +43,9 @@ pub fn test_rational_creation_fail() {
     let tests = ["", "1.0.0", "1.0.0", "1.0.0"];
     for input in tests {
         let actual = BigRational::from_decimal_string(input);
-        assert!(actual.is_none(), "Failed to fail to create rational from string: {input}");
+        assert!(
+            actual.is_none(),
+            "Failed to fail to create rational from string: {input}"
+        );
     }
 }

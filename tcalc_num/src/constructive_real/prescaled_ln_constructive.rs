@@ -1,8 +1,8 @@
-use std::ops::Add;
+use crate::constructive_real::{ConstructiveReal, ConstructiveRealType, bound_log2, scale};
+use crate::error::{CancelCheckable, NumResult};
 use cancellation_token::CancellationToken;
 use num::{BigInt, One, Signed, Zero};
-use crate::constructive_real::{bound_log2, scale, ConstructiveReal, ConstructiveRealType};
-use crate::error::{CancelCheckable, NumResult};
+use std::ops::Add;
 
 #[derive(Debug)]
 pub(crate) struct PrescaledLnConstructive(pub ConstructiveReal);

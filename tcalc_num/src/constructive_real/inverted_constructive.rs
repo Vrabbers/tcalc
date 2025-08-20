@@ -1,8 +1,8 @@
-use cancellation_token::CancellationToken;
-use num::{BigInt, One, Signed, Zero};
-use num::bigint::Sign;
 use crate::constructive_real::{ConstructiveReal, ConstructiveRealType};
 use crate::error::NumResult;
+use cancellation_token::CancellationToken;
+use num::bigint::Sign;
+use num::{BigInt, One, Signed, Zero};
 
 #[derive(Debug)]
 pub(crate) struct InvertedConstructive(pub ConstructiveReal);

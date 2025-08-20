@@ -1,4 +1,4 @@
-use crate::{token::TokenKind, SourcePos};
+use crate::{SourcePos, token::TokenKind};
 
 #[derive(Debug, Clone, Copy)]
 pub enum DiagnosticType {

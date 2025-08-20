@@ -1,4 +1,4 @@
-use std::{io::stdin};
+use std::io::stdin;
 
 use tcalc::{lexer::Lexer, parser::Parser};
 
