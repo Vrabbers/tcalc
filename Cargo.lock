@@ -167,6 +167,7 @@ dependencies = [
 name = "tcalc"
 version = "0.1.0"
 dependencies = [
+ "tcalc_num",
  "unicode_categories",
 ]
 

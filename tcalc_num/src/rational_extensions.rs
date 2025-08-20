@@ -33,7 +33,7 @@ pub trait RationalExtensions {
     fn irreducible_sqrt(&self) -> bool;
     /// Is the argument such that trig_func(pi*arg) can be simplified, or which should have
     /// been reduced to the (0, 1/2) interval.
-    fn can_trig_be_reduced(&self) -> bool;
+    // fn can_trig_be_reduced(&self) -> bool;
     /// Reduce a SIN_PI or TAN_PI argument to the interval [-1/2, 1.5).
     fn reduced_arg(&self) -> Option<BigRational>;
     /// Returns a truncated (rounded towards 0) representation of the result. Includes n digits to the
@@ -168,13 +168,13 @@ impl RationalExtensions for BigRational {
             && self.denom().abs() <= BigInt::from_i32(EXTRACT_SQUARE_MAX_OPT).unwrap()
     }
 
-    fn can_trig_be_reduced(&self) -> bool {
-        !self.is_positive()
-            || self >= &BigRational::new(1.into(), 2.into())
-            || self == &BigRational::new(1.into(), 3.into())
-            || self == &BigRational::new(1.into(), 4.into())
-            || self == &BigRational::new(1.into(), 6.into())
-    }
+    // fn can_trig_be_reduced(&self) -> bool {
+    //     !self.is_positive()
+    //         || self >= &BigRational::new(1.into(), 2.into())
+    //         || self == &BigRational::new(1.into(), 3.into())
+    //         || self == &BigRational::new(1.into(), 4.into())
+    //         || self == &BigRational::new(1.into(), 6.into())
+    // }
 
     fn reduced_arg(&self) -> Option<BigRational> {
         if self >= &BigRational::new((-1).into(), 2.into())

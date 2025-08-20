@@ -6,6 +6,7 @@ use crate::error::DomainViolation::{LogarithmDomainViolation, NthRoot, TanDomain
 use crate::error::LogarithmDomainViolation::{LogOfNegative, LogOfZero};
 use crate::error::NumError::DomainViolation;
 use crate::maths_symbols::MathsSymbols::Sqrt;
+use crate::num::Num;
 use crate::real::Real;
 use crate::real::constants::{ONE, PI, ZERO};
 use num::{BigRational, FromPrimitive};
@@ -67,29 +68,29 @@ fn test_multiplication() {
     let three = (two.clone() + one.clone()).unwrap();
 
     // Basic multiplication
-    let four = two.clone() * two.clone();
+    let four = (two.clone() * two.clone()).unwrap();
     assert_eq!("4", four.to_string_truncated_or_less(10).unwrap());
 
-    let six = two.clone() * three.clone();
+    let six = (two.clone() * three.clone()).unwrap();
     assert_eq!("6", six.to_string_truncated_or_less(10).unwrap());
 
     // Multiplication by zero
     let zero = Real::from_str("0").unwrap();
-    let result = two.clone() * zero.clone();
+    let result = (two.clone() * zero.clone()).unwrap();
     assert_eq!("0", result.to_string_truncated_or_less(10).unwrap());
 
     // Multiplication by one
-    let result = three.clone() * one.clone();
+    let result = (three.clone() * one.clone()).unwrap();
     assert_eq!("3", result.to_string_truncated_or_less(10).unwrap());
 
     // Multiplication with negative numbers
     let negative_two = -two.clone();
-    let negative_six = three.clone() * negative_two.clone();
+    let negative_six = (three.clone() * negative_two.clone()).unwrap();
     assert_eq!("-6", negative_six.to_string_truncated_or_less(10).unwrap());
 
     // Multiplication with decimals
     let half = Real::from_str("0.5").unwrap();
-    let result = two.clone() * half.clone();
+    let result = (two.clone() * half.clone()).unwrap();
     assert_eq!("1", result.to_string_truncated_or_less(10).unwrap());
 }
 
@@ -97,8 +98,8 @@ fn test_multiplication() {
 fn test_division() {
     let one = ONE.clone();
     let two = (one.clone() + one.clone()).unwrap();
-    let four = two.clone() * two.clone();
-    let eight = four.clone() * two.clone();
+    let four = (two.clone() * two.clone()).unwrap();
+    let eight = (four.clone() * two.clone()).unwrap();
 
     // Basic division
     let result = (eight.clone() / four.clone()).unwrap();
@@ -159,7 +160,7 @@ fn test_division_by_zero() {
 #[test]
 fn test_real_pi() {
     let pi = Real::new_from_cr(ConstructiveReal::pi());
-    let tau = pi.clone() * Real::new_from_rational(BigRational::from_i32(2).unwrap());
+    let tau = (pi.clone() * Real::new_from_rational(BigRational::from_i32(2).unwrap())).unwrap();
     assert_eq!(
         "3.1415926535897932384626433832795028841971",
         pi.to_string_truncated_or_less(40).unwrap()
@@ -191,7 +192,7 @@ fn test_sin() {
 
     // Test sin(90 deg)
     let ninety = Real::from_str("90").unwrap();
-    let sin_ninety = ninety.degrees_to_radians().sin();
+    let sin_ninety = (ninety.degrees_to_radians()).unwrap().sin();
     assert_eq!(
         "1",
         sin_ninety.unwrap().to_string_truncated_or_less(10).unwrap()
@@ -199,7 +200,7 @@ fn test_sin() {
 
     // Test sin(180 deg)
     let one_eighty = Real::from_str("180").unwrap();
-    let sin_one_eighty = one_eighty.degrees_to_radians().sin();
+    let sin_one_eighty = one_eighty.degrees_to_radians().unwrap().sin();
     assert_eq!(
         "0",
         sin_one_eighty
@@ -210,7 +211,7 @@ fn test_sin() {
 
     // Test sin(-90 deg)
     let neg_ninety = Real::from_str("-90").unwrap();
-    let sin_neg_ninety = neg_ninety.degrees_to_radians().sin().unwrap();
+    let sin_neg_ninety = neg_ninety.degrees_to_radians().unwrap().sin().unwrap();
     assert_eq!(
         "-1",
         sin_neg_ninety.to_string_truncated_or_less(10).unwrap()
@@ -218,24 +219,24 @@ fn test_sin() {
 
     // sin(270) = sin(-90)
     let two_seventy = Real::from_str("270").unwrap();
-    let sin_two_seventy = two_seventy.degrees_to_radians().sin().unwrap();
+    let sin_two_seventy = two_seventy.degrees_to_radians().unwrap().sin().unwrap();
     assert!(sin_neg_ninety.definitely_equals(&sin_two_seventy).unwrap());
 
     // sin(30) = 0.5
     let thirty = Real::from_str("30").unwrap();
-    let sin_thirty = thirty.degrees_to_radians().sin().unwrap();
+    let sin_thirty = thirty.degrees_to_radians().unwrap().sin().unwrap();
     assert_eq!("0.5", sin_thirty.to_string_truncated_or_less(10).unwrap());
 
     // sin(45) = sqrt(2)/2
     let forty_five = Real::from_str("45").unwrap();
-    let sin_forty_five = forty_five.degrees_to_radians().sin().unwrap();
+    let sin_forty_five = forty_five.degrees_to_radians().unwrap().sin().unwrap();
     let two = Real::from_str("2").unwrap();
     let sqrt_two_on_two = (two.clone().sqrt().unwrap() / two.clone()).unwrap();
     assert!(sin_forty_five.definitely_equals(&sqrt_two_on_two).unwrap());
 
     // sin(60) = sqrt(3)/2
     let sixty = Real::from_str("60").unwrap();
-    let sin_sixty = sixty.degrees_to_radians().sin().unwrap();
+    let sin_sixty = sixty.degrees_to_radians().unwrap().sin().unwrap();
     let three = Real::from_str("3").unwrap();
     let sqrt_three_on_two = (three.clone().sqrt().unwrap() / two.clone()).unwrap();
     assert!(sin_sixty.definitely_equals(&sqrt_three_on_two).unwrap());
@@ -244,10 +245,12 @@ fn test_sin() {
     for k in 0..359 {
         let number_1 = Real::new_from_rational(BigRational::from_i32(k).unwrap())
             .degrees_to_radians()
+            .unwrap()
             .sin()
             .unwrap();
         let number_2 = Real::new_from_rational(BigRational::from_i32(k + 360).unwrap())
             .degrees_to_radians()
+            .unwrap()
             .sin()
             .unwrap();
         assert!(number_1.definitely_equals(&number_2).unwrap());
@@ -265,7 +268,7 @@ fn test_cos() {
 
     // Test cos(90 deg)
     let ninety = Real::from_str("90").unwrap();
-    let cos_ninety = ninety.degrees_to_radians().cos();
+    let cos_ninety = ninety.degrees_to_radians().unwrap().cos();
     assert_eq!(
         "0",
         cos_ninety.unwrap().to_string_truncated_or_less(10).unwrap()
@@ -273,7 +276,7 @@ fn test_cos() {
 
     // Test cos(180 deg)
     let one_eighty = Real::from_str("180").unwrap();
-    let cos_one_eighty = one_eighty.degrees_to_radians().cos();
+    let cos_one_eighty = one_eighty.degrees_to_radians().unwrap().cos();
     assert_eq!(
         "-1",
         cos_one_eighty
@@ -284,29 +287,29 @@ fn test_cos() {
 
     // Test cos(-90 deg)
     let neg_ninety = Real::from_str("-90").unwrap();
-    let cos_neg_ninety = neg_ninety.degrees_to_radians().cos().unwrap();
+    let cos_neg_ninety = neg_ninety.degrees_to_radians().unwrap().cos().unwrap();
     assert_eq!("0", cos_neg_ninety.to_string_truncated_or_less(10).unwrap());
 
     // cos(270) = cos(-90)
     let two_seventy = Real::from_str("270").unwrap();
-    let cos_two_seventy = two_seventy.degrees_to_radians().cos().unwrap();
+    let cos_two_seventy = two_seventy.degrees_to_radians().unwrap().cos().unwrap();
     assert!(cos_neg_ninety.definitely_equals(&cos_two_seventy).unwrap());
 
     // cos(60) = 0.5
     let sixty = Real::from_str("60").unwrap();
-    let cos_sixty = sixty.degrees_to_radians().cos().unwrap();
+    let cos_sixty = sixty.degrees_to_radians().unwrap().cos().unwrap();
     assert_eq!("0.5", cos_sixty.to_string_truncated_or_less(10).unwrap());
 
     // cos(45) = sqrt(2)/2
     let forty_five = Real::from_str("45").unwrap();
-    let cos_forty_five = forty_five.degrees_to_radians().cos().unwrap();
+    let cos_forty_five = forty_five.degrees_to_radians().unwrap().cos().unwrap();
     let two = Real::from_str("2").unwrap();
     let sqrt_two_on_two = (two.clone().sqrt().unwrap() / two.clone()).unwrap();
     assert!(cos_forty_five.definitely_equals(&sqrt_two_on_two).unwrap());
 
     // cos(30) = sqrt(3)/2
     let thirty = Real::from_str("30").unwrap();
-    let cos_thirty = thirty.degrees_to_radians().cos().unwrap();
+    let cos_thirty = thirty.degrees_to_radians().unwrap().cos().unwrap();
     let three = Real::from_str("3").unwrap();
     let sqrt_three_on_two = (three.clone().sqrt().unwrap() / two.clone()).unwrap();
     assert!(cos_thirty.definitely_equals(&sqrt_three_on_two).unwrap());
@@ -315,10 +318,12 @@ fn test_cos() {
     for k in 0..359 {
         let number_1 = Real::new_from_rational(BigRational::from_i32(k).unwrap())
             .degrees_to_radians()
+            .unwrap()
             .cos()
             .unwrap();
         let number_2 = Real::new_from_rational(BigRational::from_i32(k + 360).unwrap())
             .degrees_to_radians()
+            .unwrap()
             .cos()
             .unwrap();
         assert!(number_1.definitely_equals(&number_2).unwrap());
@@ -336,24 +341,24 @@ fn test_tan() {
 
     // Test tan(90 deg)
     let ninety = Real::from_str("90").unwrap();
-    let tan_ninety = ninety.degrees_to_radians().tan();
+    let tan_ninety = ninety.degrees_to_radians().unwrap().tan();
     assert_eq!(tan_ninety.unwrap_err(), DomainViolation(TanDomainViolation));
 
     // tan(30) = sqrt(3)/3
     let thirty = Real::from_str("30").unwrap();
-    let tan_thirty = thirty.degrees_to_radians().tan().unwrap();
+    let tan_thirty = thirty.degrees_to_radians().unwrap().tan().unwrap();
     let three = Real::from_str("3").unwrap();
     let sqrt_three_on_three = (three.clone().sqrt().unwrap() / three.clone()).unwrap();
     assert!(tan_thirty.definitely_equals(&sqrt_three_on_three).unwrap());
 
     // tan(45) = 1
     let forty_five = Real::from_str("45").unwrap();
-    let tan_forty_five = forty_five.degrees_to_radians().tan().unwrap();
+    let tan_forty_five = forty_five.degrees_to_radians().unwrap().tan().unwrap();
     assert_eq!("1", tan_forty_five.to_string_truncated_or_less(10).unwrap());
 
     // tan(60) = sqrt(3)
     let sixty = Real::from_str("60").unwrap();
-    let tan_sixty = sixty.degrees_to_radians().tan().unwrap();
+    let tan_sixty = sixty.degrees_to_radians().unwrap().tan().unwrap();
     let sqrt_three = three.clone().sqrt().unwrap();
     assert!(tan_sixty.definitely_equals(&sqrt_three).unwrap());
 
@@ -365,10 +370,12 @@ fn test_tan() {
         }
         let number_1 = Real::new_from_rational(BigRational::from_i32(k).unwrap())
             .degrees_to_radians()
+            .unwrap()
             .tan()
             .unwrap();
         let number_2 = Real::new_from_rational(BigRational::from_i32(k + 360).unwrap())
             .degrees_to_radians()
+            .unwrap()
             .tan()
             .unwrap();
         assert!(number_1.definitely_equals(&number_2).unwrap());
@@ -381,12 +388,14 @@ fn test_asin() {
     for k in -90..90 {
         let number_1 = Real::new_from_rational(BigRational::from_i32(k).unwrap())
             .degrees_to_radians()
+            .unwrap()
             .sin()
             .unwrap()
             .asin()
             .unwrap();
-        let number_2 =
-            Real::new_from_rational(BigRational::from_i32(k % 360).unwrap()).degrees_to_radians();
+        let number_2 = Real::new_from_rational(BigRational::from_i32(k % 360).unwrap())
+            .degrees_to_radians()
+            .unwrap();
         assert!(
             number_1.definitely_equals(&number_2).unwrap(),
             "asin(sin({k} deg)) = {}, {} deg = {}",
@@ -403,12 +412,14 @@ fn test_acos() {
     for k in 0..180 {
         let number_1 = Real::new_from_rational(BigRational::from_i32(k).unwrap())
             .degrees_to_radians()
+            .unwrap()
             .cos()
             .unwrap()
             .acos()
             .unwrap();
-        let number_2 =
-            Real::new_from_rational(BigRational::from_i32(k % 360).unwrap()).degrees_to_radians();
+        let number_2 = Real::new_from_rational(BigRational::from_i32(k % 360).unwrap())
+            .degrees_to_radians()
+            .unwrap();
         assert!(
             number_1.definitely_equals(&number_2).unwrap(),
             "acos(cos({k} deg)) = {}, {} deg = {}",
@@ -425,12 +436,14 @@ fn test_atan() {
     for k in -89..89 {
         let number_1 = Real::new_from_rational(BigRational::from_i32(k).unwrap())
             .degrees_to_radians()
+            .unwrap()
             .tan()
             .unwrap()
             .atan()
             .unwrap();
-        let number_2 =
-            Real::new_from_rational(BigRational::from_i32(k % 360).unwrap()).degrees_to_radians();
+        let number_2 = Real::new_from_rational(BigRational::from_i32(k % 360).unwrap())
+            .degrees_to_radians()
+            .unwrap();
         assert!(
             number_1.definitely_equals(&number_2).unwrap(),
             "atan(tan({k} deg)) = {}, {} deg = {}",
@@ -499,7 +512,7 @@ fn test_ln() {
     assert_eq!("1", ln_e.to_string_truncated_or_less(10).unwrap());
 
     // Test ln(e^2) = 2
-    let e_squared = e.clone() * e.clone();
+    let e_squared = (e.clone() * e.clone()).unwrap();
     let ln_e_squared = e_squared.ln().unwrap();
     assert_eq!("2", ln_e_squared.to_string_truncated_or_less(10).unwrap());
 

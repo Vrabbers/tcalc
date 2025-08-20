@@ -17,6 +17,7 @@ use crate::error::OrdinalDomainViolation::{
     NegativeBaseNonIntegerOrder, ZeroBaseNegativeOrder, ZeroBaseZeroOrder,
 };
 use crate::error::{CancelCheckable, NumError, NumResult};
+use crate::num::Num;
 use crate::rational_extensions::RationalExtensions;
 use crate::real::constants::{
     E, HALF, HALF_SQRT_2, HALF_SQRT_3, PI_OVER_2, PI_OVER_3, PI_OVER_4, PI_OVER_6,
@@ -75,6 +76,52 @@ pub struct Real {
     rat: BigRational,
     cr: ConstructiveReal,
     cr_property: Option<CRProperty>,
+}
+
+impl Num for Real {
+    /// Base 10 Logarithm
+    fn log(&self) -> NumResult<Self> {
+        self.ln()? / constants::LN_10.clone()
+    }
+
+    fn exp(&self) -> NumResult<Self> {
+        if self.definitely_equals(&ZERO)? {
+            return Ok(constants::ONE.clone());
+        }
+        if self.definitely_equals(&constants::ONE)? {
+            // Avoid redundant computations, and ensure we recognize all instances as equal.
+            return Ok(E.clone());
+        }
+
+        if let Some(CRProperty::Ln(ln_arg)) = &self.cr_property {
+            let mut need_sqrt = false;
+            let mut rat_exponent = self.rat.clone();
+            if rat_exponent.try_as_integer().is_some() {
+                // check for multiple of one half.
+                need_sqrt = true;
+                rat_exponent *= BigRational::from_i32(2).unwrap();
+            }
+
+            let n_rat_factor = ln_arg.pow(rat_exponent.to_i32().unwrap());
+            if !n_rat_factor.too_big() {
+                let result = Real::new_from_rational(n_rat_factor);
+                return if need_sqrt { result.sqrt() } else { Ok(result) };
+            }
+        }
+
+        if self.compare_to_prec(&BIT_LIMIT_AS_REAL, 0)? == Ordering::Greater {
+            return Err(Overflow);
+        }
+
+        let mut new_cr_property = None;
+        if let Some(CRProperty::One) = self.cr_property {
+            new_cr_property = Some(CRProperty::new(CRProperty::Exp(self.rat.clone())));
+        }
+        Ok(Real::new_from_cr_property(
+            self.cr_value().exp()?,
+            new_cr_property,
+        ))
+    }
 }
 
 impl Real {
@@ -967,7 +1014,7 @@ impl Real {
 
     pub fn asin(&self) -> NumResult<Self> {
         self.check_asin_domain()?;
-        if let Ok(halves) = BigInt::try_from(self.clone() * TWO.clone()) {
+        if let Ok(halves) = BigInt::try_from((self.clone() * TWO.clone())?) {
             let n = halves.to_i32().unwrap();
             return Ok(Self::asin_halves(n));
         }
@@ -1184,10 +1231,10 @@ impl Real {
             let result_factor1 = Real::new_from_rational(self.rat.clone()).pow_int(exp)?;
             let square_as_ur = Real::new_from_rational(square.clone());
             let result_factor2 = square_as_ur.pow_int(&(exp.clone() >> 1))?.clone();
-            let product = result_factor1 * result_factor2;
+            let product = (result_factor1 * result_factor2)?;
             return if exp & BigInt::one() == BigInt::one() {
                 // Odd power: Multiply by remaining square root.
-                Ok(product * square_as_ur.sqrt()?)
+                product * square_as_ur.sqrt()?
             } else {
                 Ok(product)
             };
@@ -1206,7 +1253,7 @@ impl Real {
                 } else {
                     // (<ratFactor>e)^<expon> = <ratFactor>^<expon> * e^<expon>
                     let rat_part = Real::new_from_rational(self.rat.clone()).pow(expon.clone())?;
-                    Ok(expon.exp()? * rat_part)
+                    expon.exp()? * rat_part
                 };
             }
             Some(CRProperty::One) if self.rat == BigRational::from_i32(10).unwrap() => {
@@ -1352,50 +1399,6 @@ impl Real {
         ))
     }
 
-    /// Base 10 Logarithm
-    pub fn log(&self) -> NumResult<Self> {
-        self.ln()? / constants::LN_10.clone()
-    }
-
-    pub fn exp(&self) -> NumResult<Self> {
-        if self.definitely_equals(&ZERO)? {
-            return Ok(constants::ONE.clone());
-        }
-        if self.definitely_equals(&constants::ONE)? {
-            // Avoid redundant computations, and ensure we recognize all instances as equal.
-            return Ok(E.clone());
-        }
-
-        if let Some(CRProperty::Ln(ln_arg)) = &self.cr_property {
-            let mut need_sqrt = false;
-            let mut rat_exponent = self.rat.clone();
-            if rat_exponent.try_as_integer().is_some() {
-                // check for multiple of one half.
-                need_sqrt = true;
-                rat_exponent *= BigRational::from_i32(2).unwrap();
-            }
-
-            let n_rat_factor = ln_arg.pow(rat_exponent.to_i32().unwrap());
-            if !n_rat_factor.too_big() {
-                let result = Real::new_from_rational(n_rat_factor);
-                return if need_sqrt { result.sqrt() } else { Ok(result) };
-            }
-        }
-
-        if self.compare_to_prec(&BIT_LIMIT_AS_REAL, 0)? == Ordering::Greater {
-            return Err(Overflow);
-        }
-
-        let mut new_cr_property = None;
-        if let Some(CRProperty::One) = self.cr_property {
-            new_cr_property = Some(CRProperty::new(CRProperty::Exp(self.rat.clone())));
-        }
-        Ok(Real::new_from_cr_property(
-            self.cr_value().exp()?,
-            new_cr_property,
-        ))
-    }
-
     /// Absolute Value
     pub fn abs(&self) -> NumResult<Self> {
         if self.is_comparable(&ZERO)? {
@@ -1472,7 +1475,7 @@ impl Real {
         }
     }
 
-    pub fn degrees_to_radians(&self) -> Self {
+    pub fn degrees_to_radians(&self) -> NumResult<Self> {
         self.clone() * RADIANS_PER_DEGREE.clone()
     }
 
@@ -1669,20 +1672,20 @@ impl Sub for Real {
 }
 
 impl Mul for Real {
-    type Output = Self;
+    type Output = NumResult<Self>;
 
     fn mul(self, rhs: Self) -> Self::Output {
         // Preserve a preexisting crFactor when we can.
         if self.cr_property.is_one() {
-            return Real::new(self.rat * rhs.rat, rhs.cr, rhs.cr_property);
+            return Ok(Real::new(self.rat * rhs.rat, rhs.cr, rhs.cr_property));
         }
 
         if rhs.cr_property.is_one() {
-            return Real::new(self.rat * rhs.rat, self.cr, self.cr_property);
+            return Ok(Real::new(self.rat * rhs.rat, self.cr, self.cr_property));
         }
 
         if self.definitely_zero() || rhs.definitely_zero() {
-            return ZERO.clone();
+            return Ok(ZERO.clone());
         }
 
         let mut result_prop = None; // Property for product of crFactors.
@@ -1697,7 +1700,7 @@ impl Mul for Real {
                 let cr_part =
                     Self::multiply_sqrts(self_cr_property_arg.clone(), rhs_cr_property_arg.clone());
                 let rat_result = n_rat_factor * cr_part.rat;
-                return Real::new(rat_result, cr_part.cr, cr_part.cr_property);
+                return Ok(Real::new(rat_result, cr_part.cr, cr_part.cr_property));
             }
 
             if let CRProperty::Exp(self_cr_property_arg) = self_cr_property
@@ -1714,9 +1717,9 @@ impl Mul for Real {
         // TODO: We should often be able to determine that the result is irrational.
         // But definitelyIndependent is not the right criterion. Consider e and e^-1.
         if n_rat_factor.too_big() {
-            Real::new_from_cr(self.cr_value() * rhs.cr_value())
+            Ok(Real::new_from_cr(self.cr_value() * rhs.cr_value()))
         } else {
-            Real::new(n_rat_factor, self.cr * rhs.cr, result_prop)
+            Ok(Real::new(n_rat_factor, self.cr * rhs.cr, result_prop))
         }
     }
 }
@@ -1783,7 +1786,7 @@ impl Div for Real {
             }
         }
 
-        Ok(self * rhs.inv()?)
+        self * rhs.inv()?
     }
 }
 

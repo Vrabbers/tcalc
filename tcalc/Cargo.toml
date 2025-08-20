@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 unicode_categories = "0.1.1"
+tcalc_num = { path = "../tcalc_num" }
