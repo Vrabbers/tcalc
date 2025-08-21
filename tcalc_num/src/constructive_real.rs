@@ -96,7 +96,7 @@ where
     ///  accurate to 2**n.
     ///  Implementations may safely assume that precision is
     ///  at least a factor of 8 away from overflow.
-    fn approximate(&self, precision: i32, ct: CancellationToken) -> NumResult<BigInt>;
+    fn approximate(&self, precision: i32, cr: &ConstructiveReal) -> NumResult<BigInt>;
 }
 
 impl ConstructiveReal {
@@ -125,7 +125,7 @@ impl ConstructiveReal {
                 };
                 let result = self
                     .t
-                    .approximate(eval_prec, self.cancellation_token.clone())?;
+                    .approximate(eval_prec, self)?;
 
                 if let Some(current_approximation) = current_approximation_borrow.as_mut() {
                     current_approximation.min_prec = precision;
@@ -148,7 +148,7 @@ impl ConstructiveReal {
         } else {
             let result = self
                 .t
-                .approximate(precision, self.cancellation_token.clone())?;
+                .approximate(precision, self)?;
             if let Some(current_approximation) = current_approximation_borrow.as_mut() {
                 current_approximation.min_prec = precision;
                 current_approximation.max_appr = result.clone();

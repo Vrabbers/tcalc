@@ -1,6 +1,5 @@
 use crate::constructive_real::{ConstructiveReal, ConstructiveRealType, bound_log2, scale};
 use crate::error::{CancelCheckable, NumResult};
-use cancellation_token::CancellationToken;
 use num::{BigInt, One, Signed, Zero};
 use std::ops::Add;
 
@@ -12,7 +11,7 @@ impl ConstructiveRealType for PrescaledLnConstructive {
         true
     }
 
-    fn approximate(&self, precision: i32, ct: CancellationToken) -> NumResult<BigInt> {
+    fn approximate(&self, precision: i32, cr: &ConstructiveReal) -> NumResult<BigInt> {
         if precision >= 0 {
             return Ok(BigInt::zero());
         };
@@ -32,7 +31,7 @@ impl ConstructiveRealType for PrescaledLnConstructive {
         let mut current_sign = 1; // (-1)^(n-1)
         let max_trunc_error = BigInt::one() << (precision - 4 - calc_precision);
         while current_term.abs() >= max_trunc_error {
-            ct.stop_if_cancelled()?;
+            cr.cancellation_token.stop_if_cancelled()?;
             n += 1;
             current_sign = -current_sign;
             x_nth = scale(x_nth * op_appr.clone(), op_prec);

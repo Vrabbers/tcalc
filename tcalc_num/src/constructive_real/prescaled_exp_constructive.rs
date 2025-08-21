@@ -1,13 +1,12 @@
 use crate::constructive_real::{ConstructiveReal, ConstructiveRealType, bound_log2, scale};
 use crate::error::{CancelCheckable, NumResult};
-use cancellation_token::CancellationToken;
 use num::{BigInt, One, Signed, Zero};
 
 #[derive(Debug)]
 pub(crate) struct PrescaledExpConstructive(pub ConstructiveReal);
 
 impl ConstructiveRealType for PrescaledExpConstructive {
-    fn approximate(&self, precision: i32, ct: CancellationToken) -> NumResult<BigInt> {
+    fn approximate(&self, precision: i32, cr: &ConstructiveReal) -> NumResult<BigInt> {
         if precision >= 1 {
             return Ok(BigInt::zero());
         }
@@ -31,7 +30,7 @@ impl ConstructiveRealType for PrescaledExpConstructive {
         let mut n = 0;
         let max_trunc_error = BigInt::one() << (precision - 4 - calc_precision);
         while current_term.clone().abs() >= max_trunc_error {
-            ct.stop_if_cancelled()?;
+            cr.cancellation_token.stop_if_cancelled()?;
             n += 1;
             /* current_term = current_term * op / n */
             current_term = scale(current_term * op_appr.clone(), op_prec);

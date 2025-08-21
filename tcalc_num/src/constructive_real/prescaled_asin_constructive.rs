@@ -1,6 +1,5 @@
 use crate::constructive_real::{ConstructiveReal, ConstructiveRealType, bound_log2, scale};
 use crate::error::{CancelCheckable, NumResult};
-use cancellation_token::CancellationToken;
 use num::{BigInt, FromPrimitive, One, Signed, Zero};
 
 #[derive(Debug)]
@@ -11,7 +10,7 @@ impl ConstructiveRealType for PrescaledAsinConstructive {
         true
     }
 
-    fn approximate(&self, precision: i32, ct: CancellationToken) -> NumResult<BigInt> {
+    fn approximate(&self, precision: i32, cr: &ConstructiveReal) -> NumResult<BigInt> {
         // The Taylor series is the sum of x^(2n+1) * (2n)!/(4^n n!^2 (2n+1))
         // Note that (2n)!/(4^n n!^2) is always less than one.
         // (The denominator is effectively 2n*2n*(2n-2)*(2n-2)*...*2*2
@@ -57,7 +56,7 @@ impl ConstructiveRealType for PrescaledAsinConstructive {
         // before division by the exponent.
         // Accurate to 3 ulp at calc_precision.
         while current_term.clone().abs() >= (max_last_term) {
-            ct.stop_if_cancelled()?;
+            cr.cancellation_token.stop_if_cancelled()?;
             exp += 2;
             // current_factor = current_factor * op * op * (exp-1) * (exp-2) /
             // (exp-1) * (exp-1), with the two exp-1 factors cancelling,

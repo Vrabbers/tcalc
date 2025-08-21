@@ -1,6 +1,5 @@
 use crate::constructive_real::{ConstructiveReal, ConstructiveRealType, scale};
 use crate::error::NumResult;
-use cancellation_token::CancellationToken;
 use num::bigint::Sign;
 use num::{BigInt, Zero};
 use std::mem::swap;
@@ -12,7 +11,7 @@ pub(crate) struct MultiplyConstructive {
 }
 
 impl ConstructiveRealType for MultiplyConstructive {
-    fn approximate(&self, precision: i32, _: CancellationToken) -> NumResult<BigInt> {
+    fn approximate(&self, precision: i32, _: &ConstructiveReal) -> NumResult<BigInt> {
         let mut op1 = self.op1.clone();
         let mut op2 = self.op2.clone();
         let half_prec = (precision >> 1) - 1;

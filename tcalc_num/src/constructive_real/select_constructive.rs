@@ -1,6 +1,5 @@
 use crate::constructive_real::{ConstructiveReal, ConstructiveRealType, scale};
 use crate::error::NumResult;
-use cancellation_token::CancellationToken;
 use num::bigint::Sign;
 use num::{BigInt, One, Signed};
 
@@ -12,7 +11,7 @@ pub(crate) struct SelectConstructive {
 }
 
 impl ConstructiveRealType for SelectConstructive {
-    fn approximate(&self, precision: i32, _: CancellationToken) -> NumResult<BigInt> {
+    fn approximate(&self, precision: i32, _: &ConstructiveReal) -> NumResult<BigInt> {
         let selector_sign = self.selector.clone().get_appr(-20)?.sign();
         match selector_sign {
             Sign::Minus => self.op1.clone().get_appr(precision),
