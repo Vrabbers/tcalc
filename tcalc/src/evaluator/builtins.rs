@@ -34,7 +34,7 @@ fn builtin1<Num: Number>(f: &'static impl Fn(&Num) -> NumResult<Num>) -> EvalFun
 
 fn builtin_pow<Num: Number>() -> EvalFunction<Num> {
     EvalFunction(
-        1,
+        2,
         Box::new(|stack: &mut Vec<Num>, _evaluator: &Evaluator<Num>| {
             let exponent = pop(stack)?;
             let base = pop(stack)?;
