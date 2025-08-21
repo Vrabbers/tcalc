@@ -79,6 +79,191 @@ pub struct Real {
 }
 
 impl Num for Real {
+    /// Absolute Value
+    fn abs(&self) -> NumResult<Self> {
+        if self.is_comparable(&ZERO)? {
+            if self.sign()? == Sign::Minus {
+                Ok(self.clone().neg())
+            } else {
+                Ok(self.clone())
+            }
+        } else {
+            Ok(Real::new_from_cr_property(
+                self.cr_value().abs(),
+                if self.cr_property.is_unknown_irrational() {
+                    Some(CRProperty::irrational())
+                } else {
+                    None
+                },
+            ))
+        }
+    }
+
+    fn sign(&self) -> NumResult<Sign> {
+        Ok(match self.compare_to(&ZERO)? {
+            Ordering::Less => Sign::Minus,
+            Ordering::Equal => Sign::NoSign,
+            Ordering::Greater => Sign::Plus,
+        })
+    }
+
+    /// Return this ^ expon. This is really only well-defined for a positive base, particularly since
+    /// 0^x is not continuous at zero. (0^0 = 1 (as is epsilon^0), but 0^epsilon is 0. We nonetheless
+    /// try to do reasonable things at zero, when we recognize that case.
+    fn pow(&self, expon: Self) -> NumResult<Self> {
+        match &self.cr_property {
+            Some(CRProperty::Exp(arg)) if arg == &BigRational::one() => {
+                return if self.rat == BigRational::one() {
+                    expon.exp()
+                } else {
+                    // (<ratFactor>e)^<expon> = <ratFactor>^<expon> * e^<expon>
+                    let rat_part = Real::new_from_rational(self.rat.clone()).pow(expon.clone())?;
+                    expon.exp()? * rat_part
+                };
+            }
+            Some(CRProperty::One) if self.rat == BigRational::from_i32(10).unwrap() => {
+                if let Some(CRProperty::Log(expon_log_arg)) = expon.cr_property {
+                    // 10^(r * log(expon_log_arg)) = expon_log_arg^r
+                    return Real::new_from_rational(expon_log_arg)
+                        .pow(Real::new_from_rational(expon.rat));
+                }
+            }
+            _ => {}
+        }
+
+        let sign = self.sign_prec(DEFAULT_COMPARISON_TOLERANCE)?;
+        let mut known_irrational = false;
+        if let Ok(exp_as_br) = BigRational::try_from(expon.clone()) {
+            if exp_as_br.denom().is_one() {
+                return self.pow_int(exp_as_br.numer());
+            }
+            // Check for the case in which both arguments are rational, and there is an
+            // exact rational answer.
+            // We explicitly avoid returning a result for a negative base here,
+            // even when that would make sense, as in (-8)^(1/3).
+            // This is probably wrong if we're computing cube roots.
+            // But note that we could never return a meaningful result for
+            // (-8)^<1/3 computed so we can't recognize it as such>.
+            if sign != Sign::Minus
+                && let Some(CRProperty::One) = self.cr_property
+                && exp_as_br.denom().bits() <= 30
+            {
+                let exp_den = exp_as_br.denom().to_i32().unwrap(); // Doesn't lose information.
+                // Don't just use BigRational.pow(), since that would bypass above checks.
+                let rt = self.rat.nth_root(exp_den)?;
+                if !rt.too_big() {
+                    return Real::new_from_rational(rt).pow_int(exp_as_br.numer());
+                } else {
+                    // We know that the root is irrational. Raising it to a power relatively prime to exp_den
+                    // is not going to change that.
+                    known_irrational = true;
+                }
+            }
+            // Explicitly check for the square root case, in case the result is representable
+            // as an integer multiple of a small square root.
+            if exp_as_br.denom() == &BigInt::from_i32(2).unwrap() {
+                return self.pow_int(exp_as_br.numer())?.sqrt();
+            }
+        }
+        // If the exponent were known zero, we would have handled it above.
+        if sign == Sign::NoSign && self.definitely_zero() {
+            // Compute the exponent sign, at the risk of divergence. The result depends on it.
+            let expon_sign = expon.sign()?;
+            return if expon_sign == Sign::Plus {
+                Ok(ZERO.clone())
+            } else if expon_sign == Sign::Minus {
+                Err(DomainViolation(OrdinalDomainViolation(
+                    ZeroBaseNegativeOrder,
+                )))
+            } else {
+                // Unclear we can get here.
+                Err(DomainViolation(OrdinalDomainViolation(ZeroBaseZeroOrder)))
+            };
+        }
+        if sign == Sign::Minus {
+            return Err(DomainViolation(OrdinalDomainViolation(
+                NegativeBaseNonIntegerOrder,
+            )));
+        }
+        if known_irrational {
+            Ok(Real::new_from_cr_property(
+                (self.cr_value().ln()? * expon.cr_value()).exp()?,
+                Some(CRProperty::irrational()),
+            ))
+        } else {
+            Ok(Real::new_from_cr(
+                (self.cr_value().ln()? * expon.cr_value()).exp()?,
+            ))
+        }
+    }
+
+    fn ln(&self) -> NumResult<Self> {
+        let new_cr_property = None;
+        if let Some(CRProperty::Exp(arg)) = &self.cr_property {
+            return Real::new_from_rational(self.rat.clone()).ln()?
+                + Real::new_from_rational(arg.clone());
+        }
+
+        let sign = self.sign_prec(DEFAULT_COMPARISON_TOLERANCE)?;
+        if sign == Sign::Minus {
+            return Err(DomainViolation(LogarithmDomainViolation(LogOfNegative)));
+        }
+        if self.is_comparable(&ZERO)? {
+            if sign == Sign::NoSign {
+                return Err(DomainViolation(LogarithmDomainViolation(LogOfZero)));
+            }
+
+            let compare1 = self.compare_to_prec(&constants::ONE, DEFAULT_COMPARISON_TOLERANCE)?;
+            if compare1 == Ordering::Equal {
+                if self.definitely_equals(&constants::ONE)? {
+                    return Ok(ZERO.clone());
+                }
+            } else if compare1 == Ordering::Less {
+                return Ok(self.clone().inv()?.ln()?.neg());
+            }
+            if let Some(bi) = self.rat.try_as_integer() {
+                if self.cr_property.is_one() {
+                    if let Some(small_power_ln) =
+                        Self::lg_small_power(CRProperty::Ln(BigRational::one()), bi)?
+                    {
+                        return Ok(small_power_ln);
+                    }
+                } else {
+                    // Check for n^k * sqrt(n), for which we can also return a more useful answer.
+                    if let Some(CRProperty::Sqrt(square)) = &self.cr_property
+                        && let Some(square) = square.try_as_integer()
+                        && square.bits() < 30
+                    {
+                        let int_square = square.to_i32().unwrap();
+                        let int_log = get_int_log(bi, int_square);
+                        if int_log != 0 {
+                            let n_rat_factor = BigRational::from_i64(int_log).unwrap()
+                                + BigRational::new(1.into(), 2.into());
+                            if !n_rat_factor.too_big() {
+                                return Ok(Real::new(
+                                    n_rat_factor,
+                                    ConstructiveReal::from(square.clone()).ln()?,
+                                    Some(CRProperty::new(CRProperty::Ln(BigRational::from(
+                                        square.clone(),
+                                    )))),
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+            if self.cr_property.is_one() {
+                // Normalize to argument > 1, and remember symbolic representation.
+                return Self::log_rep(CRProperty::Ln(BigRational::one()), self.rat.clone());
+            }
+        }
+
+        Ok(Self::new_from_cr_property(
+            self.cr_value().ln()?,
+            new_cr_property,
+        ))
+    }
+
     /// Base 10 Logarithm
     fn log(&self) -> NumResult<Self> {
         self.ln()? / constants::LN_10.clone()
@@ -121,6 +306,294 @@ impl Num for Real {
             self.cr_value().exp()?,
             new_cr_property,
         ))
+    }
+
+    /// Return the square root. This may return a value with no property, rather than a known
+    /// rational, even when the result is rational.
+    fn sqrt(self) -> NumResult<Self> {
+        if self.sign_prec(DEFAULT_COMPARISON_TOLERANCE)? == Sign::Minus {
+            return Err(DomainViolation(NthRoot(2.)));
+        }
+        if self.definitely_zero() {
+            return Ok(ZERO.clone());
+        }
+
+        let mut new_cr_property = None;
+        if self.cr_property.is_one() && self.rat.extract_square_will_succeed() {
+            // Avoid generating IS_SQRT property for rational values.
+            let decomposed_product = self.rat.extract_square_reduced();
+            if decomposed_product.1 == BigRational::one() {
+                new_cr_property = Some(CRProperty::one());
+            } else {
+                new_cr_property = Some(CRProperty::new(CRProperty::Sqrt(
+                    decomposed_product.1.clone(),
+                )));
+            }
+            return Ok(Real::new(
+                decomposed_product.0,
+                ConstructiveReal::from(decomposed_product.1).sqrt(),
+                new_cr_property,
+            ));
+        } // else don't track; we don't know if it's rational.
+
+        // If this is exp(a), result is exp(a/2). Track that.
+        if let Some(CRProperty::Exp(exp_arg)) = &self.cr_property {
+            let new_arg = exp_arg / BigRational::from_i32(2).unwrap();
+            if !new_arg.too_big() {
+                new_cr_property = Some(CRProperty::new(CRProperty::Exp(new_arg)));
+            }
+        }
+
+        Ok(Real::new_from_cr_property(
+            self.cr_value().sqrt(),
+            new_cr_property,
+        ))
+    }
+
+    /// Factorial function. Fails if argument is clearly not an integer. May round to nearest integer
+    /// if value is close.
+    fn fact(&self) -> NumResult<Self> {
+        let as_bi = match BigInt::try_from(self.clone()) {
+            Ok(as_bi) => as_bi,
+            _ => {
+                let as_bi = self.cr_value().get_appr(0)?; // Correct if it was an integer.
+                if !self.approx_equals(
+                    &Real::new_from_rational(as_bi.clone().into()),
+                    DEFAULT_COMPARISON_TOLERANCE,
+                )? {
+                    return Err(DomainViolation(FactorialDomainViolation(NonIntegerBase)));
+                } else {
+                    as_bi
+                }
+            }
+        };
+
+        if as_bi.is_negative() {
+            return Err(DomainViolation(FactorialDomainViolation(NegativeBase)));
+        }
+        if as_bi.bits() > 18 {
+            // Several million digits. Will fail.  LongValue() may not work. Punt now.
+            return Err(Overflow);
+        }
+
+        // TODO: Pass in cancellation token
+        let bi_result = gen_factorial(as_bi.to_i64().unwrap(), 1, CancellationToken::new(false))?;
+        let n_rat_factor = BigRational::from(bi_result);
+        Ok(Real::new_from_rational(n_rat_factor))
+    }
+
+    fn degrees_to_radians(&self) -> NumResult<Self> {
+        self.clone() * RADIANS_PER_DEGREE.clone()
+    }
+
+    fn radians_to_degrees(&self) -> NumResult<Self> {
+        self.clone() / RADIANS_PER_DEGREE.clone()
+    }
+
+    fn sin(&self) -> NumResult<Self> {
+        if let Some(pi_twelfths) = self.get_pi_twelfths()
+            && let Some(result) = sin_pi_twelfths(pi_twelfths.to_i32().unwrap())
+        {
+            return Ok(result);
+        }
+
+        if self.cr_property.is_pi()
+            && let Some(new_cr_property) = CRProperty::new_sin_pi(self.rat.clone())
+        {
+            let CRProperty::SinPi(_, neg) = new_cr_property else {
+                panic!("new_sin_pi returned not CRProperty::SinPi")
+            };
+            return Ok(Real::new_from_rat_property(
+                if neg {
+                    -BigRational::one()
+                } else {
+                    BigRational::one()
+                },
+                new_cr_property,
+            ));
+        }
+
+        if let Some(CRProperty::Asin(arg)) = &self.cr_property
+            && self.rat == BigRational::one()
+        {
+            return Ok(Real::new_from_rational(arg.clone()));
+        }
+
+        Ok(Real::new_from_cr_property(
+            self.cr_value().sin()?,
+            if self.definitely_algebraic() && self.definitely_nonzero() {
+                Some(CRProperty::Irrational)
+            } else {
+                None
+            },
+        ))
+    }
+
+    fn cos(&self) -> NumResult<Self> {
+        if self.definitely_algebraic() && self.definitely_nonzero() {
+            // We know from Lindemann-Weierstrass that the result is transcendental, and therefore
+            // irrational.
+            Ok((self.clone() + PI_OVER_2.clone())?.sin()?.tag_irrational())
+        } else {
+            (self.clone() + PI_OVER_2.clone())?.sin()
+        }
+    }
+
+    fn tan(&self) -> NumResult<Self> {
+        if let Some(pi_twelfths) = self.get_pi_twelfths() {
+            let i = pi_twelfths.to_i32().unwrap();
+            if i == 6 || i == 18 {
+                return Err(DomainViolation(TanDomainViolation));
+            }
+
+            if let Some(top) = sin_pi_twelfths(i)
+                && let Some(bottom) = cos_pi_twelfths(i)
+            {
+                return top / bottom;
+            }
+        }
+
+        if let Some(CRProperty::Pi) = self.cr_property
+            && let Some(new_cr_property) = CRProperty::new_tan_pi(self.rat.clone())
+        {
+            let CRProperty::TanPi(_, neg) = new_cr_property else {
+                panic!("new_tan_pi returned not CRProperty::TanPi")
+            };
+            return Ok(Real::new_from_rat_property(
+                if neg {
+                    -BigRational::one()
+                } else {
+                    BigRational::one()
+                },
+                new_cr_property,
+            ));
+        }
+
+        if let Some(CRProperty::Atan(atan_arg)) = &self.cr_property
+            && self.rat == BigRational::one()
+        {
+            return Ok(Real::new_from_rational(atan_arg.clone()));
+        }
+
+        Ok(Real::new_from_cr_property(
+            self.cr_value().tan()?,
+            if self.definitely_algebraic() && self.definitely_nonzero() {
+                Some(CRProperty::Irrational)
+            } else {
+                None
+            },
+        ))
+    }
+
+    fn asin(&self) -> NumResult<Self> {
+        self.check_asin_domain()?;
+        if let Ok(halves) = BigInt::try_from((self.clone() * TWO.clone())?) {
+            let n = halves.to_i32().unwrap();
+            return Ok(Self::asin_halves(n));
+        }
+
+        if self.compare_to_prec(&ZERO, -10) == Ok(Ordering::Less) {
+            return Ok(self.clone().neg().asin()?.neg());
+        }
+
+        if self.definitely_equals(&HALF_SQRT_2)? {
+            return Ok(Real::new_from_rat_cr(
+                BigRational::new(1.into(), 4.into()),
+                PI.clone(),
+            ));
+        }
+
+        if self.definitely_equals(&HALF_SQRT_3)? {
+            return Ok(Real::new_from_rat_cr(
+                BigRational::new(1.into(), 3.into()),
+                PI.clone(),
+            ));
+        }
+
+        if let Some(CRProperty::SinPi(arg, _)) = &self.cr_property {
+            if self.rat == BigRational::one() {
+                return Ok(Real::new_from_rat_cr(arg.clone(), PI.clone()));
+            }
+
+            if self.rat == BigRational::from_i32(-1).unwrap() {
+                return Ok(Real::new(-arg.clone(), PI.clone(), Some(CRProperty::Pi)));
+            }
+        }
+
+        if let Some(CRProperty::One) = self.cr_property {
+            assert!(self.rat.is_positive());
+
+            return Ok(Real::new_from_property(CRProperty::new(CRProperty::Asin(
+                self.rat.clone(),
+            ))));
+        }
+
+        Ok(Real::new_from_cr(self.cr_value().asin()?))
+    }
+
+    fn acos(&self) -> NumResult<Self> {
+        PI_OVER_2.clone() - self.asin()?
+    }
+
+    fn atan(&self) -> NumResult<Self> {
+        if self.compare_to_prec(&ZERO, -10)? == Ordering::Less {
+            return Ok(self.clone().neg().atan()?.neg());
+        }
+
+        if let Ok(as_bi) = BigInt::try_from(self.clone())
+            && as_bi <= BigInt::one()
+        {
+            let as_int = as_bi.to_i32().unwrap();
+            // These seem to be all rational cases:
+            return Ok(match as_int {
+                0 => ZERO.clone(),
+                1 => PI_OVER_4.clone(),
+                _ => unreachable!(),
+            });
+        }
+
+        if self.definitely_equals(&THIRD_SQRT_3)? {
+            return Ok(PI_OVER_6.clone());
+        }
+        if self.definitely_equals(&SQRT_3)? {
+            return Ok(PI_OVER_3.clone());
+        }
+
+        if let Some(CRProperty::TanPi(tan_pi_arg, _)) = &self.cr_property {
+            if self.rat == BigRational::one() {
+                return Ok(Real::new_from_rat_cr(tan_pi_arg.clone(), PI.clone()));
+            }
+
+            if self.rat == BigRational::from_i32(-1).unwrap() {
+                return Ok(Real::new_from_rat_cr(-tan_pi_arg.clone(), PI.clone()));
+            }
+        }
+
+        if let Some(CRProperty::One) = &self.cr_property {
+            assert!(self.rat.is_positive());
+            return Ok(Real::new_from_property(CRProperty::new(CRProperty::Atan(
+                self.rat.clone(),
+            ))));
+        }
+
+        Ok(Real::new_from_cr(self.cr_value().atan()?))
+    }
+
+    fn sinh(&self) -> NumResult<Self> {
+        // TODO: Try to detect special identities
+        (self.clone().exp()? - (-self.clone()).exp()?)?
+            / Real::new_from_rational(BigRational::from_i32(2).unwrap())
+    }
+
+    fn cosh(&self) -> NumResult<Self> {
+        // TODO: Try to detect special identities
+        (self.clone().exp()? + (-self.clone()).exp()?)?
+            / Real::new_from_rational(BigRational::from_i32(2).unwrap())
+    }
+
+    fn tanh(&self) -> NumResult<Self> {
+        // TODO: Try to detect special identities
+        self.clone().sinh()? / self.clone().cosh()?
     }
 }
 
@@ -673,14 +1146,6 @@ impl Real {
         })
     }
 
-    pub fn sign(&self) -> NumResult<Sign> {
-        Ok(match self.compare_to(&ZERO)? {
-            Ordering::Less => Sign::Minus,
-            Ordering::Equal => Sign::NoSign,
-            Ordering::Greater => Sign::Plus,
-        })
-    }
-
     /// Equality comparison. May erroneously return true if values differ by less than 2^a, and
     /// !is_comparable(other).
     pub fn approx_equals(&self, other: &Real, a: i32) -> NumResult<bool> {
@@ -736,7 +1201,7 @@ impl Real {
 
     /// Returns a suitable representation of ln(arg) or log(arg). arg is positive and not one. kind is
     /// IS_LN or IS_LOG.
-    pub fn log_rep(kind: CRProperty, arg: BigRational) -> NumResult<Self> {
+    fn log_rep(kind: CRProperty, arg: BigRational) -> NumResult<Self> {
         if !matches!(kind, CRProperty::Ln(_) | CRProperty::Log(_)) {
             panic!("log_rep called with invalid kind");
         }
@@ -822,48 +1287,6 @@ impl Real {
         }
     }
 
-    /// Return the square root. This may return a value with no property, rather than a known
-    /// rational, even when the result is rational.
-    pub fn sqrt(self) -> NumResult<Self> {
-        if self.sign_prec(DEFAULT_COMPARISON_TOLERANCE)? == Sign::Minus {
-            return Err(DomainViolation(NthRoot(2.)));
-        }
-        if self.definitely_zero() {
-            return Ok(ZERO.clone());
-        }
-
-        let mut new_cr_property = None;
-        if self.cr_property.is_one() && self.rat.extract_square_will_succeed() {
-            // Avoid generating IS_SQRT property for rational values.
-            let decomposed_product = self.rat.extract_square_reduced();
-            if decomposed_product.1 == BigRational::one() {
-                new_cr_property = Some(CRProperty::one());
-            } else {
-                new_cr_property = Some(CRProperty::new(CRProperty::Sqrt(
-                    decomposed_product.1.clone(),
-                )));
-            }
-            return Ok(Real::new(
-                decomposed_product.0,
-                ConstructiveReal::from(decomposed_product.1).sqrt(),
-                new_cr_property,
-            ));
-        } // else don't track; we don't know if it's rational.
-
-        // If this is exp(a), result is exp(a/2). Track that.
-        if let Some(CRProperty::Exp(exp_arg)) = &self.cr_property {
-            let new_arg = exp_arg / BigRational::from_i32(2).unwrap();
-            if !new_arg.too_big() {
-                new_cr_property = Some(CRProperty::new(CRProperty::Exp(new_arg)));
-            }
-        }
-
-        Ok(Real::new_from_cr_property(
-            self.cr_value().sqrt(),
-            new_cr_property,
-        ))
-    }
-
     /// Return (this mod 2pi)/(pi/6) as a BigInteger, or None if that isn't easily possible.
     fn get_pi_twelfths(&self) -> Option<BigInt> {
         if self.definitely_zero() {
@@ -875,45 +1298,6 @@ impl Real {
         } else {
             None
         }
-    }
-
-    pub fn sin(&self) -> NumResult<Self> {
-        if let Some(pi_twelfths) = self.get_pi_twelfths()
-            && let Some(result) = sin_pi_twelfths(pi_twelfths.to_i32().unwrap())
-        {
-            return Ok(result);
-        };
-
-        if self.cr_property.is_pi()
-            && let Some(new_cr_property) = CRProperty::new_sin_pi(self.rat.clone())
-        {
-            let CRProperty::SinPi(_, neg) = new_cr_property else {
-                panic!("new_sin_pi returned not CRProperty::SinPi")
-            };
-            return Ok(Real::new_from_rat_property(
-                if neg {
-                    -BigRational::one()
-                } else {
-                    BigRational::one()
-                },
-                new_cr_property,
-            ));
-        }
-
-        if let Some(CRProperty::Asin(arg)) = &self.cr_property
-            && self.rat == BigRational::one()
-        {
-            return Ok(Real::new_from_rational(arg.clone()));
-        }
-
-        Ok(Real::new_from_cr_property(
-            self.cr_value().sin()?,
-            if self.definitely_algebraic() && self.definitely_nonzero() {
-                Some(CRProperty::Irrational)
-            } else {
-                None
-            },
-        ))
     }
 
     /// Return a copy of the argument that is at least marked is irrational.
@@ -929,63 +1313,7 @@ impl Real {
         }
     }
 
-    pub fn cos(&self) -> NumResult<Self> {
-        if self.definitely_algebraic() && self.definitely_nonzero() {
-            // We know from Lindemann-Weierstrass that the result is transcendental, and therefore
-            // irrational.
-            Ok((self.clone() + PI_OVER_2.clone())?.sin()?.tag_irrational())
-        } else {
-            (self.clone() + PI_OVER_2.clone())?.sin()
-        }
-    }
-
-    pub fn tan(&self) -> NumResult<Self> {
-        if let Some(pi_twelfths) = self.get_pi_twelfths() {
-            let i = pi_twelfths.to_i32().unwrap();
-            if i == 6 || i == 18 {
-                return Err(DomainViolation(TanDomainViolation));
-            }
-
-            if let Some(top) = sin_pi_twelfths(i)
-                && let Some(bottom) = cos_pi_twelfths(i)
-            {
-                return top / bottom;
-            }
-        }
-
-        if let Some(CRProperty::Pi) = self.cr_property
-            && let Some(new_cr_property) = CRProperty::new_tan_pi(self.rat.clone())
-        {
-            let CRProperty::TanPi(_, neg) = new_cr_property else {
-                panic!("new_tan_pi returned not CRProperty::TanPi")
-            };
-            return Ok(Real::new_from_rat_property(
-                if neg {
-                    -BigRational::one()
-                } else {
-                    BigRational::one()
-                },
-                new_cr_property,
-            ));
-        }
-
-        if let Some(CRProperty::Atan(atan_arg)) = &self.cr_property
-            && self.rat == BigRational::one()
-        {
-            return Ok(Real::new_from_rational(atan_arg.clone()));
-        }
-
-        Ok(Real::new_from_cr_property(
-            self.cr_value().tan()?,
-            if self.definitely_algebraic() && self.definitely_nonzero() {
-                Some(CRProperty::Irrational)
-            } else {
-                None
-            },
-        ))
-    }
-
-    pub fn check_asin_domain(&self) -> NumResult<()> {
+    fn check_asin_domain(&self) -> NumResult<()> {
         if self.is_comparable(&constants::ONE)?
             && self.compare_to(&constants::ONE)? == Ordering::Greater
             && self.compare_to(&constants::M_ONE)? == Ordering::Less
@@ -997,7 +1325,7 @@ impl Real {
     }
 
     /// Return asin(n/2). n is between -2 and 2.
-    pub fn asin_halves(n: i32) -> Real {
+    fn asin_halves(n: i32) -> Real {
         if n < 0 {
             -Self::asin_halves(-n)
         } else {
@@ -1010,117 +1338,6 @@ impl Real {
                 }
             }
         }
-    }
-
-    pub fn asin(&self) -> NumResult<Self> {
-        self.check_asin_domain()?;
-        if let Ok(halves) = BigInt::try_from((self.clone() * TWO.clone())?) {
-            let n = halves.to_i32().unwrap();
-            return Ok(Self::asin_halves(n));
-        }
-
-        if self.compare_to_prec(&ZERO, -10) == Ok(Ordering::Less) {
-            return Ok(self.clone().neg().asin()?.neg());
-        }
-
-        if self.definitely_equals(&HALF_SQRT_2)? {
-            return Ok(Real::new_from_rat_cr(
-                BigRational::new(1.into(), 4.into()),
-                PI.clone(),
-            ));
-        }
-
-        if self.definitely_equals(&HALF_SQRT_3)? {
-            return Ok(Real::new_from_rat_cr(
-                BigRational::new(1.into(), 3.into()),
-                PI.clone(),
-            ));
-        }
-
-        if let Some(CRProperty::SinPi(arg, _)) = &self.cr_property {
-            if self.rat == BigRational::one() {
-                return Ok(Real::new_from_rat_cr(arg.clone(), PI.clone()));
-            }
-
-            if self.rat == BigRational::from_i32(-1).unwrap() {
-                return Ok(Real::new(-arg.clone(), PI.clone(), Some(CRProperty::Pi)));
-            }
-        }
-
-        if let Some(CRProperty::One) = self.cr_property {
-            assert!(self.rat.is_positive());
-
-            return Ok(Real::new_from_property(CRProperty::new(CRProperty::Asin(
-                self.rat.clone(),
-            ))));
-        }
-
-        Ok(Real::new_from_cr(self.cr_value().asin()?))
-    }
-
-    pub fn acos(&self) -> NumResult<Self> {
-        PI_OVER_2.clone() - self.asin()?
-    }
-
-    pub fn atan(&self) -> NumResult<Self> {
-        if self.compare_to_prec(&ZERO, -10)? == Ordering::Less {
-            return Ok(self.clone().neg().atan()?.neg());
-        }
-
-        if let Ok(as_bi) = BigInt::try_from(self.clone())
-            && as_bi <= BigInt::one()
-        {
-            let as_int = as_bi.to_i32().unwrap();
-            // These seem to be all rational cases:
-            return Ok(match as_int {
-                0 => ZERO.clone(),
-                1 => PI_OVER_4.clone(),
-                _ => unreachable!(),
-            });
-        }
-
-        if self.definitely_equals(&THIRD_SQRT_3)? {
-            return Ok(PI_OVER_6.clone());
-        }
-        if self.definitely_equals(&SQRT_3)? {
-            return Ok(PI_OVER_3.clone());
-        }
-
-        if let Some(CRProperty::TanPi(tan_pi_arg, _)) = &self.cr_property {
-            if self.rat == BigRational::one() {
-                return Ok(Real::new_from_rat_cr(tan_pi_arg.clone(), PI.clone()));
-            }
-
-            if self.rat == BigRational::from_i32(-1).unwrap() {
-                return Ok(Real::new_from_rat_cr(-tan_pi_arg.clone(), PI.clone()));
-            }
-        }
-
-        if let Some(CRProperty::One) = &self.cr_property {
-            assert!(self.rat.is_positive());
-            return Ok(Real::new_from_property(CRProperty::new(CRProperty::Atan(
-                self.rat.clone(),
-            ))));
-        }
-
-        Ok(Real::new_from_cr(self.cr_value().atan()?))
-    }
-
-    pub fn sinh(&self) -> NumResult<Self> {
-        // TODO: Try to detect special identities
-        (self.clone().exp()? - (-self.clone()).exp()?)?
-            / Real::new_from_rational(BigRational::from_i32(2).unwrap())
-    }
-
-    pub fn cosh(&self) -> NumResult<Self> {
-        // TODO: Try to detect special identities
-        (self.clone().exp()? + (-self.clone()).exp()?)?
-            / Real::new_from_rational(BigRational::from_i32(2).unwrap())
-    }
-
-    pub fn tanh(&self) -> NumResult<Self> {
-        // TODO: Try to detect special identities
-        self.clone().sinh()? / self.clone().cosh()?
     }
 
     /// Compute an integral power of a constructive real, using the standard recursive algorithm. exp
@@ -1242,215 +1459,6 @@ impl Real {
         self.exp_ln_pow(exp)
     }
 
-    /// Return this ^ expon. This is really only well-defined for a positive base, particularly since
-    /// 0^x is not continuous at zero. (0^0 = 1 (as is epsilon^0), but 0^epsilon is 0. We nonetheless
-    /// try to do reasonable things at zero, when we recognize that case.
-    pub fn pow(&self, expon: Self) -> NumResult<Self> {
-        match &self.cr_property {
-            Some(CRProperty::Exp(arg)) if arg == &BigRational::one() => {
-                return if self.rat == BigRational::one() {
-                    expon.exp()
-                } else {
-                    // (<ratFactor>e)^<expon> = <ratFactor>^<expon> * e^<expon>
-                    let rat_part = Real::new_from_rational(self.rat.clone()).pow(expon.clone())?;
-                    expon.exp()? * rat_part
-                };
-            }
-            Some(CRProperty::One) if self.rat == BigRational::from_i32(10).unwrap() => {
-                if let Some(CRProperty::Log(expon_log_arg)) = expon.cr_property {
-                    // 10^(r * log(expon_log_arg)) = expon_log_arg^r
-                    return Real::new_from_rational(expon_log_arg)
-                        .pow(Real::new_from_rational(expon.rat));
-                }
-            }
-            _ => {}
-        }
-
-        let sign = self.sign_prec(DEFAULT_COMPARISON_TOLERANCE)?;
-        let mut known_irrational = false;
-        if let Ok(exp_as_br) = BigRational::try_from(expon.clone()) {
-            if exp_as_br.denom().is_one() {
-                return self.pow_int(exp_as_br.numer());
-            }
-            // Check for the case in which both arguments are rational, and there is an
-            // exact rational answer.
-            // We explicitly avoid returning a result for a negative base here,
-            // even when that would make sense, as in (-8)^(1/3).
-            // This is probably wrong if we're computing cube roots.
-            // But note that we could never return a meaningful result for
-            // (-8)^<1/3 computed so we can't recognize it as such>.
-            if sign != Sign::Minus
-                && let Some(CRProperty::One) = self.cr_property
-                && exp_as_br.denom().bits() <= 30
-            {
-                let exp_den = exp_as_br.denom().to_i32().unwrap(); // Doesn't lose information.
-                // Don't just use BigRational.pow(), since that would bypass above checks.
-                let rt = self.rat.nth_root(exp_den)?;
-                if !rt.too_big() {
-                    return Real::new_from_rational(rt).pow_int(exp_as_br.numer());
-                } else {
-                    // We know that the root is irrational. Raising it to a power relatively prime to exp_den
-                    // is not going to change that.
-                    known_irrational = true;
-                }
-            }
-            // Explicitly check for the square root case, in case the result is representable
-            // as an integer multiple of a small square root.
-            if exp_as_br.denom() == &BigInt::from_i32(2).unwrap() {
-                return self.pow_int(exp_as_br.numer())?.sqrt();
-            }
-        }
-        // If the exponent were known zero, we would have handled it above.
-        if sign == Sign::NoSign && self.definitely_zero() {
-            // Compute the exponent sign, at the risk of divergence. The result depends on it.
-            let expon_sign = expon.sign()?;
-            return if expon_sign == Sign::Plus {
-                Ok(ZERO.clone())
-            } else if expon_sign == Sign::Minus {
-                Err(DomainViolation(OrdinalDomainViolation(
-                    ZeroBaseNegativeOrder,
-                )))
-            } else {
-                // Unclear we can get here.
-                Err(DomainViolation(OrdinalDomainViolation(ZeroBaseZeroOrder)))
-            };
-        }
-        if sign == Sign::Minus {
-            return Err(DomainViolation(OrdinalDomainViolation(
-                NegativeBaseNonIntegerOrder,
-            )));
-        }
-        if known_irrational {
-            Ok(Real::new_from_cr_property(
-                (self.cr_value().ln()? * expon.cr_value()).exp()?,
-                Some(CRProperty::irrational()),
-            ))
-        } else {
-            Ok(Real::new_from_cr(
-                (self.cr_value().ln()? * expon.cr_value()).exp()?,
-            ))
-        }
-    }
-
-    pub fn ln(&self) -> NumResult<Self> {
-        let new_cr_property = None;
-        if let Some(CRProperty::Exp(arg)) = &self.cr_property {
-            return Real::new_from_rational(self.rat.clone()).ln()?
-                + Real::new_from_rational(arg.clone());
-        }
-
-        let sign = self.sign_prec(DEFAULT_COMPARISON_TOLERANCE)?;
-        if sign == Sign::Minus {
-            return Err(DomainViolation(LogarithmDomainViolation(LogOfNegative)));
-        }
-        if self.is_comparable(&ZERO)? {
-            if sign == Sign::NoSign {
-                return Err(DomainViolation(LogarithmDomainViolation(LogOfZero)));
-            }
-
-            let compare1 = self.compare_to_prec(&constants::ONE, DEFAULT_COMPARISON_TOLERANCE)?;
-            if compare1 == Ordering::Equal {
-                if self.definitely_equals(&constants::ONE)? {
-                    return Ok(ZERO.clone());
-                }
-            } else if compare1 == Ordering::Less {
-                return Ok(self.clone().inv()?.ln()?.neg());
-            }
-            if let Some(bi) = self.rat.try_as_integer() {
-                if self.cr_property.is_one() {
-                    if let Some(small_power_ln) =
-                        Self::lg_small_power(CRProperty::Ln(BigRational::one()), bi)?
-                    {
-                        return Ok(small_power_ln);
-                    }
-                } else {
-                    // Check for n^k * sqrt(n), for which we can also return a more useful answer.
-                    if let Some(CRProperty::Sqrt(square)) = &self.cr_property
-                        && let Some(square) = square.try_as_integer()
-                        && square.bits() < 30
-                    {
-                        let int_square = square.to_i32().unwrap();
-                        let int_log = get_int_log(bi, int_square);
-                        if int_log != 0 {
-                            let n_rat_factor = BigRational::from_i64(int_log).unwrap()
-                                + BigRational::new(1.into(), 2.into());
-                            if !n_rat_factor.too_big() {
-                                return Ok(Real::new(
-                                    n_rat_factor,
-                                    ConstructiveReal::from(square.clone()).ln()?,
-                                    Some(CRProperty::new(CRProperty::Ln(BigRational::from(
-                                        square.clone(),
-                                    )))),
-                                ));
-                            }
-                        }
-                    }
-                }
-            }
-            if self.cr_property.is_one() {
-                // Normalize to argument > 1, and remember symbolic representation.
-                return Self::log_rep(CRProperty::Ln(BigRational::one()), self.rat.clone());
-            }
-        }
-
-        Ok(Self::new_from_cr_property(
-            self.cr_value().ln()?,
-            new_cr_property,
-        ))
-    }
-
-    /// Absolute Value
-    pub fn abs(&self) -> NumResult<Self> {
-        if self.is_comparable(&ZERO)? {
-            if self.sign()? == Sign::Minus {
-                Ok(self.clone().neg())
-            } else {
-                Ok(self.clone())
-            }
-        } else {
-            Ok(Real::new_from_cr_property(
-                self.cr_value().abs(),
-                if self.cr_property.is_unknown_irrational() {
-                    Some(CRProperty::irrational())
-                } else {
-                    None
-                },
-            ))
-        }
-    }
-
-    /// Factorial function. Fails if argument is clearly not an integer. May round to nearest integer
-    /// if value is close.
-    pub fn fact(&self) -> NumResult<Self> {
-        let as_bi = match BigInt::try_from(self.clone()) {
-            Ok(as_bi) => as_bi,
-            _ => {
-                let as_bi = self.cr_value().get_appr(0)?; // Correct if it was an integer.
-                if !self.approx_equals(
-                    &Real::new_from_rational(as_bi.clone().into()),
-                    DEFAULT_COMPARISON_TOLERANCE,
-                )? {
-                    return Err(DomainViolation(FactorialDomainViolation(NonIntegerBase)));
-                } else {
-                    as_bi
-                }
-            }
-        };
-
-        if as_bi.is_negative() {
-            return Err(DomainViolation(FactorialDomainViolation(NegativeBase)));
-        }
-        if as_bi.bits() > 18 {
-            // Several million digits. Will fail.  LongValue() may not work. Punt now.
-            return Err(Overflow);
-        }
-
-        // TODO: Pass in cancellation token
-        let bi_result = gen_factorial(as_bi.to_i64().unwrap(), 1, CancellationToken::new(false))?;
-        let n_rat_factor = BigRational::from(bi_result);
-        Ok(Real::new_from_rational(n_rat_factor))
-    }
-
     /// Return the number of decimal digits to the right of the decimal point required to represent
     /// the argument exactly. Return usize::MAX if that's not possible. Never returns a value
     /// less than zero, even if r is a power of ten.
@@ -1473,14 +1481,6 @@ impl Real {
         } else {
             Ok(self.cr_value().get_appr(bound - 2)?.bits() > 2)
         }
-    }
-
-    pub fn degrees_to_radians(&self) -> NumResult<Self> {
-        self.clone() * RADIANS_PER_DEGREE.clone()
-    }
-
-    pub fn radians_to_degrees(&self) -> Self {
-        (self.clone() / RADIANS_PER_DEGREE.clone()).unwrap()
     }
 }
 

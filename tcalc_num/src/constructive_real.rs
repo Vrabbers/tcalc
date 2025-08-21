@@ -26,7 +26,6 @@ use std::clone::Clone;
 use std::cmp::Ordering;
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::{Add, Div, Mul, Neg, Shl, Shr, Sub};
-use std::ptr;
 use std::sync::{Arc, RwLock};
 
 mod add_constructive;
