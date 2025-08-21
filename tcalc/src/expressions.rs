@@ -1,4 +1,4 @@
-use crate::{SourcePos, token::TokenKind};
+use crate::{source_pos::SourcePos, token::TokenKind};
 
 type Number = String;
 

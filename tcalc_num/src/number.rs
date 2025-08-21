@@ -9,7 +9,7 @@ use num::{bigint::Sign, traits::Inv};
 
 use crate::error::NumResult;
 
-pub trait Num:
+pub trait Number:
     Add<Output = NumResult<Self>>
     + Neg<Output = Self>
     + Sub<Output = NumResult<Self>>
@@ -21,6 +21,7 @@ pub trait Num:
     + Debug
     + Sized
     + Clone
+    + 'static
 {
     fn abs(&self) -> NumResult<Self>;
     fn sign(&self) -> NumResult<Sign>;
@@ -29,7 +30,7 @@ pub trait Num:
     fn ln(&self) -> NumResult<Self>;
     fn log(&self) -> NumResult<Self>;
     fn exp(&self) -> NumResult<Self>;
-    fn sqrt(self) -> NumResult<Self>;
+    fn sqrt(&self) -> NumResult<Self>;
     fn fact(&self) -> NumResult<Self>;
 
     fn degrees_to_radians(&self) -> NumResult<Self>;

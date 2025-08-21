@@ -1,4 +1,4 @@
-use crate::SourcePos;
+use crate::source_pos::SourcePos;
 
 #[derive(Debug, Clone)]
 pub struct StringReader {

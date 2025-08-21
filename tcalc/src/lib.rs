@@ -1,19 +1,9 @@
-#[derive(Debug, Clone, Copy)]
-pub struct SourcePos {
-    pub start: usize,
-    pub end: usize,
-}
-
-impl SourcePos {
-    pub fn new(start: usize, end: usize) -> Self {
-        Self { start, end }
-    }
-}
-
 mod string_reader;
 
 pub mod diagnostics;
+pub mod evaluator;
 pub mod expressions;
 pub mod lexer;
 pub mod parser;
+pub mod source_pos;
 pub mod token;

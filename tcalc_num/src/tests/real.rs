@@ -6,7 +6,7 @@ use crate::error::DomainViolation::{LogarithmDomainViolation, NthRoot, TanDomain
 use crate::error::LogarithmDomainViolation::{LogOfNegative, LogOfZero};
 use crate::error::NumError::DomainViolation;
 use crate::maths_symbols::MathsSymbols::Sqrt;
-use crate::num::Num;
+use crate::number::Number;
 use crate::real::Real;
 use crate::real::constants::{ONE, PI, ZERO};
 use num::{BigRational, FromPrimitive};

@@ -17,7 +17,7 @@ use crate::error::OrdinalDomainViolation::{
     NegativeBaseNonIntegerOrder, ZeroBaseNegativeOrder, ZeroBaseZeroOrder,
 };
 use crate::error::{CancelCheckable, NumError, NumResult};
-use crate::num::Num;
+use crate::number::Number;
 use crate::rational_extensions::RationalExtensions;
 use crate::real::constants::{
     E, HALF, HALF_SQRT_2, HALF_SQRT_3, PI_OVER_2, PI_OVER_3, PI_OVER_4, PI_OVER_6,
@@ -78,7 +78,7 @@ pub struct Real {
     cr_property: Option<CRProperty>,
 }
 
-impl Num for Real {
+impl Number for Real {
     /// Absolute Value
     fn abs(&self) -> NumResult<Self> {
         if self.is_comparable(&ZERO)? {
@@ -310,7 +310,7 @@ impl Num for Real {
 
     /// Return the square root. This may return a value with no property, rather than a known
     /// rational, even when the result is rational.
-    fn sqrt(self) -> NumResult<Self> {
+    fn sqrt(&self) -> NumResult<Self> {
         if self.sign_prec(DEFAULT_COMPARISON_TOLERANCE)? == Sign::Minus {
             return Err(DomainViolation(NthRoot(2.)));
         }

@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::SourcePos;
+use crate::source_pos::SourcePos;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenKind {

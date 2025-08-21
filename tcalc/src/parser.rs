@@ -1,10 +1,10 @@
 use std::mem;
 
 use crate::{
-    SourcePos,
     diagnostics::{Diagnostic, DiagnosticType},
     expressions::{Computation, Expression, Op, Operation},
     lexer::Lexer,
+    source_pos::SourcePos,
     token::{Token, TokenKind},
 };
 
