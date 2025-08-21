@@ -1,6 +1,7 @@
 use crate::maths_symbols::MathsSymbols;
 use std::fmt::Display;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum AngleUnit {
     Degrees,
     Radians,

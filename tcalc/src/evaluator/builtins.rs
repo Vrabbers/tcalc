@@ -2,14 +2,10 @@ use std::collections::HashMap;
 
 use tcalc_num::{error::NumResult, number::Number};
 
-use crate::evaluator::{EvalFn, EvalFunction, Evaluator, eval_result::EvalError};
-
-fn pop<T>(stack: &mut Vec<T>) -> Result<T, EvalError> {
-    match stack.pop() {
-        Some(x) => Ok(x),
-        None => Err(EvalError::InvalidProgram),
-    }
-}
+use crate::evaluator::{
+    EvalFn, EvalFunction, Evaluator, VecEvalErrorExtensions, angle_unit_to_radians,
+    eval_result::EvalError, radians_to_angle_unit,
+};
 
 struct SimpleBuiltin<F>(F);
 
@@ -19,7 +15,7 @@ where
     F: Fn(&Num) -> NumResult<Num>,
 {
     fn call(&self, stack: &mut Vec<Num>, _evaluator: &Evaluator<Num>) -> Result<(), EvalError> {
-        let value = pop(stack)?;
+        let value = stack.pop_result()?;
         let result = self.0(&value)?;
         stack.push(result);
 
@@ -27,17 +23,68 @@ where
     }
 }
 
-fn builtin1<Num: Number>(f: &'static impl Fn(&Num) -> NumResult<Num>) -> EvalFunction<Num> {
-    let fun = Box::new(SimpleBuiltin(f));
-    EvalFunction(1, fun)
+struct TrigBuiltin<F>(F);
+
+impl<Num, F> EvalFn<Num> for TrigBuiltin<F>
+where
+    Num: Number,
+    F: Fn(&Num) -> NumResult<Num>,
+{
+    fn call(&self, stack: &mut Vec<Num>, evaluator: &Evaluator<Num>) -> Result<(), EvalError> {
+        let value = angle_unit_to_radians(stack.pop_result()?, evaluator.angle_unit)?;
+        let result = self.0(&value)?;
+        stack.push(result);
+
+        Ok(())
+    }
+}
+
+struct InvTrigBuiltin<F>(F);
+
+impl<Num, F> EvalFn<Num> for InvTrigBuiltin<F>
+where
+    Num: Number,
+    F: Fn(&Num) -> NumResult<Num>,
+{
+    fn call(&self, stack: &mut Vec<Num>, evaluator: &Evaluator<Num>) -> Result<(), EvalError> {
+        let value = stack.pop_result()?;
+        let result = self.0(&value)?;
+        stack.push(radians_to_angle_unit(result, evaluator.angle_unit)?);
+
+        Ok(())
+    }
+}
+
+fn builtin1<Num, F>(f: &'static F) -> EvalFunction<Num>
+where
+    Num: Number,
+    F: Fn(&Num) -> NumResult<Num>,
+{
+    EvalFunction(1, Box::new(SimpleBuiltin(f)))
+}
+
+fn builtin_trig<Num, F>(f: &'static F) -> EvalFunction<Num>
+where
+    Num: Number,
+    F: Fn(&Num) -> NumResult<Num>,
+{
+    EvalFunction(1, Box::new(TrigBuiltin(f)))
+}
+
+fn builtin_invtrig<Num, F>(f: &'static F) -> EvalFunction<Num>
+where
+    Num: Number,
+    F: Fn(&Num) -> NumResult<Num>,
+{
+    EvalFunction(1, Box::new(InvTrigBuiltin(f)))
 }
 
 fn builtin_pow<Num: Number>() -> EvalFunction<Num> {
     EvalFunction(
         2,
         Box::new(|stack: &mut Vec<Num>, _evaluator: &Evaluator<Num>| {
-            let exponent = pop(stack)?;
-            let base = pop(stack)?;
+            let exponent = stack.pop_result()?;
+            let base = stack.pop_result()?;
             let result = base.pow(exponent)?;
             stack.push(result);
             Ok(())
@@ -54,14 +101,12 @@ pub fn basic_builtins<Num: Number>() -> HashMap<String, Vec<EvalFunction<Num>>> 
             ("ln", vec![builtin1(&Num::ln)]),
             ("abs", vec![builtin1(&Num::abs)]),
             ("fact", vec![builtin1(&Num::fact)]),
-            ("deg", vec![builtin1(&Num::degrees_to_radians)]),
-            ("rad", vec![builtin1(&Num::radians_to_degrees)]),
-            ("sin", vec![builtin1(&Num::sin)]),
-            ("cos", vec![builtin1(&Num::cos)]),
-            ("tan", vec![builtin1(&Num::tan)]),
-            ("asin", vec![builtin1(&Num::asin)]),
-            ("acos", vec![builtin1(&Num::acos)]),
-            ("atan", vec![builtin1(&Num::atan)]),
+            ("sin", vec![builtin_trig(&Num::sin)]),
+            ("cos", vec![builtin_trig(&Num::cos)]),
+            ("tan", vec![builtin_trig(&Num::tan)]),
+            ("asin", vec![builtin_invtrig(&Num::asin)]),
+            ("acos", vec![builtin_invtrig(&Num::acos)]),
+            ("atan", vec![builtin_invtrig(&Num::atan)]),
             ("sinh", vec![builtin1(&Num::sinh)]),
             ("cosh", vec![builtin1(&Num::cosh)]),
             ("tanh", vec![builtin1(&Num::tanh)]),

@@ -37,6 +37,13 @@ pub static RADIANS_PER_DEGREE: LazyLock<Real> = LazyLock::new(|| {
     )
 });
 
+pub static RADIANS_PER_GRADIAN: LazyLock<Real> = LazyLock::new(|| {
+    Real::new_from_rat_cr(
+        BigRational::new(1.into(), 200.into()),
+        constructive_real::constants::PI.clone(),
+    )
+});
+
 pub static LN_10: LazyLock<Real> =
     LazyLock::new(|| Real::new_from_cr(constructive_real::constants::LN_10.clone()));
 

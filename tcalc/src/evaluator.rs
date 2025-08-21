@@ -1,10 +1,11 @@
-use crate::evaluator::{
-    builtins::basic_builtins,
-    eval_result::EvalError,
-};
+use crate::evaluator::builtins::basic_builtins;
+use crate::evaluator::eval_result::{EvalError, EvalResult, EvalValue};
+use crate::expressions::{Expression, OperationType, Statement};
+use crate::token::TokenKind;
 use std::collections::HashMap;
 
-use tcalc_num::{angle_unit::AngleUnit, number::Number};
+use cancellation_token::CancellationToken;
+use tcalc_num::{angle_unit::AngleUnit, error::NumError, number::Number};
 
 mod builtins;
 
@@ -40,10 +41,149 @@ impl<Num: Number> Evaluator<Num> {
             angle_unit: AngleUnit::Degrees,
         }
     }
+
+    pub fn evaluate(&self, statement: &Statement, ct: CancellationToken) -> EvalResult<Num> {
+        match statement {
+            Statement::Arithmetic(expression) => Ok(EvalValue::Numeric(
+                self.evaluate_arithmetic(expression, ct)?,
+            )),
+            Statement::Assignment {
+                var,
+                comp,
+                position,
+            } => todo!(),
+            Statement::Boolean {
+                lhs,
+                rhs,
+                kind,
+                position,
+            } => todo!(),
+        }
+    }
+
+    fn evaluate_arithmetic(
+        &self,
+        expression: &Expression,
+        ct: CancellationToken,
+    ) -> Result<Num, EvalError> {
+        let mut stack = Vec::new();
+
+        for operation in &expression.operations {
+            match &operation.op_type {
+                OperationType::Binary(kind) => self.evaluate_binary(kind, &mut stack)?,
+
+                OperationType::Unary(kind) => self.evaluate_unary(kind, &mut stack)?,
+
+                OperationType::Literal(n) => {
+                    let n = Num::from_str(n)
+                        .or(Err(EvalError::InvalidProgram))?
+                        .with_cancellation(ct.clone());
+                    stack.push(n);
+                }
+
+                OperationType::VarRef(name) => {
+                    let num = if let Some(const_ref) = self.constants.get(name) {
+                        const_ref
+                    } else if let Some(var_ref) = self.variables.get(name) {
+                        var_ref
+                    } else {
+                        return Err(EvalError::UndefinedVariable);
+                    };
+
+                    stack.push(num.clone().with_cancellation(ct.clone()))
+                }
+
+                OperationType::FnCall { name, arity } => {
+                    let Some(funs) = self.functions.get(name) else {
+                        return Err(EvalError::UndefinedFunction);
+                    };
+                    let Some(EvalFunction(_, fun)) =
+                        funs.iter().find(|EvalFunction(a, _)| a == arity)
+                    else {
+                        return Err(EvalError::InvalidArgumentCount);
+                    };
+                    fun.call(&mut stack, self)?
+                }
+            }
+        }
+
+        stack.pop_result()
+    }
+
+    fn evaluate_binary(
+        &self,
+        token_kind: &TokenKind,
+        stack: &mut Vec<Num>,
+    ) -> Result<(), EvalError> {
+        let rhs = stack.pop_result()?;
+        let lhs = stack.pop_result()?;
+
+        let result = match token_kind {
+            TokenKind::Plus => lhs + rhs,
+            TokenKind::Minus => lhs - rhs,
+            TokenKind::Multiply => lhs * rhs,
+            TokenKind::Divide => lhs / rhs,
+            TokenKind::Exponentiate => lhs.pow(rhs),
+            TokenKind::Radical => todo!(),
+            _ => return Err(EvalError::InvalidProgram),
+        }?;
+        stack.push(result);
+        Ok(())
+    }
+
+    fn evaluate_unary(
+        &self,
+        token_kind: &TokenKind,
+        stack: &mut Vec<Num>,
+    ) -> Result<(), EvalError> {
+        let val = stack.pop_result()?;
+        let result = match token_kind {
+            TokenKind::Minus => Ok(val.neg()),
+            TokenKind::Radical => val.sqrt(),
+            TokenKind::CubeRoot => todo!(),
+            TokenKind::FourthRoot => todo!(),
+            TokenKind::Percent => val.div(Num::from(100)),
+            TokenKind::Factorial => val.fact(),
+            TokenKind::Deg => angle_unit_to_radians(val, AngleUnit::Degrees),
+            TokenKind::Rad => angle_unit_to_radians(val, AngleUnit::Radians),
+            TokenKind::Grad => angle_unit_to_radians(val, AngleUnit::Gradians),
+            _ => return Err(EvalError::InvalidProgram),
+        }?;
+        stack.push(result);
+        Ok(())
+    }
 }
 
 impl<Num: Number> Default for Evaluator<Num> {
     fn default() -> Self {
         Self::new()
     }
+}
+trait VecEvalErrorExtensions<T> {
+    fn pop_result(&mut self) -> Result<T, EvalError>;
+}
+
+impl<T> VecEvalErrorExtensions<T> for Vec<T> {
+    fn pop_result(&mut self) -> Result<T, EvalError> {
+        match self.pop() {
+            Some(x) => Ok(x),
+            None => Err(EvalError::InvalidProgram),
+        }
+    }
+}
+
+fn angle_unit_to_radians<Num: Number>(num: Num, angle_unit: AngleUnit) -> Result<Num, NumError> {
+    Ok(match angle_unit {
+        AngleUnit::Degrees => num.degrees_to_radians()?,
+        AngleUnit::Radians => num,
+        AngleUnit::Gradians => num.gradians_to_radians()?,
+    })
+}
+
+fn radians_to_angle_unit<Num: Number>(num: Num, angle_unit: AngleUnit) -> Result<Num, NumError> {
+    Ok(match angle_unit {
+        AngleUnit::Degrees => num.radians_to_degrees()?,
+        AngleUnit::Radians => num,
+        AngleUnit::Gradians => num.radians_to_gradians()?,
+    })
 }

@@ -1,11 +1,13 @@
 use tcalc_num::{error::NumError, number::Number};
 
+#[derive(Clone, Debug)]
 pub enum EvalValue<Num: Number> {
     Numeric(Num),
     AssignedVariable { variable_name: String, value: Num },
     Comparison(bool),
 }
 
+#[derive(Clone, Debug)]
 pub enum EvalError {
     NumberError(NumError),
     AssignToConstant,

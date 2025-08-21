@@ -3,7 +3,7 @@ use crate::{source_pos::SourcePos, token::TokenKind};
 type Number = String;
 
 #[derive(Debug, Clone)]
-pub enum Op {
+pub enum OperationType {
     Binary(TokenKind),
     Unary(TokenKind),
     Literal(Number),
@@ -13,27 +13,27 @@ pub enum Op {
 
 #[derive(Debug, Clone)]
 pub struct Operation {
-    pub op: Op,
+    pub op_type: OperationType,
     pub position: SourcePos,
 }
 
 #[derive(Debug, Clone)]
-pub struct Computation {
-    pub ops: Vec<Operation>,
+pub struct Expression {
+    pub operations: Vec<Operation>,
     pub position: SourcePos,
 }
 
 #[derive(Debug, Clone)]
-pub enum Expression {
-    Arithmetic(Computation),
+pub enum Statement {
+    Arithmetic(Expression),
     Assignment {
         var: String,
-        comp: Computation,
+        comp: Expression,
         position: SourcePos,
     },
     Boolean {
-        lhs: Computation,
-        rhs: Computation,
+        lhs: Expression,
+        rhs: Expression,
         kind: TokenKind,
         position: SourcePos,
     },

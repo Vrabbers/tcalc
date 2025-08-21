@@ -2,7 +2,7 @@ use std::mem;
 
 use crate::{
     diagnostics::{Diagnostic, DiagnosticType},
-    expressions::{Computation, Expression, Op, Operation},
+    expressions::{Expression, Operation, OperationType, Statement},
     lexer::Lexer,
     source_pos::SourcePos,
     token::{Token, TokenKind},
@@ -117,7 +117,7 @@ fn from_superscript_op(kind: TokenKind) -> Option<TokenKind> {
 }
 
 impl Iterator for Parser {
-    type Item = Expression;
+    type Item = Statement;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.at_end() {
@@ -136,7 +136,7 @@ impl Parser {
         }
     }
 
-    pub fn parse_all(&mut self) -> Vec<Expression> {
+    pub fn parse_all(&mut self) -> Vec<Statement> {
         let mut expr = Vec::new();
         loop {
             expr.push(self.parse_expression());
@@ -148,7 +148,7 @@ impl Parser {
         expr
     }
 
-    fn parse_expression(&mut self) -> Expression {
+    fn parse_expression(&mut self) -> Statement {
         let lhs_start = self.current.position.start;
         let mut lhs_parse = Vec::new();
         self.parse_arithmetic(&mut lhs_parse);
@@ -156,15 +156,15 @@ impl Parser {
 
         if lhs_parse.is_empty() {
             self.expect_end();
-            return Expression::Arithmetic(Computation {
-                ops: lhs_parse,
+            return Statement::Arithmetic(Expression {
+                operations: lhs_parse,
                 position: SourcePos::new(lhs_start, lhs_end),
             });
         }
 
         if self.current.kind == TokenKind::Equal
             && lhs_parse.len() == 1
-            && let Op::VarRef(var) = lhs_parse.pop().unwrap().op
+            && let OperationType::VarRef(var) = lhs_parse.pop().unwrap().op_type
         {
             return self.parse_variable_assignment(lhs_start, var);
         }
@@ -183,8 +183,8 @@ impl Parser {
 
             _ => {
                 self.expect_end();
-                Expression::Arithmetic(Computation {
-                    ops: lhs_parse,
+                Statement::Arithmetic(Expression {
+                    operations: lhs_parse,
                     position: SourcePos::new(lhs_start, lhs_end),
                 })
             }
@@ -232,19 +232,19 @@ impl Parser {
                     return;
                 }
                 parse.push(Operation {
-                    op: Op::Literal(num_str),
+                    op_type: OperationType::Literal(num_str),
                     position: unary_op.position,
                 });
                 self.parse_arithmetic_prec(parse, unary_prec);
                 let position = SourcePos::new(unary_op.position.start, radical.position.end);
                 parse.push(Operation {
-                    op: Op::Binary(TokenKind::Radical),
+                    op_type: OperationType::Binary(TokenKind::Radical),
                     position,
                 });
             } else {
                 self.parse_arithmetic_prec(parse, unary_prec);
                 parse.push(Operation {
-                    op: Op::Unary(unary_op.kind),
+                    op_type: OperationType::Unary(unary_op.kind),
                     position: unary_op.position,
                 });
             }
@@ -271,13 +271,13 @@ impl Parser {
                 let exp_pos = self.current.position;
                 self.parse_superscript(parse);
                 parse.push(Operation {
-                    op: Op::Binary(TokenKind::Exponentiate),
+                    op_type: OperationType::Binary(TokenKind::Exponentiate),
                     position: exp_pos,
                 });
                 continue;
             } else if is_postfix_operator(self.current.kind) {
                 parse.push(Operation {
-                    op: Op::Unary(self.current.kind),
+                    op_type: OperationType::Unary(self.current.kind),
                     position: self.forward().position,
                 });
                 continue;
@@ -287,7 +287,7 @@ impl Parser {
 
             self.parse_arithmetic_prec_assoc(parse, prec, is_right_assoc(op_kind));
             parse.push(Operation {
-                op: Op::Binary(op_kind),
+                op_type: OperationType::Binary(op_kind),
                 position,
             });
         }
@@ -299,7 +299,7 @@ impl Parser {
             TokenKind::Identifier => {
                 if self.current.kind != TokenKind::OpenParenthesis {
                     parse.push(Operation {
-                        op: Op::VarRef(token.source),
+                        op_type: OperationType::VarRef(token.source),
                         position: token.position,
                     });
                 } else {
@@ -317,7 +317,7 @@ impl Parser {
                 }
 
                 parse.push(Operation {
-                    op: Op::Literal(str),
+                    op_type: OperationType::Literal(str),
                     position: token.position,
                 });
             }
@@ -340,7 +340,7 @@ impl Parser {
 
         while let Some(binary_op_kind) = from_superscript_op(self.current.kind) {
             let bin_op = Operation {
-                op: Op::Binary(binary_op_kind),
+                op_type: OperationType::Binary(binary_op_kind),
                 position: self.current.position,
             };
             self.forward();
@@ -355,7 +355,7 @@ impl Parser {
             if let Some(kind) = from_superscript_op(unary_op_token.kind) {
                 self.parse_super_num(parse);
                 parse.push(Operation {
-                    op: Op::Unary(kind),
+                    op_type: OperationType::Unary(kind),
                     position: unary_op_token.position,
                 });
             } else {
@@ -375,7 +375,7 @@ impl Parser {
 
         let num_str = token.source.chars().map(to_decimal).collect::<String>();
         parse.push(Operation {
-            op: Op::Literal(num_str),
+            op_type: OperationType::Literal(num_str),
             position: token.position,
         });
     }
@@ -386,20 +386,20 @@ impl Parser {
         lhs_end: usize,
         lhs_parse: Vec<Operation>,
         kind: TokenKind,
-    ) -> Expression {
+    ) -> Statement {
         let rhs_start = self.current.position.start;
         let mut rhs_parse = Vec::new();
         self.parse_arithmetic(&mut rhs_parse);
         let rhs_end = self.current.position.end;
         self.expect_end();
 
-        Expression::Boolean {
-            lhs: Computation {
-                ops: lhs_parse,
+        Statement::Boolean {
+            lhs: Expression {
+                operations: lhs_parse,
                 position: SourcePos::new(lhs_start, lhs_end),
             },
-            rhs: Computation {
-                ops: rhs_parse,
+            rhs: Expression {
+                operations: rhs_parse,
                 position: SourcePos::new(rhs_start, rhs_end),
             },
             kind,
@@ -413,7 +413,7 @@ impl Parser {
         if self.current.kind == TokenKind::CloseParenthesis {
             self.forward();
             parse.push(Operation {
-                op: Op::FnCall {
+                op_type: OperationType::FnCall {
                     name: name.source,
                     arity: 0,
                 },
@@ -439,7 +439,7 @@ impl Parser {
         }
 
         parse.push(Operation {
-            op: Op::FnCall {
+            op_type: OperationType::FnCall {
                 name: name.source,
                 arity,
             },
@@ -454,17 +454,17 @@ impl Parser {
         self.forward();
     }
 
-    fn parse_variable_assignment(&mut self, lhs_start: usize, var: String) -> Expression {
+    fn parse_variable_assignment(&mut self, lhs_start: usize, var: String) -> Statement {
         self.forward();
         let rhs_start = self.current.position.start;
         let mut rhs_parse = Vec::new();
         self.parse_arithmetic(&mut rhs_parse);
         let rhs_end = self.current.position.end;
         self.expect_end();
-        Expression::Assignment {
+        Statement::Assignment {
             var,
-            comp: Computation {
-                ops: rhs_parse,
+            comp: Expression {
+                operations: rhs_parse,
                 position: SourcePos::new(rhs_start, rhs_end),
             },
             position: SourcePos::new(lhs_start, rhs_end),

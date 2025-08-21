@@ -5,6 +5,7 @@ use std::{
     str::FromStr,
 };
 
+use cancellation_token::CancellationToken;
 use num::{bigint::Sign, traits::Inv};
 
 use crate::error::NumResult;
@@ -17,6 +18,7 @@ pub trait Number:
     + Div<Output = NumResult<Self>>
     + Inv<Output = NumResult<Self>>
     + FromStr
+    + From<i32>
     + Display
     + Debug
     + Sized
@@ -35,6 +37,8 @@ pub trait Number:
 
     fn degrees_to_radians(&self) -> NumResult<Self>;
     fn radians_to_degrees(&self) -> NumResult<Self>;
+    fn gradians_to_radians(&self) -> NumResult<Self>;
+    fn radians_to_gradians(&self) -> NumResult<Self>;
 
     fn sin(&self) -> NumResult<Self>;
     fn cos(&self) -> NumResult<Self>;
@@ -47,4 +51,6 @@ pub trait Number:
     fn sinh(&self) -> NumResult<Self>;
     fn cosh(&self) -> NumResult<Self>;
     fn tanh(&self) -> NumResult<Self>;
+
+    fn with_cancellation(self, ct: CancellationToken) -> Self;
 }

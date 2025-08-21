@@ -21,7 +21,7 @@ use crate::number::Number;
 use crate::rational_extensions::RationalExtensions;
 use crate::real::constants::{
     E, HALF, HALF_SQRT_2, HALF_SQRT_3, PI_OVER_2, PI_OVER_3, PI_OVER_4, PI_OVER_6,
-    RADIANS_PER_DEGREE, SQRT_3, THIRD_SQRT_3, TWO, ZERO,
+    RADIANS_PER_DEGREE, RADIANS_PER_GRADIAN, SQRT_3, THIRD_SQRT_3, TWO, ZERO,
 };
 use crate::real::cr_property::{CRProperty, OptionalCRProperty};
 use cancellation_token::CancellationToken;
@@ -390,6 +390,14 @@ impl Number for Real {
         self.clone() / RADIANS_PER_DEGREE.clone()
     }
 
+    fn gradians_to_radians(&self) -> NumResult<Self> {
+        self.clone() * RADIANS_PER_GRADIAN.clone()
+    }
+
+    fn radians_to_gradians(&self) -> NumResult<Self> {
+        self.clone() / RADIANS_PER_GRADIAN.clone()
+    }
+
     fn sin(&self) -> NumResult<Self> {
         if let Some(pi_twelfths) = self.get_pi_twelfths()
             && let Some(result) = sin_pi_twelfths(pi_twelfths.to_i32().unwrap())
@@ -594,6 +602,11 @@ impl Number for Real {
     fn tanh(&self) -> NumResult<Self> {
         // TODO: Try to detect special identities
         self.clone().sinh()? / self.clone().cosh()?
+    }
+
+    fn with_cancellation(mut self, ct: CancellationToken) -> Self {
+        self.cr.cancellation_token = ct;
+        self
     }
 }
 
