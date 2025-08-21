@@ -1,6 +1,3 @@
-#![feature(gen_blocks)]
-#![feature(rwlock_data_ptr)]
-
 mod angle_unit;
 mod bigint_extensions;
 mod constructive_real;

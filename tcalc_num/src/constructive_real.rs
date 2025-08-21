@@ -830,10 +830,7 @@ impl From<ConstructiveReal> for NumResult<f64> {
 
 impl PartialEq for ConstructiveReal {
     fn eq(&self, other: &Self) -> bool {
-        ptr::eq(
-            self.current_approximation.data_ptr(),
-            other.current_approximation.data_ptr(),
-        )
+        Arc::ptr_eq(&self.current_approximation, &other.current_approximation)
     }
 }
 
