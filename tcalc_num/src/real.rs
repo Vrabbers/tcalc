@@ -608,6 +608,31 @@ impl Number for Real {
         self.cr.cancellation_token = ct;
         self
     }
+
+    fn eq(&self, rhs: &Self) -> NumResult<bool> {
+        self.approx_equals(rhs, DEFAULT_COMPARISON_TOLERANCE)
+    }
+
+    fn ne(&self, rhs: &Self) -> NumResult<bool> {
+        self.approx_equals(rhs, DEFAULT_COMPARISON_TOLERANCE)
+            .and_then(|x| Ok(!x))
+    }
+
+    fn gt(&self, _rhs: &Self) -> NumResult<bool> {
+        todo!()
+    }
+
+    fn ge(&self, _rhs: &Self) -> NumResult<bool> {
+        todo!()
+    }
+
+    fn lt(&self, _rhs: &Self) -> NumResult<bool> {
+        todo!()
+    }
+
+    fn le(&self, _rhs: &Self) -> NumResult<bool> {
+        todo!()
+    }
 }
 
 impl Real {

@@ -52,5 +52,12 @@ pub trait Number:
     fn cosh(&self) -> NumResult<Self>;
     fn tanh(&self) -> NumResult<Self>;
 
+    fn eq(&self, rhs: &Self) -> NumResult<bool>;
+    fn ne(&self, rhs: &Self) -> NumResult<bool>;
+    fn gt(&self, rhs: &Self) -> NumResult<bool>;
+    fn ge(&self, rhs: &Self) -> NumResult<bool>;
+    fn lt(&self, rhs: &Self) -> NumResult<bool>;
+    fn le(&self, rhs: &Self) -> NumResult<bool>;
+
     fn with_cancellation(self, ct: CancellationToken) -> Self;
 }

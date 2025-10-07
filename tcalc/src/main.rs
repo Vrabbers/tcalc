@@ -12,6 +12,7 @@ fn read() -> String {
 
 fn main() {
     println!("tcalc");
+    let mut eval = Evaluator::<Real>::new();
     loop {
         let mut lines: Vec<String> = Vec::new();
 
@@ -28,19 +29,17 @@ fn main() {
         let lex = Lexer::new(src, true);
         let mut par = Parser::new(lex);
 
-        let eval = Evaluator::<Real>::new();
-
-
         for expr in par.by_ref() {
             println!("{expr:#?}");
             let res = eval.evaluate(&expr, CancellationToken::default());
             println!("{res:#?}");
+            if let Ok(val) = res {
+                eval.apply_evaluation_effects(val);
+            }
         }
 
         for e in par.diagnostic_bag() {
             println!("{e:?}");
         }
-
-        
     }
 }

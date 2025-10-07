@@ -42,6 +42,14 @@ impl<Num: Number> Evaluator<Num> {
         }
     }
 
+    pub fn apply_evaluation_effects(&mut self, val: EvalValue<Num>) {
+        match val {
+            EvalValue::Numeric(n) => { self.variables.insert("ans".to_string(), n); },
+            EvalValue::AssignedVariable { variable_name, value } => { self.variables.insert(variable_name, value); },
+            EvalValue::Comparison(_) => (),
+        }
+    }
+
     pub fn evaluate(&self, statement: &Statement, ct: CancellationToken) -> EvalResult<Num> {
         match statement {
             Statement::Arithmetic(expression) => Ok(EvalValue::Numeric(
@@ -50,15 +58,38 @@ impl<Num: Number> Evaluator<Num> {
             Statement::Assignment {
                 var,
                 comp,
-                position,
-            } => todo!(),
+                position: _,
+            } => self.evaluate_assignment(var, comp, ct),
             Statement::Boolean {
                 lhs,
                 rhs,
                 kind,
-                position,
-            } => todo!(),
+                position: _,
+            } => self.evaluate_boolean(lhs, rhs, *kind, ct),
         }
+    }
+
+    fn evaluate_assignment(&self, var: &String, comp: &Expression, ct: CancellationToken) -> EvalResult<Num> {
+        if self.constants.contains_key(var) {
+            Err(EvalError::AssignToConstant)
+        } else {
+            Ok(EvalValue::AssignedVariable { variable_name: var.clone(), value: self.evaluate_arithmetic(comp, ct)? })
+        }
+    }
+
+    fn evaluate_boolean(&self, lhs: &Expression, rhs: &Expression, kind: TokenKind, ct: CancellationToken) -> EvalResult<Num> {
+        let left = self.evaluate_arithmetic(lhs, ct.clone())?;
+        let right = self.evaluate_arithmetic(rhs, ct)?;
+        let fun = match kind {
+            TokenKind::GreaterThan => Num::gt,
+            TokenKind::GreaterOrEqual => Num::ge,
+            TokenKind::LessThan => Num::lt,
+            TokenKind::LessOrEqual => Num::le,
+            TokenKind::Equality => Num::eq,
+            TokenKind::NotEqual => Num::ne,
+            _ => Err(EvalError::InvalidProgram)?,
+        };
+        Ok(EvalValue::Comparison(fun(&left, &right)?))
     }
 
     fn evaluate_arithmetic(
@@ -110,6 +141,7 @@ impl<Num: Number> Evaluator<Num> {
         stack.pop_result()
     }
 
+
     fn evaluate_binary(
         &self,
         token_kind: &TokenKind,
@@ -124,7 +156,7 @@ impl<Num: Number> Evaluator<Num> {
             TokenKind::Multiply => lhs * rhs,
             TokenKind::Divide => lhs / rhs,
             TokenKind::Exponentiate => lhs.pow(rhs),
-            TokenKind::Radical => todo!(),
+            TokenKind::Radical => rhs.pow(lhs.inv()?), // TODO
             _ => return Err(EvalError::InvalidProgram),
         }?;
         stack.push(result);
@@ -140,8 +172,8 @@ impl<Num: Number> Evaluator<Num> {
         let result = match token_kind {
             TokenKind::Minus => Ok(val.neg()),
             TokenKind::Radical => val.sqrt(),
-            TokenKind::CubeRoot => todo!(),
-            TokenKind::FourthRoot => todo!(),
+            TokenKind::CubeRoot => val.pow(Num::from(3).inv()?), // TODO
+            TokenKind::FourthRoot => val.pow(Num::from(4).inv()?), // TODO
             TokenKind::Percent => val.div(Num::from(100)),
             TokenKind::Factorial => val.fact(),
             TokenKind::Deg => angle_unit_to_radians(val, AngleUnit::Degrees),
