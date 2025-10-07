@@ -92,12 +92,36 @@ fn builtin_pow<Num: Number>() -> EvalFunction<Num> {
     )
 }
 
+fn builtin_log2<Num: Number>() -> EvalFunction<Num> {
+    EvalFunction(
+        2,
+        Box::new(|stack: &mut Vec<Num>, _evaluator: &Evaluator<Num>| {
+            let second = stack.pop_result()?;
+            let first = stack.pop_result()?;
+            stack.push((first.log()? / second.log()?)?);
+            Ok(())
+        }),
+    )
+}
+
+fn builtin_cbrt<Num: Number>() -> EvalFunction<Num> {
+    EvalFunction(
+        1,
+        Box::new(|stack: &mut Vec<Num>, _evaluator: &Evaluator<Num>| {
+            let val = stack.pop_result()?;
+            stack.push(val.pow(Num::from(3).inv()?)?);
+            Ok(())
+        }),
+    )
+}
+
 pub fn basic_builtins<Num: Number>() -> HashMap<String, Vec<EvalFunction<Num>>> {
     HashMap::from(
         [
             ("sqrt", vec![builtin1(&Num::sqrt)]),
+            ("cbrt", vec![builtin_cbrt()]),
             ("exp", vec![builtin1(&Num::exp)]),
-            ("log", vec![builtin1(&Num::log)]),
+            ("log", vec![builtin1(&Num::log), builtin_log2()]),
             ("ln", vec![builtin1(&Num::ln)]),
             ("abs", vec![builtin1(&Num::abs)]),
             ("fact", vec![builtin1(&Num::fact)]),
