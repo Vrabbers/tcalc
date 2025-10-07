@@ -618,20 +618,21 @@ impl Number for Real {
             .and_then(|x| Ok(!x))
     }
 
-    fn gt(&self, _rhs: &Self) -> NumResult<bool> {
-        todo!()
+    fn gt(&self, rhs: &Self) -> NumResult<bool> {
+        Ok(self.compare_to(rhs)? == Ordering::Greater)
     }
 
-    fn ge(&self, _rhs: &Self) -> NumResult<bool> {
-        todo!()
+    fn ge(&self, rhs: &Self) -> NumResult<bool> {
+        Ok(self.compare_to(rhs)? != Ordering::Less)
     }
 
-    fn lt(&self, _rhs: &Self) -> NumResult<bool> {
-        todo!()
+    fn lt(&self, rhs: &Self) -> NumResult<bool> {
+        Ok(self.compare_to(rhs)? == Ordering::Less)
+
     }
 
-    fn le(&self, _rhs: &Self) -> NumResult<bool> {
-        todo!()
+    fn le(&self, rhs: &Self) -> NumResult<bool> {
+        Ok(self.compare_to(rhs)? != Ordering::Greater)
     }
 }
 
