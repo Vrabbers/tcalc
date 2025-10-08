@@ -52,6 +52,10 @@ pub trait Number:
     fn cosh(&self) -> NumResult<Self>;
     fn tanh(&self) -> NumResult<Self>;
 
+    fn pi() -> Self;
+    fn tau() -> Self;
+    fn e() -> Self;
+
     fn eq(&self, rhs: &Self) -> NumResult<bool>;
     fn ne(&self, rhs: &Self) -> NumResult<bool>;
     fn gt(&self, rhs: &Self) -> NumResult<bool>;

@@ -1,4 +1,4 @@
-use crate::evaluator::builtins::basic_builtins;
+use crate::evaluator::builtins::{basic_builtin_consts, basic_builtins};
 use crate::evaluator::eval_result::{EvalError, EvalResult, EvalValue};
 use crate::expressions::{Expression, OperationType, Statement};
 use crate::token::TokenKind;
@@ -35,7 +35,7 @@ pub struct EvalFunction<Num: Number>(pub i32, pub Box<dyn EvalFn<Num>>);
 impl<Num: Number> Evaluator<Num> {
     pub fn new() -> Self {
         Self {
-            constants: HashMap::new(),
+            constants: basic_builtin_consts(),
             variables: HashMap::new(),
             functions: basic_builtins(),
             angle_unit: AngleUnit::Degrees,
@@ -86,6 +86,7 @@ impl<Num: Number> Evaluator<Num> {
             TokenKind::LessThan => Num::lt,
             TokenKind::LessOrEqual => Num::le,
             TokenKind::Equality => Num::eq,
+            TokenKind::Equal => Num::eq,
             TokenKind::NotEqual => Num::ne,
             _ => Err(EvalError::InvalidProgram)?,
         };

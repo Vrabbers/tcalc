@@ -19,6 +19,7 @@ use crate::error::OrdinalDomainViolation::{
 use crate::error::{CancelCheckable, NumError, NumResult};
 use crate::number::Number;
 use crate::rational_extensions::RationalExtensions;
+use crate::real;
 use crate::real::constants::{
     E, HALF, HALF_SQRT_2, HALF_SQRT_3, PI_OVER_2, PI_OVER_3, PI_OVER_4, PI_OVER_6,
     RADIANS_PER_DEGREE, RADIANS_PER_GRADIAN, SQRT_3, THIRD_SQRT_3, TWO, ZERO,
@@ -615,7 +616,7 @@ impl Number for Real {
 
     fn ne(&self, rhs: &Self) -> NumResult<bool> {
         self.approx_equals(rhs, DEFAULT_COMPARISON_TOLERANCE)
-            .and_then(|x| Ok(!x))
+            .map(|x| !x)
     }
 
     fn gt(&self, rhs: &Self) -> NumResult<bool> {
@@ -628,11 +629,22 @@ impl Number for Real {
 
     fn lt(&self, rhs: &Self) -> NumResult<bool> {
         Ok(self.compare_to(rhs)? == Ordering::Less)
-
     }
 
     fn le(&self, rhs: &Self) -> NumResult<bool> {
         Ok(self.compare_to(rhs)? != Ordering::Greater)
+    }
+
+    fn pi() -> Self {
+        real::constants::PI.clone()
+    }
+
+    fn tau() -> Self {
+        real::constants::TAU.clone()
+    }
+
+    fn e() -> Self {
+        real::constants::E.clone()
     }
 }
 

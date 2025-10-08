@@ -8,6 +8,8 @@ use std::sync::LazyLock;
 pub static PI: LazyLock<Real> =
     LazyLock::new(|| Real::new_from_cr(constructive_real::constants::PI.clone()));
 
+pub static TAU: LazyLock<Real> = LazyLock::new(|| (PI.clone() * TWO.clone()).unwrap());
+
 pub static E: LazyLock<Real> =
     LazyLock::new(|| Real::new_from_cr(constructive_real::constants::E.clone()));
 

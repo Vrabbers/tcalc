@@ -139,3 +139,16 @@ pub fn basic_builtins<Num: Number>() -> HashMap<String, Vec<EvalFunction<Num>>> 
         .map(|(n, fs)| (n.to_string(), fs)),
     )
 }
+
+pub fn basic_builtin_consts<Num: Number>() -> HashMap<String, Num> {
+    HashMap::from(
+        [
+            ("pi", Num::pi()),
+            ("π", Num::pi()),
+            ("tau", Num::tau()),
+            ("τ", Num::tau()),
+            ("e", Num::e()),
+        ]
+        .map(|(s, n)| (s.to_string(), n)),
+    )
+}
