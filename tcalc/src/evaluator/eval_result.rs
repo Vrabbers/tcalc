@@ -1,4 +1,5 @@
-use tcalc_num::{error::NumError, number::Number};
+use tcalc_num::number::Number;
+pub use tcalc_num::error::*;
 
 #[derive(Clone, Debug)]
 pub enum EvalValue<Num: Number> {

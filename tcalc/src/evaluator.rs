@@ -3,17 +3,21 @@ use crate::evaluator::eval_result::{EvalError, EvalResult, EvalValue};
 use crate::expressions::{Expression, OperationType, Statement};
 use crate::token::TokenKind;
 use std::collections::HashMap;
-
-use cancellation_token::CancellationToken;
+use std::rc::Rc;
+pub use cancellation_token::{CancellationToken, CancellationTokenSource};
 use tcalc_num::{angle_unit::AngleUnit, error::NumError, number::Number};
+
+pub use tcalc_num::real::Real;
 
 mod builtins;
 
 pub mod eval_result;
+
+#[derive(Clone)]
 pub struct Evaluator<Num: Number> {
     constants: HashMap<String, Num>,
     variables: HashMap<String, Num>,
-    functions: HashMap<String, Vec<EvalFunction<Num>>>,
+    functions: HashMap<String, Vec<Rc<EvalFunction<Num>>>>,
     angle_unit: AngleUnit,
 }
 
@@ -129,12 +133,12 @@ impl<Num: Number> Evaluator<Num> {
                     let Some(funs) = self.functions.get(name) else {
                         return Err(EvalError::UndefinedFunction);
                     };
-                    let Some(EvalFunction(_, fun)) =
-                        funs.iter().find(|EvalFunction(a, _)| a == arity)
+                    let Some(eval_function) =
+                        funs.iter().find(|eval_function| eval_function.0 == *arity)
                     else {
                         return Err(EvalError::InvalidArgumentCount);
                     };
-                    fun.call(&mut stack, self)?
+                    eval_function.1.call(&mut stack, self)?
                 }
             }
         }

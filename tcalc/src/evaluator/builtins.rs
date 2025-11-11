@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-
+use std::rc::Rc;
 use tcalc_num::{error::NumResult, number::Number};
 
 use crate::evaluator::{
@@ -115,26 +115,26 @@ fn builtin_cbrt<Num: Number>() -> EvalFunction<Num> {
     )
 }
 
-pub fn basic_builtins<Num: Number>() -> HashMap<String, Vec<EvalFunction<Num>>> {
+pub fn basic_builtins<Num: Number>() -> HashMap<String, Vec<Rc<EvalFunction<Num>>>> {
     HashMap::from(
         [
-            ("sqrt", vec![builtin1(&Num::sqrt)]),
-            ("cbrt", vec![builtin_cbrt()]),
-            ("exp", vec![builtin1(&Num::exp)]),
-            ("log", vec![builtin1(&Num::log), builtin_log2()]),
-            ("ln", vec![builtin1(&Num::ln)]),
-            ("abs", vec![builtin1(&Num::abs)]),
-            ("fact", vec![builtin1(&Num::fact)]),
-            ("sin", vec![builtin_trig(&Num::sin)]),
-            ("cos", vec![builtin_trig(&Num::cos)]),
-            ("tan", vec![builtin_trig(&Num::tan)]),
-            ("asin", vec![builtin_invtrig(&Num::asin)]),
-            ("acos", vec![builtin_invtrig(&Num::acos)]),
-            ("atan", vec![builtin_invtrig(&Num::atan)]),
-            ("sinh", vec![builtin1(&Num::sinh)]),
-            ("cosh", vec![builtin1(&Num::cosh)]),
-            ("tanh", vec![builtin1(&Num::tanh)]),
-            ("pow", vec![builtin_pow()]),
+            ("sqrt", vec![Rc::new(builtin1(&Num::sqrt))]),
+            ("cbrt", vec![Rc::new(builtin_cbrt())]),
+            ("exp", vec![Rc::new(builtin1(&Num::exp))]),
+            ("log", vec![Rc::new(builtin1(&Num::log)), Rc::new(builtin_log2())]),
+            ("ln", vec![Rc::new(builtin1(&Num::ln))]),
+            ("abs", vec![Rc::new(builtin1(&Num::abs))]),
+            ("fact", vec![Rc::new(builtin1(&Num::fact))]),
+            ("sin", vec![Rc::new(builtin_trig(&Num::sin))]),
+            ("cos", vec![Rc::new(builtin_trig(&Num::cos))]),
+            ("tan", vec![Rc::new(builtin_trig(&Num::tan))]),
+            ("asin", vec![Rc::new(builtin_invtrig(&Num::asin))]),
+            ("acos", vec![Rc::new(builtin_invtrig(&Num::acos))]),
+            ("atan", vec![Rc::new(builtin_invtrig(&Num::atan))]),
+            ("sinh", vec![Rc::new(builtin1(&Num::sinh))]),
+            ("cosh", vec![Rc::new(builtin1(&Num::cosh))]),
+            ("tanh", vec![Rc::new(builtin1(&Num::tanh))]),
+            ("pow", vec![Rc::new(builtin_pow())]),
         ]
         .map(|(n, fs)| (n.to_string(), fs)),
     )
