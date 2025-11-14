@@ -5,9 +5,9 @@ use crate::token::TokenKind;
 use std::collections::HashMap;
 use std::rc::Rc;
 pub use cancellation_token::{CancellationToken, CancellationTokenSource};
-use tcalc_num::{angle_unit::AngleUnit, error::NumError, number::Number};
+use tcalc_num::{error::NumError, number::Number};
 
-pub use tcalc_num::real::Real;
+pub use tcalc_num::{angle_unit::AngleUnit, real::Real};
 
 mod builtins;
 
@@ -44,6 +44,14 @@ impl<Num: Number> Evaluator<Num> {
             functions: basic_builtins(),
             angle_unit: AngleUnit::Degrees,
         }
+    }
+
+    pub fn angle_unit(&self) -> &AngleUnit {
+        &self.angle_unit
+    }
+
+    pub fn set_angle_unit(&mut self, angle_unit: AngleUnit) {
+        self.angle_unit = angle_unit;
     }
 
     pub fn apply_evaluation_effects(&mut self, val: EvalValue<Num>) {
