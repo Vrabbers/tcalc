@@ -44,7 +44,7 @@ impl ConstructiveRealType for PrescaledCosConstructive {
             current_term = scale(current_term * op_appr.clone(), op_prec);
             let divisor = BigInt::from(-n) * BigInt::from(n - 1);
             current_term /= divisor;
-            current_sum = current_sum.add(current_term.clone());
+            current_sum += current_term.clone();
         }
         Ok(scale(current_sum, calc_precision - precision))
     }

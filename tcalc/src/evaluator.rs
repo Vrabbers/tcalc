@@ -2,12 +2,12 @@ use crate::evaluator::builtins::{basic_builtin_consts, basic_builtins};
 use crate::evaluator::eval_result::{EvalError, EvalResult, EvalValue};
 use crate::expressions::{Expression, OperationType, Statement};
 use crate::token::TokenKind;
-use std::collections::HashMap;
-use std::rc::Rc;
 pub use cancellation_token::{CancellationToken, CancellationTokenSource};
-use tcalc_num::{error::NumError, number::Number};
+use std::collections::HashMap;
+use std::sync::Arc;
+use tcalc_num::{error::NumError};
 
-pub use tcalc_num::{angle_unit::AngleUnit, real::Real};
+pub use tcalc_num::{angle_unit::AngleUnit, real::Real, number::Number};
 
 mod builtins;
 
@@ -17,17 +17,17 @@ pub mod eval_result;
 pub struct Evaluator<Num: Number> {
     constants: HashMap<String, Num>,
     variables: HashMap<String, Num>,
-    functions: HashMap<String, Vec<Rc<EvalFunction<Num>>>>,
+    functions: HashMap<String, Vec<Arc<EvalFunction<Num>>>>,
     angle_unit: AngleUnit,
 }
 
-pub trait EvalFn<Num: Number> {
+pub trait EvalFn<Num: Number>: Send + Sync {
     fn call(&self, stack: &mut Vec<Num>, evaluator: &Evaluator<Num>) -> Result<(), EvalError>;
 }
 
 impl<F, Num: Number> EvalFn<Num> for F
 where
-    F: Fn(&mut Vec<Num>, &Evaluator<Num>) -> Result<(), EvalError>,
+    F: Fn(&mut Vec<Num>, &Evaluator<Num>) -> Result<(), EvalError> + Send + Sync,
 {
     fn call(&self, stack: &mut Vec<Num>, evaluator: &Evaluator<Num>) -> Result<(), EvalError> {
         self(stack, evaluator)
@@ -56,7 +56,7 @@ impl<Num: Number> Evaluator<Num> {
 
     pub fn apply_evaluation_effects(&mut self, val: EvalValue<Num>) {
         match val {
-            EvalValue::Numeric(n) => { self.variables.insert("ans".to_string(), n); },
+            EvalValue::Numeric(n) => { self.variables.insert("Ans".to_string(), n); },
             EvalValue::AssignedVariable { variable_name, value } => { self.variables.insert(variable_name, value); },
             EvalValue::Comparison(_) => (),
         }
@@ -83,7 +83,7 @@ impl<Num: Number> Evaluator<Num> {
 
     fn evaluate_assignment(&self, var: &String, comp: &Expression, ct: CancellationToken) -> EvalResult<Num> {
         if self.constants.contains_key(var) {
-            Err(EvalError::AssignToConstant)
+            Err(EvalError::AssignToConstant(var.clone()))
         } else {
             Ok(EvalValue::AssignedVariable { variable_name: var.clone(), value: self.evaluate_arithmetic(comp, ct)? })
         }
@@ -131,7 +131,7 @@ impl<Num: Number> Evaluator<Num> {
                     } else if let Some(var_ref) = self.variables.get(name) {
                         var_ref
                     } else {
-                        return Err(EvalError::UndefinedVariable);
+                        return Err(EvalError::UndefinedVariable(name.clone()));
                     };
 
                     stack.push(num.clone().with_cancellation(ct.clone()))
@@ -139,7 +139,7 @@ impl<Num: Number> Evaluator<Num> {
 
                 OperationType::FnCall { name, arity } => {
                     let Some(funs) = self.functions.get(name) else {
-                        return Err(EvalError::UndefinedFunction);
+                        return Err(EvalError::UndefinedFunction(name.clone()));
                     };
                     let Some(eval_function) =
                         funs.iter().find(|eval_function| eval_function.0 == *arity)

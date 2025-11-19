@@ -105,7 +105,7 @@ impl RationalExtensions for BigRational {
                     )
                 } else {
                     format!(
-                        "{}/{}{}",
+                        "{}{}/{}",
                         if self.numer().is_one() {
                             "".to_string()
                         } else {

@@ -255,6 +255,10 @@ fn test_sin() {
             .unwrap();
         assert!(number_1.definitely_equals(&number_2).unwrap());
     }
+
+    // sin(1) ≈ 0.01745241
+    let sin_one = Real::from_str("1").unwrap().sin().unwrap();
+    assert_eq!(sin_one.to_string_truncated_or_less(8).unwrap(), "0.01745241");
 }
 
 #[test]

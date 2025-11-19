@@ -11,9 +11,9 @@ pub enum EvalValue<Num: Number> {
 #[derive(Clone, Debug)]
 pub enum EvalError {
     NumberError(NumError),
-    AssignToConstant,
-    UndefinedVariable,
-    UndefinedFunction,
+    AssignToConstant(String),
+    UndefinedVariable(String),
+    UndefinedFunction(String),
     InvalidArgumentCount,
     ComplexInequality,
     InvalidProgram,
