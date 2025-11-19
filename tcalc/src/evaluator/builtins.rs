@@ -3,9 +3,7 @@ use crate::evaluator::{
     eval_result::EvalError, radians_to_angle_unit,
 };
 use std::collections::HashMap;
-use std::rc::Rc;
 use std::sync::Arc;
-use tcalc_num::error::NumError;
 use tcalc_num::{error::NumResult, number::Number};
 
 struct SimpleBuiltin<F>(F);

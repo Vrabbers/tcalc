@@ -263,7 +263,7 @@ impl Lexer {
         let mut peek = self.sr.peek();
 
         while peek
-            .map(|c| is_letter(c) || c.is_ascii_digit() && !is_superscript_digit(c))
+            .map(|c| (is_letter(c) || c.is_ascii_digit()) && !is_superscript_digit(c))
             .unwrap_or_default()
         {
             self.sr.forward();

@@ -27,7 +27,7 @@ impl StringReader {
     }
 
     pub fn forward(&mut self) -> Option<char> {
-        if let Some((l, c)) = self.str[self.start..].char_indices().next() {
+        if let Some((l, c)) = self.str[self.end..].char_indices().next() {
             self.end += l + c.len_utf8();
             self.current = Some(c);
         } else {

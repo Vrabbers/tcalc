@@ -2,7 +2,6 @@ use crate::constructive_real::{ConstructiveReal, ConstructiveRealType, bound_log
 use crate::error::{CancelCheckable, NumResult};
 use cancellation_token::CancellationToken;
 use num::{BigInt, One, Signed};
-use std::ops::Add;
 
 #[derive(Debug)]
 pub(crate) struct PrescaledCosConstructive(pub ConstructiveReal);
