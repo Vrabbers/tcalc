@@ -128,11 +128,11 @@ impl ConstructiveReal {
                     .approximate(eval_prec, self.cancellation_token.clone())?;
 
                 if let Some(current_approximation) = current_approximation_borrow.as_mut() {
-                    current_approximation.min_prec = precision;
+                    current_approximation.min_prec = eval_prec;
                     current_approximation.max_appr = result.clone();
                 } else {
                     current_approximation_borrow.replace(ConstructiveRealApproximation {
-                        min_prec: precision,
+                        min_prec: eval_prec,
                         max_appr: result.clone(),
                     });
                 }
@@ -516,28 +516,52 @@ impl ConstructiveReal {
     }
 
     pub fn cos(self) -> NumResult<ConstructiveReal> {
-        let rough_appr = self.get_appr(-1)?;
-        let abs_rough_appr = rough_appr.abs();
-        if abs_rough_appr >= BigInt::from(6) {
-            // Subtract multiples of PI
-            let multiplier = rough_appr / BigInt::from(6);
-            let adjustment = Self::pi() * ConstructiveReal::from(multiplier.clone());
-            if (multiplier & BigInt::one()).sign() == Sign::NoSign {
-                Ok(-(self - adjustment).cos()?)
+        let halfpi_multiplies = (self.clone() / Self::pi()).get_appr(-1)?;
+        let abs_halfpi_multiplies = halfpi_multiplies.abs();
+
+        if abs_halfpi_multiplies >= BigInt::from(2) {
+            // Subtract multiples of pi
+            let pi_multiples = scale(halfpi_multiplies, -1);
+            let adjustment = Self::pi() * Self::from(pi_multiples.clone());
+            if (pi_multiples & BigInt::one()).sign() != Sign::NoSign {
+                return (self - adjustment).cos().map(Self::neg);
             } else {
-                (self - adjustment).cos()
+                return (self - adjustment).cos();
             }
-        } else if abs_rough_appr >= BigInt::from(2) {
+        } else if self.get_appr(-1)?.abs() >= BigInt::from(2) {
             // Scale further with double angle formula
             let cos_half = (self >> 1)?.cos()?;
-            Ok(((cos_half.clone() * cos_half) << 1)? - ConstructiveReal::from(1))
+            return Ok(((cos_half.clone() * cos_half) << 1)? - ConstructiveReal::from(1));
         } else {
-            Ok(ConstructiveReal {
+            return Ok(ConstructiveReal {
                 cancellation_token: self.cancellation_token.clone(),
                 t: Arc::new(PrescaledCosConstructive(self)),
-                ..ConstructiveReal::default()
-            })
+                ..Default::default()
+            });
         }
+
+        // let rough_appr = (self / Self::pi()).get_appr(-1)?;
+        // let abs_rough_appr = rough_appr.abs();
+        // if abs_rough_appr >= BigInt::from(6) {
+        //     // Subtract multiples of PI
+        //     let multiplier = rough_appr / BigInt::from(6);
+        //     let adjustment = Self::pi() * ConstructiveReal::from(multiplier.clone());
+        //     if (multiplier & BigInt::one()).sign() == Sign::NoSign {
+        //         Ok(-(self - adjustment).cos()?)
+        //     } else {
+        //         (self - adjustment).cos()
+        //     }
+        // } else if abs_rough_appr >= BigInt::from(2) {
+        //     // Scale further with double angle formula
+        //     let cos_half = (self >> 1)?.cos()?;
+        //     Ok(((cos_half.clone() * cos_half) << 1)? - ConstructiveReal::from(1))
+        // } else {
+        //     Ok(ConstructiveReal {
+        //         cancellation_token: self.cancellation_token.clone(),
+        //         t: Arc::new(PrescaledCosConstructive(self)),
+        //         ..ConstructiveReal::default()
+        //     })
+        // }
     }
 
     pub fn tan(self) -> NumResult<ConstructiveReal> {

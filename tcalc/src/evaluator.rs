@@ -5,9 +5,9 @@ use crate::token::TokenKind;
 pub use cancellation_token::{CancellationToken, CancellationTokenSource};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tcalc_num::{error::NumError};
+use tcalc_num::error::NumError;
 
-pub use tcalc_num::{angle_unit::AngleUnit, real::Real, number::Number};
+pub use tcalc_num::{angle_unit::AngleUnit, number::Number, real::Real};
 
 mod builtins;
 
@@ -56,8 +56,15 @@ impl<Num: Number> Evaluator<Num> {
 
     pub fn apply_evaluation_effects(&mut self, val: EvalValue<Num>) {
         match val {
-            EvalValue::Numeric(n) => { self.variables.insert("Ans".to_string(), n); },
-            EvalValue::AssignedVariable { variable_name, value } => { self.variables.insert(variable_name, value); },
+            EvalValue::Numeric(n) => {
+                self.variables.insert("Ans".to_string(), n);
+            }
+            EvalValue::AssignedVariable {
+                variable_name,
+                value,
+            } => {
+                self.variables.insert(variable_name, value);
+            }
             EvalValue::Comparison(_) => (),
         }
     }
@@ -81,15 +88,29 @@ impl<Num: Number> Evaluator<Num> {
         }
     }
 
-    fn evaluate_assignment(&self, var: &String, comp: &Expression, ct: CancellationToken) -> EvalResult<Num> {
+    fn evaluate_assignment(
+        &self,
+        var: &String,
+        comp: &Expression,
+        ct: CancellationToken,
+    ) -> EvalResult<Num> {
         if self.constants.contains_key(var) {
             Err(EvalError::AssignToConstant(var.clone()))
         } else {
-            Ok(EvalValue::AssignedVariable { variable_name: var.clone(), value: self.evaluate_arithmetic(comp, ct)? })
+            Ok(EvalValue::AssignedVariable {
+                variable_name: var.clone(),
+                value: self.evaluate_arithmetic(comp, ct)?,
+            })
         }
     }
 
-    fn evaluate_boolean(&self, lhs: &Expression, rhs: &Expression, kind: TokenKind, ct: CancellationToken) -> EvalResult<Num> {
+    fn evaluate_boolean(
+        &self,
+        lhs: &Expression,
+        rhs: &Expression,
+        kind: TokenKind,
+        ct: CancellationToken,
+    ) -> EvalResult<Num> {
         let left = self.evaluate_arithmetic(lhs, ct.clone())?;
         let right = self.evaluate_arithmetic(rhs, ct)?;
         let fun = match kind {
@@ -154,7 +175,6 @@ impl<Num: Number> Evaluator<Num> {
         stack.pop_result()
     }
 
-
     fn evaluate_binary(
         &self,
         token_kind: &TokenKind,
@@ -189,9 +209,9 @@ impl<Num: Number> Evaluator<Num> {
             TokenKind::FourthRoot => val.pow(Num::from(4).inv()?), // TODO
             TokenKind::Percent => val.div(Num::from(100)),
             TokenKind::Factorial => val.fact(),
-            TokenKind::Deg => angle_unit_to_radians(val, AngleUnit::Degrees),
-            TokenKind::Rad => angle_unit_to_radians(val, AngleUnit::Radians),
-            TokenKind::Grad => angle_unit_to_radians(val, AngleUnit::Gradians),
+            TokenKind::Deg => radians_to_angle_unit(val.degrees_to_radians()?, self.angle_unit),
+            TokenKind::Rad => radians_to_angle_unit(val, self.angle_unit),
+            TokenKind::Grad => radians_to_angle_unit(val.gradians_to_radians()?, self.angle_unit),
             _ => return Err(EvalError::InvalidProgram),
         }?;
         stack.push(result);

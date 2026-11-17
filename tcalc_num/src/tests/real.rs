@@ -256,9 +256,17 @@ fn test_sin() {
         assert!(number_1.definitely_equals(&number_2).unwrap());
     }
 
-    // sin(1) ≈ 0.01745241
-    let sin_one = Real::from_str("1").unwrap().sin().unwrap();
-    assert_eq!(sin_one.to_string_truncated_or_less(8).unwrap(), "0.01745241");
+    // sin(1 deg), truncated to eight decimal places.
+    let sin_one = Real::from_str("1")
+        .unwrap()
+        .degrees_to_radians()
+        .unwrap()
+        .sin()
+        .unwrap();
+    assert_eq!(
+        sin_one.to_string_truncated_or_less(8).unwrap(),
+        "0.01745240"
+    );
 }
 
 #[test]

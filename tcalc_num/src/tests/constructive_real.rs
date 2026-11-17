@@ -31,6 +31,15 @@ fn check_appr_eq(x: f64, y: f64) {
 }
 
 #[test]
+fn test_slow_approximation_cache_precision() {
+    let value = ConstructiveReal::from(0).cos().unwrap();
+    assert_eq!(value.get_appr(-8).unwrap(), BigInt::from(256));
+    assert_eq!(value.get_appr(-8).unwrap(), BigInt::from(256));
+    assert_eq!(value.get_appr(-80).unwrap(), BigInt::from(1) << 80);
+    assert_eq!(value.get_appr(-8).unwrap(), BigInt::from(256));
+}
+
+#[test]
 fn test_constructive_real() {
     let zero = ConstructiveReal::from(0);
     let mut one = ConstructiveReal::from(1);
