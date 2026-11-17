@@ -1,4 +1,4 @@
-use crate::constructive_real::{ConstructiveReal, ConstructiveRealType};
+use crate::constructive_real::{Approximate, Cached, ConstructiveReal};
 use crate::error::NumResult;
 use cancellation_token::CancellationToken;
 use num::bigint::Sign;
@@ -7,9 +7,9 @@ use num::{BigInt, One, Signed, Zero};
 #[derive(Debug)]
 pub(crate) struct InvertedConstructive(pub ConstructiveReal);
 
-impl ConstructiveRealType for InvertedConstructive {
+impl Approximate for Cached<InvertedConstructive> {
     fn approximate(&self, precision: i32, _: CancellationToken) -> NumResult<BigInt> {
-        let mut op = self.0.clone();
+        let mut op = self.operation.0.clone();
         let msd = op.msd()?;
         let inv_msd = 1 - msd;
         let digits_needed = inv_msd - precision + 3;

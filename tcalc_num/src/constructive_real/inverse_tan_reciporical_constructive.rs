@@ -1,4 +1,4 @@
-use crate::constructive_real::{ConstructiveRealType, bound_log2, scale};
+use crate::constructive_real::{Approximate, Cached, bound_log2, scale};
 use crate::error::{CancelCheckable, NumResult};
 use cancellation_token::CancellationToken;
 use num::{BigInt, One, Signed, Zero};
@@ -7,9 +7,9 @@ use std::ops::Add;
 #[derive(Debug)]
 pub(crate) struct InverseTanReciprocalConstructive(pub i32);
 
-impl ConstructiveRealType for InverseTanReciprocalConstructive {
+impl Approximate for Cached<InverseTanReciprocalConstructive> {
     fn approximate(&self, precision: i32, ct: CancellationToken) -> NumResult<BigInt> {
-        let op = self.0;
+        let op = self.operation.0;
         if precision >= 1 {
             return Ok(BigInt::zero());
         };

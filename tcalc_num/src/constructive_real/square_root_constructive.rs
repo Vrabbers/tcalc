@@ -1,4 +1,6 @@
-use crate::constructive_real::{ConstructiveReal, ConstructiveRealType, scale, shift};
+use crate::constructive_real::{
+    Approximate, Cached, ConstructiveReal, ConstructiveRealType, scale, shift,
+};
 use crate::error::DomainViolation::NthRoot;
 use crate::error::NumError::DomainViolation;
 use crate::error::{CancelCheckable, NumResult};
@@ -8,9 +10,9 @@ use num::{BigInt, One, ToPrimitive, Zero};
 #[derive(Debug)]
 pub(crate) struct SquareRootConstructive(pub ConstructiveReal);
 
-impl ConstructiveRealType for SquareRootConstructive {
+impl Approximate for Cached<SquareRootConstructive> {
     fn approximate(&self, precision: i32, ct: CancellationToken) -> NumResult<BigInt> {
-        let op = self.0.clone();
+        let op = self.operation.0.clone();
         // Conservative estimate of number of
         // significant bits in double precision
         // computation.
@@ -30,7 +32,7 @@ impl ConstructiveRealType for SquareRootConstructive {
             // This should be conservative.  Is fewer enough?
             let appr_prec = result_msd - appr_digits;
             ct.stop_if_cancelled()?;
-            let last_appr = self.approximate(appr_prec, ct)?; // TODO: changed from get_appr.
+            let last_appr = self.get_appr(appr_prec, ct)?;
             let prod_prec = 2 * appr_prec;
             let op_appr = op.get_appr(prod_prec)?;
             // Slightly fewer might be enough;

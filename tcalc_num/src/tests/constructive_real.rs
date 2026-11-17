@@ -2,7 +2,9 @@
 
 use crate::constructive_real::ConstructiveReal;
 use crate::error::NumResult;
+use cancellation_token::CancellationToken;
 use num::BigInt;
+use num::Signed;
 use num::bigint::Sign;
 use std::cmp::Ordering;
 use std::ops::Add;
@@ -37,6 +39,21 @@ fn test_slow_approximation_cache_precision() {
     assert_eq!(value.get_appr(-8).unwrap(), BigInt::from(256));
     assert_eq!(value.get_appr(-80).unwrap(), BigInt::from(1) << 80);
     assert_eq!(value.get_appr(-8).unwrap(), BigInt::from(256));
+}
+
+#[test]
+fn test_sqrt_high_precision() {
+    for integer in [0, 2, 4, 13] {
+        let root = ConstructiveReal::from(integer).sqrt();
+        for bits in [32, 128, 192, 1024] {
+            let approximation = root.get_appr(-bits).unwrap();
+            let expected = (BigInt::from(integer) << (2 * bits)).sqrt();
+            assert!(
+                (approximation - expected).abs() <= BigInt::from(1),
+                "sqrt({integer}) at {bits} bits"
+            );
+        }
+    }
 }
 
 #[test]

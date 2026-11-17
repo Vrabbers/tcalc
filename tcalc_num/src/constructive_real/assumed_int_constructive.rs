@@ -1,4 +1,4 @@
-use crate::constructive_real::{ConstructiveReal, ConstructiveRealType, scale};
+use crate::constructive_real::{Approximate, Cached, ConstructiveReal, scale};
 use crate::error::NumResult;
 use cancellation_token::CancellationToken;
 use num::BigInt;
@@ -6,12 +6,12 @@ use num::BigInt;
 #[derive(Debug)]
 pub(crate) struct AssumedIntConstructive(pub ConstructiveReal);
 
-impl ConstructiveRealType for AssumedIntConstructive {
+impl Approximate for Cached<AssumedIntConstructive> {
     fn approximate(&self, precision: i32, _: CancellationToken) -> NumResult<BigInt> {
         if precision >= 0 {
-            self.0.clone().get_appr(precision)
+            self.operation.0.clone().get_appr(precision)
         } else {
-            Ok(scale(self.0.clone().get_appr(0)?, -precision))
+            Ok(scale(self.operation.0.clone().get_appr(0)?, -precision))
         }
     }
 }

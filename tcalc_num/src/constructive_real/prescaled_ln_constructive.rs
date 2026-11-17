@@ -1,4 +1,4 @@
-use crate::constructive_real::{ConstructiveReal, ConstructiveRealType, bound_log2, scale};
+use crate::constructive_real::{Approximate, Cached, ConstructiveReal, bound_log2, scale};
 use crate::error::{CancelCheckable, NumResult};
 use cancellation_token::CancellationToken;
 use num::{BigInt, One, Signed, Zero};
@@ -7,7 +7,7 @@ use std::ops::Add;
 #[derive(Debug)]
 pub(crate) struct PrescaledLnConstructive(pub ConstructiveReal);
 
-impl ConstructiveRealType for PrescaledLnConstructive {
+impl Approximate for Cached<PrescaledLnConstructive> {
     fn is_slow(&self) -> bool {
         true
     }
@@ -23,7 +23,7 @@ impl ConstructiveRealType for PrescaledLnConstructive {
         //  exclusive of error in op.
         let calc_precision = precision - bound_log2(2 * iterations_needed) - 4; // for error in op, truncation.
         let op_prec = precision - 3;
-        let op_appr = self.0.clone().get_appr(op_prec)?;
+        let op_appr = self.operation.0.clone().get_appr(op_prec)?;
         // Error analysis as for exponential.
         let mut x_nth = scale(op_appr.clone(), op_prec - calc_precision);
         let mut current_term = x_nth.clone(); // x**n

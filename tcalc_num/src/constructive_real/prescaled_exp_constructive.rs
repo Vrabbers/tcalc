@@ -1,4 +1,4 @@
-use crate::constructive_real::{ConstructiveReal, ConstructiveRealType, bound_log2, scale};
+use crate::constructive_real::{Approximate, Cached, ConstructiveReal, bound_log2, scale};
 use crate::error::{CancelCheckable, NumResult};
 use cancellation_token::CancellationToken;
 use num::{BigInt, One, Signed, Zero};
@@ -6,7 +6,7 @@ use num::{BigInt, One, Signed, Zero};
 #[derive(Debug)]
 pub(crate) struct PrescaledExpConstructive(pub ConstructiveReal);
 
-impl ConstructiveRealType for PrescaledExpConstructive {
+impl Approximate for Cached<PrescaledExpConstructive> {
     fn approximate(&self, precision: i32, ct: CancellationToken) -> NumResult<BigInt> {
         if precision >= 1 {
             return Ok(BigInt::zero());
@@ -19,7 +19,7 @@ impl ConstructiveRealType for PrescaledExpConstructive {
         //  exclusive of error in op.
         let calc_precision = precision - bound_log2(2 * iterations_needed) - 4; // for error in op, truncation.
         let op_prec = precision - 3;
-        let op_appr = self.0.clone().get_appr(op_prec)?;
+        let op_appr = self.operation.0.clone().get_appr(op_prec)?;
         // Error in argument results in error of < 3/8 ulp.
         // Sum of term eval. rounding error is < 1/16 ulp.
         // Series truncation error < 1/16 ulp.

@@ -1,4 +1,4 @@
-use crate::constructive_real::{ConstructiveReal, ConstructiveRealType, bound_log2, scale};
+use crate::constructive_real::{Approximate, Cached, ConstructiveReal, bound_log2, scale};
 use crate::error::{CancelCheckable, NumResult};
 use cancellation_token::CancellationToken;
 use num::{BigInt, One, Signed};
@@ -6,7 +6,7 @@ use num::{BigInt, One, Signed};
 #[derive(Debug)]
 pub(crate) struct PrescaledCosConstructive(pub ConstructiveReal);
 
-impl ConstructiveRealType for PrescaledCosConstructive {
+impl Approximate for Cached<PrescaledCosConstructive> {
     fn is_slow(&self) -> bool {
         true
     }
@@ -23,7 +23,7 @@ impl ConstructiveRealType for PrescaledCosConstructive {
         //  exclusive of error in op.
         let calc_precision = precision - bound_log2(2 * iterations_needed) - 4; // for error in op, truncation.
         let op_prec = precision - 2;
-        let op_appr = self.0.get_appr(op_prec)?;
+        let op_appr = self.operation.0.get_appr(op_prec)?;
         // Error in argument results in error of < 1/4 ulp.
         // Cumulative arithmetic rounding error is < 1/16 ulp.
         // Series truncation error < 1/16 ulp.

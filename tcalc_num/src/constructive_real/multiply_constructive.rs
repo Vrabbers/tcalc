@@ -1,4 +1,4 @@
-use crate::constructive_real::{ConstructiveReal, ConstructiveRealType, scale};
+use crate::constructive_real::{Approximate, Cached, ConstructiveReal, scale};
 use crate::error::NumResult;
 use cancellation_token::CancellationToken;
 use num::bigint::Sign;
@@ -11,10 +11,10 @@ pub(crate) struct MultiplyConstructive {
     pub op2: ConstructiveReal,
 }
 
-impl ConstructiveRealType for MultiplyConstructive {
+impl Approximate for Cached<MultiplyConstructive> {
     fn approximate(&self, precision: i32, _: CancellationToken) -> NumResult<BigInt> {
-        let mut op1 = self.op1.clone();
-        let mut op2 = self.op2.clone();
+        let mut op1 = self.operation.op1.clone();
+        let mut op2 = self.operation.op2.clone();
         let half_prec = (precision >> 1) - 1;
         let mut msd_op1 = op1.msd_n(half_prec)?;
         let mut msd_op2;

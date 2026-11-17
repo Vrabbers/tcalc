@@ -1,4 +1,4 @@
-use crate::constructive_real::{ConstructiveReal, ConstructiveRealType};
+use crate::constructive_real::{Approximate, Cached, ConstructiveReal};
 use crate::error::NumResult;
 use cancellation_token::CancellationToken;
 use num::BigInt;
@@ -9,8 +9,11 @@ pub(crate) struct ShiftConstructive {
     pub count: i32,
 }
 
-impl ConstructiveRealType for ShiftConstructive {
+impl Approximate for Cached<ShiftConstructive> {
     fn approximate(&self, precision: i32, _: CancellationToken) -> NumResult<BigInt> {
-        self.op.clone().get_appr(precision - self.count)
+        self.operation
+            .op
+            .clone()
+            .get_appr(precision - self.operation.count)
     }
 }

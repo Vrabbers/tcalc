@@ -1,4 +1,4 @@
-use crate::constructive_real::{ConstructiveRealType, scale};
+use crate::constructive_real::{Approximate, Cached, scale};
 use crate::error::NumResult;
 use cancellation_token::CancellationToken;
 use num::BigInt;
@@ -6,8 +6,8 @@ use num::BigInt;
 #[derive(Debug)]
 pub(crate) struct BigIntegerConstructive(pub BigInt);
 
-impl ConstructiveRealType for BigIntegerConstructive {
+impl Approximate for Cached<BigIntegerConstructive> {
     fn approximate(&self, precision: i32, _: CancellationToken) -> NumResult<BigInt> {
-        Ok(scale(self.0.clone(), -precision))
+        Ok(scale(self.operation.0.clone(), -precision))
     }
 }
